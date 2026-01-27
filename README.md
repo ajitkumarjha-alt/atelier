@@ -1,2 +1,2 @@
 # atelier
-Ailtier on azure
+Ailtier on Cloud
