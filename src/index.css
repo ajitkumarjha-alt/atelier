@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+@layer base {
+  body {
+    @apply min-h-screen min-w-[320px] antialiased;
+    font-family: 'Jost', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 700;
+  }
+}
+
+/* Utility classes */
+@layer components {
+  .heading-primary {
+    @apply text-4xl md:text-5xl font-bold text-lodha-black font-garamond;
+  }
+
+  .heading-secondary {
+    @apply text-2xl md:text-3xl font-bold text-lodha-black font-garamond;
+  }
+
+  .heading-tertiary {
+    @apply text-xl md:text-2xl font-bold text-lodha-black font-garamond;
+  }
+
+  .text-body {
+    @apply text-base text-lodha-grey font-jost;
+  }
+
+  .btn-primary {
+    @apply px-6 py-2 bg-lodha-gold text-white font-semibold rounded-lg hover:bg-lodha-black transition-colors duration-200;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-2 border-2 border-lodha-gold text-lodha-gold font-semibold rounded-lg hover:bg-lodha-gold hover:text-white transition-colors duration-200;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-lg p-6;
+  }
+
+  .badge-primary {
+    @apply inline-block px-3 py-1 bg-lodha-gold text-white text-sm font-semibold rounded-full;
+  }
+
+  .badge-secondary {
+    @apply inline-block px-3 py-1 bg-lodha-sand text-lodha-black text-sm font-semibold rounded-full;
+  }
+}

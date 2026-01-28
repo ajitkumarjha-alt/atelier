@@ -1,0 +1,84 @@
+import { useState, useEffect } from 'react';
+import { Loader } from 'lucide-react';
+import Layout from '../components/Layout';
+import ProjectCard from '../components/ProjectCard';
+
+export default function Dashboard() {
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const response = await fetch('/api/projects');
+        if (!response.ok) {
+          throw new Error('Failed to fetch projects');
+        }
+        const data = await response.json();
+        setProjects(data);
+      } catch (err) {
+        console.error('Error fetching projects:', err);
+        setError('Failed to load projects. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, []);
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex flex-col items-center gap-4">
+            <Loader className="w-8 h-8 text-lodha-gold animate-spin" />
+            <p className="text-lodha-bronze font-medium">Loading projects...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+          {error}
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      {/* Dashboard Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-serif font-bold text-lodha-deep mb-2">
+          Project Overview
+        </h1>
+        <p className="text-gray-600">
+          Monitoring {projects.length} active projects
+        </p>
+      </div>
+
+      {/* Projects Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {projects.map(project => (
+          <ProjectCard 
+            key={project.id} 
+            project={project}
+          />
+        ))}
+      </div>
+
+      {/* Empty State */}
+      {projects.length === 0 && !loading && !error && (
+        <div className="text-center py-12">
+          <p className="text-gray-500">No projects found.</p>
+        </div>
+      )}
+    </Layout>
+  );
+}
