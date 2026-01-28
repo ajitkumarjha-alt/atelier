@@ -10,6 +10,7 @@ import L3Dashboard from './pages/L3Dashboard';
 import L4Dashboard from './pages/L4Dashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import ProjectDetail from './pages/ProjectDetail';
+import ProjectInput from './pages/ProjectInput';
 import MASPage from './pages/MASPage';
 import RFIPage from './pages/RFIPage';
 import { createOrUpdateUser } from './services/userService';
@@ -137,6 +138,30 @@ function App() {
           element={
             user ? (
               <L4Dashboard />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* Project Input Page */}
+        <Route 
+          path="/project-input" 
+          element={
+            user && (userLevel === 'L1' || userLevel === 'SUPER_ADMIN') ? (
+              <ProjectInput />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* Project Input Edit Page */}
+        <Route 
+          path="/project-input/:projectId" 
+          element={
+            user && (userLevel === 'L1' || userLevel === 'SUPER_ADMIN') ? (
+              <ProjectInput />
             ) : (
               <Navigate to="/" replace />
             )

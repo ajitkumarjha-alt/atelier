@@ -60,6 +60,56 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 -- Create index on project status for filtering
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
 
+-- Create project_standards table for managing options (super admin)
+CREATE TABLE IF NOT EXISTS project_standards (
+    id SERIAL PRIMARY KEY,
+    category VARCHAR(100) NOT NULL,
+    value VARCHAR(255) NOT NULL,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(category, value)
+);
+
+-- Create buildings table
+CREATE TABLE IF NOT EXISTS buildings (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    application_type VARCHAR(100) NOT NULL,
+    location_latitude DECIMAL(10, 8),
+    location_longitude DECIMAL(11, 8),
+    residential_type VARCHAR(100),
+    villa_type VARCHAR(100),
+    villa_count INTEGER,
+    twin_of_building_id INTEGER REFERENCES buildings(id),
+    is_twin BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create floors table
+CREATE TABLE IF NOT EXISTS floors (
+    id SERIAL PRIMARY KEY,
+    building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
+    floor_number INTEGER NOT NULL,
+    floor_name VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create flats table
+CREATE TABLE IF NOT EXISTS flats (
+    id SERIAL PRIMARY KEY,
+    floor_id INTEGER NOT NULL REFERENCES floors(id) ON DELETE CASCADE,
+    flat_type VARCHAR(100) NOT NULL,
+    area_sqft DECIMAL(10, 2),
+    number_of_flats INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create function to update updated_at column
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $update_timestamp$
@@ -81,6 +131,55 @@ CREATE TRIGGER update_projects_updated_at
     BEFORE UPDATE ON projects
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_buildings_updated_at ON buildings;
+CREATE TRIGGER update_buildings_updated_at
+    BEFORE UPDATE ON buildings
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_floors_updated_at ON floors;
+CREATE TRIGGER update_floors_updated_at
+    BEFORE UPDATE ON floors
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_flats_updated_at ON flats;
+CREATE TRIGGER update_flats_updated_at
+    BEFORE UPDATE ON flats
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_project_standards_updated_at ON project_standards;
+CREATE TRIGGER update_project_standards_updated_at
+    BEFORE UPDATE ON project_standards
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Insert default project standards
+INSERT INTO project_standards (category, value, description) VALUES
+-- Building Application Types
+('application_type', 'Residential', 'Residential buildings'),
+('application_type', 'Clubhouse', 'Club and community spaces'),
+('application_type', 'MLCP', 'Multi-Level Car Parking'),
+('application_type', 'Commercial', 'Commercial spaces'),
+('application_type', 'Institute', 'Educational institutions'),
+('application_type', 'Industrial', 'Industrial facilities'),
+('application_type', 'Hospital', 'Hospital facilities'),
+('application_type', 'Hospitality', 'Hotels and hospitality'),
+('application_type', 'Data center', 'Data center facilities'),
+-- Residential Types
+('residential_type', 'Aspi', 'Aspire series'),
+('residential_type', 'Casa', 'Casa series'),
+('residential_type', 'Premium', 'Premium series'),
+('residential_type', 'Villa', 'Villa series'),
+-- Flat Types
+('flat_type', '1BHK', 'One Bedroom Hall Kitchen'),
+('flat_type', '2BHK', 'Two Bedroom Hall Kitchen'),
+('flat_type', '3BHK', 'Three Bedroom Hall Kitchen'),
+('flat_type', '4BHK', 'Four Bedroom Hall Kitchen'),
+('flat_type', 'Studio', 'Studio apartment')
+ON CONFLICT DO NOTHING;
 
 -- Insert sample project data
 INSERT INTO projects (

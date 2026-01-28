@@ -332,6 +332,149 @@ app.post('/api/auth/sync', async (req, res) => {
   }
 });
 
+// Project Standards endpoint
+app.get('/api/project-standards', async (req, res) => {
+  try {
+    const applicationTypes = await query(
+      'SELECT DISTINCT value FROM project_standards WHERE category = $1 AND is_active = true ORDER BY value',
+      ['application_type']
+    );
+    const residentialTypes = await query(
+      'SELECT DISTINCT value FROM project_standards WHERE category = $1 AND is_active = true ORDER BY value',
+      ['residential_type']
+    );
+    const flatTypes = await query(
+      'SELECT DISTINCT value FROM project_standards WHERE category = $1 AND is_active = true ORDER BY value',
+      ['flat_type']
+    );
+
+    res.json({
+      applicationTypes: applicationTypes.rows.map(r => r.value),
+      residentialTypes: residentialTypes.rows.map(r => r.value),
+      flatTypes: flatTypes.rows.map(r => r.value),
+    });
+  } catch (error) {
+    console.error('Error fetching standards:', error);
+    res.status(500).json({ error: 'Failed to fetch standards' });
+  }
+});
+
+// Create or update project with full hierarchy
+app.post('/api/projects/with-hierarchy', async (req, res) => {
+  const { name, location, latitude, longitude, buildings, userEmail } = req.body;
+
+  try {
+    // Create project
+    const projectResult = await query(
+      `INSERT INTO projects (name, description, lifecycle_stage, start_date, target_completion_date)
+       VALUES ($1, $2, 'Concept', CURRENT_DATE, CURRENT_DATE + INTERVAL '12 months')
+       RETURNING id`,
+      [name, location]
+    );
+
+    const projectId = projectResult.rows[0].id;
+
+    // Insert buildings and their hierarchy
+    for (const building of buildings) {
+      const buildingResult = await query(
+        `INSERT INTO buildings (project_id, name, application_type, location_latitude, location_longitude, residential_type, villa_type, villa_count, twin_of_building_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING id`,
+        [projectId, building.name, building.applicationType, latitude, longitude, building.residentialType, building.villaType, building.villaCount, building.twinOfBuildingId]
+      );
+
+      const buildingId = buildingResult.rows[0].id;
+
+      // Insert floors
+      for (const floor of building.floors) {
+        const floorResult = await query(
+          `INSERT INTO floors (building_id, floor_number, floor_name)
+           VALUES ($1, $2, $3)
+           RETURNING id`,
+          [buildingId, floor.floorNumber, floor.floorName]
+        );
+
+        const floorId = floorResult.rows[0].id;
+
+        // Insert flats
+        for (const flat of floor.flats) {
+          await query(
+            `INSERT INTO flats (floor_id, flat_type, area_sqft, number_of_flats)
+             VALUES ($1, $2, $3, $4)`,
+            [floorId, flat.type, flat.area, flat.count]
+          );
+        }
+      }
+    }
+
+    res.json({ id: projectId, message: 'Project created successfully' });
+  } catch (error) {
+    console.error('Error creating project:', error);
+    res.status(500).json({ error: 'Failed to create project' });
+  }
+});
+
+// Fetch full project with hierarchy
+app.get('/api/projects/:id/full', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const projectResult = await query('SELECT * FROM projects WHERE id = $1', [id]);
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const project = projectResult.rows[0];
+    const buildingsResult = await query('SELECT * FROM buildings WHERE project_id = $1', [id]);
+
+    const buildings = [];
+    for (const building of buildingsResult.rows) {
+      const floorsResult = await query('SELECT * FROM floors WHERE building_id = $1', [building.id]);
+
+      const floors = [];
+      for (const floor of floorsResult.rows) {
+        const flatsResult = await query('SELECT * FROM flats WHERE floor_id = $1', [floor.id]);
+
+        floors.push({
+          id: floor.id,
+          floorNumber: floor.floor_number,
+          floorName: floor.floor_name,
+          flats: flatsResult.rows.map(f => ({
+            id: f.id,
+            type: f.flat_type,
+            area: f.area_sqft,
+            count: f.number_of_flats,
+          })),
+        });
+      }
+
+      buildings.push({
+        id: building.id,
+        name: building.name,
+        applicationType: building.application_type,
+        residentialType: building.residential_type,
+        villaType: building.villa_type,
+        villaCount: building.villa_count,
+        isTwin: building.is_twin,
+        twinOfBuildingId: building.twin_of_building_id,
+        floors,
+      });
+    }
+
+    res.json({
+      id: project.id,
+      name: project.name,
+      location: project.description,
+      latitude: buildingsResult.rows[0]?.location_latitude || '',
+      longitude: buildingsResult.rows[0]?.location_longitude || '',
+      buildings,
+    });
+  } catch (error) {
+    console.error('Error fetching project:', error);
+    res.status(500).json({ error: 'Failed to fetch project' });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date() });
