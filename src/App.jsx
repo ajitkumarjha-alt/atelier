@@ -69,11 +69,16 @@ function App() {
         />
 
         {/* Default Dashboard - shows based on user level */}
-        <Route 
-          path="/dashboard" 
+        <Route
+          path="/dashboard"
           element={
             user ? (
-              userLevel === 'SUPER_ADMIN' ? (
+              // Wait for userLevel to be determined to avoid redirect loops
+              userLevel === null ? (
+                <div className="min-h-screen flex items-center justify-center bg-lodha-sand">
+                  <div className="text-lodha-black text-xl font-garamond font-bold">Loading...</div>
+                </div>
+              ) : userLevel === 'SUPER_ADMIN' ? (
                 <Navigate to="/super-admin-dashboard" replace />
               ) : userLevel === 'L1' ? (
                 <Navigate to="/l1-dashboard" replace />
@@ -85,7 +90,7 @@ function App() {
             ) : (
               <Navigate to="/" replace />
             )
-          } 
+          }
         />
 
         {/* Super Admin Dashboard */}

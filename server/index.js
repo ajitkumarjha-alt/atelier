@@ -56,6 +56,9 @@ app.use(express.static(path.join(__dirname, '../public')));
 /**
  * Verify Firebase ID token and attach user info to request
  * Attached: req.user = { uid, email, userLevel, claims }
+ * 
+ * Development Mode: If Firebase Admin SDK is not configured, requires x-dev-user-email header
+ * to bypass auth verification (only in development, not in production).
  */
 const verifyToken = async (req, res, next) => {
   // Skip auth for health check
@@ -65,10 +68,57 @@ const verifyToken = async (req, res, next) => {
 
   // Get token from Authorization header
   const authHeader = req.headers.authorization;
+  
+  // Development mode: allow x-dev-user-email header as bypass (only if Firebase Admin not initialized)
+  const devUserEmail = req.headers['x-dev-user-email'];
+  
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Development bypass: if no auth header but dev email provided and Admin SDK not initialized
+    if (devUserEmail && !firebaseAdmin && process.env.NODE_ENV !== 'production') {
+      try {
+        console.log(`[DEV] Using dev user bypass for email: ${devUserEmail}`);
+        
+        // Fetch user from database to get user level
+        const userResult = await query(
+          'SELECT id, email, user_level FROM users WHERE email = $1',
+          [devUserEmail]
+        );
+
+        if (userResult.rows.length === 0) {
+          return res.status(403).json({
+            error: 'Forbidden',
+            message: `User "${devUserEmail}" not found in database. Contact administrator.`
+          });
+        }
+
+        const user = userResult.rows[0];
+
+        // Attach user info to request
+        req.user = {
+          uid: `dev-${user.id}`,
+          email: user.email,
+          userId: user.id,
+          userLevel: user.user_level,
+          isAdmin: user.user_level === 'SUPER_ADMIN',
+          isL1: user.user_level === 'L1',
+          isL2: user.user_level === 'L2',
+          isL3: user.user_level === 'L3',
+          isL4: user.user_level === 'L4'
+        };
+
+        return next();
+      } catch (error) {
+        console.error('Dev user lookup error:', error.message);
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'Failed to lookup dev user'
+        });
+      }
+    }
+    
     return res.status(401).json({
       error: 'Unauthorized',
-      message: 'No token provided. Send Authorization: Bearer <token>'
+      message: 'No token provided. Send Authorization: Bearer <token> or x-dev-user-email header (dev only)'
     });
   }
 
@@ -77,9 +127,9 @@ const verifyToken = async (req, res, next) => {
   try {
     // Verify token with Firebase Admin SDK
     if (!firebaseAdmin) {
-      return res.status(500).json({
-        error: 'Server Error',
-        message: 'Firebase Admin SDK not initialized'
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Firebase Admin SDK not initialized. In development, you can use x-dev-user-email header instead of Bearer token.'
       });
     }
 
@@ -158,9 +208,6 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Auth sync endpoint (public, but validates Firebase token in request)
-app.post('/api/auth/sync', verifyToken, async (req, res) => {
-
 // Super Admin Email
 const SUPER_ADMIN_EMAIL = 'lodhaatelier@gmail.com';
 
@@ -174,12 +221,18 @@ async function initializeDatabase() {
         email VARCHAR(255) UNIQUE NOT NULL,
         full_name VARCHAR(255) NOT NULL,
         role VARCHAR(50) NOT NULL DEFAULT 'user',
-        user_level VARCHAR(2) NOT NULL DEFAULT 'L4',
+        user_level VARCHAR(50) NOT NULL DEFAULT 'L4',
         last_login TIMESTAMP WITH TIME ZONE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    
+    // Add user_level column if it doesn't exist (migration for existing tables)
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS user_level VARCHAR(50) NOT NULL DEFAULT 'L4'
+    `);
+    
     console.log('✓ users table initialized');
 
     // Create projects table if it doesn't exist
@@ -614,15 +667,9 @@ app.post('/api/auth/sync', async (req, res) => {
     // Determine user level
     let userLevel = 'L4'; // Default
     
-    // Super admin check (not stored in DB, checked at runtime)
+    // Super admin check - also insert into DB so other endpoints can access it
     if (email === SUPER_ADMIN_EMAIL) {
-      return res.json({ 
-        id: 0, 
-        email, 
-        full_name: fullName, 
-        user_level: 'SUPER_ADMIN', 
-        role: 'super_admin' 
-      });
+      userLevel = 'SUPER_ADMIN';
     }
 
     const text = `

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import SuperAdminLayout from '../components/SuperAdminLayout';
-import { Users, Shield, TrendingUp, Settings, Database } from 'lucide-react';
+import { Users, Shield, TrendingUp, Settings, Database, Truck } from 'lucide-react';
 
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
@@ -49,6 +49,17 @@ export default function SuperAdminDashboard() {
       borderColor: 'border-lodha-gold/20',
       route: '/l4-dashboard',
       access: 'View-only access',
+    },
+    {
+      title: 'Vendor Dashboard',
+      subtitle: 'VENDOR - MAS Uploads',
+      description: 'View and upload Material Approval Sheets (MAS) for approval.',
+      icon: Truck,
+      color: 'from-lodha-sand/90 to-lodha-sand/70',
+      textColor: 'text-lodha-black',
+      borderColor: 'border-lodha-gold/30',
+      route: '/vendor-dashboard',
+      access: 'Vendor access: upload MAS',
     },
     {
       title: 'Project Standards',

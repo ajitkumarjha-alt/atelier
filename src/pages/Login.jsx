@@ -23,7 +23,7 @@ export default function Login() {
         try {
           await createOrUpdateUser(result.user.email, result.user.displayName);
           console.log('User data saved to database');
-          navigate('/dashboard');
+          // Let App's auth listener handle routing based on `userLevel`.
         } catch (dbError) {
           console.error('Database error:', dbError);
           setError('Failed to save user data. Please try again.');
