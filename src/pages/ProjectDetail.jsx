@@ -201,27 +201,56 @@ export default function ProjectDetail() {
                     </thead>
                     <tbody>
                       {building.floors && building.floors.length > 0 ? (
-                        building.floors.map((floor) => (
-                          floor.flats && floor.flats.length > 0 ? (
-                            floor.flats.map((flat, flatIdx) => (
-                              <tr key={`${floor.id}-${flat.id}`} className="border-b border-lodha-grey/10 hover:bg-lodha-sand/30">
-                                {flatIdx === 0 && (
-                                  <td rowSpan={floor.flats.length} className="py-2 px-3 font-semibold align-top">
+                        (() => {
+                          // Filter out twin floors - only show parent floors
+                          const parentFloors = building.floors.filter(f => !f.twin_of_floor_id);
+                          
+                          return parentFloors.length > 0 ? parentFloors.map((floor) => {
+                            // Find all twin floors for this parent floor
+                            const twinFloors = building.floors.filter(f => f.twin_of_floor_id === floor.id);
+                            const twinNames = twinFloors.map(t => t.floor_name || `Floor ${t.floor_number}`).join(', ');
+                            
+                            return floor.flats && floor.flats.length > 0 ? (
+                              floor.flats.map((flat, flatIdx) => (
+                                <tr key={`${floor.id}-${flat.id}`} className="border-b border-lodha-grey/10 hover:bg-lodha-sand/30">
+                                  {flatIdx === 0 && (
+                                    <td rowSpan={floor.flats.length} className="py-2 px-3 font-semibold align-top">
+                                      <div>
+                                        {floor.floor_name || `Floor ${floor.floor_number}`}
+                                        {twinNames && (
+                                          <div className="text-xs font-normal text-lodha-grey mt-1">
+                                            Twin: {twinNames}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                  )}
+                                  <td className="py-2 px-3">{flat.flat_type || '—'}</td>
+                                  <td className="py-2 px-3 text-right">{flat.area_sqft || '—'}</td>
+                                  <td className="py-2 px-3 text-right font-semibold">{flat.number_of_flats || 0}</td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr key={floor.id} className="border-b border-lodha-grey/10">
+                                <td className="py-2 px-3 font-semibold">
+                                  <div>
                                     {floor.floor_name || `Floor ${floor.floor_number}`}
-                                  </td>
-                                )}
-                                <td className="py-2 px-3">{flat.flat_type || '—'}</td>
-                                <td className="py-2 px-3 text-right">{flat.area_sqft || '—'}</td>
-                                <td className="py-2 px-3 text-right font-semibold">{flat.number_of_flats || 0}</td>
+                                    {twinNames && (
+                                      <div className="text-xs font-normal text-lodha-grey mt-1">
+                                        Twin: {twinNames}
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                                <td colSpan="3" className="py-2 px-3 text-lodha-grey italic">No flats added</td>
                               </tr>
-                            ))
-                          ) : (
-                            <tr key={floor.id} className="border-b border-lodha-grey/10">
-                              <td className="py-2 px-3 font-semibold">{floor.floor_name || `Floor ${floor.floor_number}`}</td>
-                              <td colSpan="3" className="py-2 px-3 text-lodha-grey italic">No flats added</td>
+                            );
+                          }) : (
+                            <tr>
+                              <td colSpan="4" className="py-4 px-3 text-center text-lodha-grey italic">No floors added</td>
                             </tr>
-                          )
-                        ))
+                          );
+                        })()
                       ) : (
                         <tr>
                           <td colSpan="4" className="py-4 px-3 text-center text-lodha-grey italic">No floors added</td>

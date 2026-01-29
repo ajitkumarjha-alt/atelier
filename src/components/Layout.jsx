@@ -49,7 +49,7 @@ export default function Layout({ children }) {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex max-w-full overflow-x-hidden">
       {/* Sidebar */}
       <div 
         className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-lodha-black transform 
@@ -96,32 +96,32 @@ export default function Layout({ children }) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Top Navigation */}
-        <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6 border-b border-lodha-grey/10">
-          <div className="flex items-center gap-4">
+        <header className="h-16 bg-white shadow-sm flex items-center justify-between px-4 md:px-6 border-b border-lodha-grey/10">
+          <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="lg:hidden p-1 rounded-md hover:bg-lodha-sand"
             >
               <Menu className="w-6 h-6 text-lodha-grey" />
             </button>
-            <h2 className="text-xl font-garamond font-bold text-lodha-black">
+            <h2 className="text-lg md:text-xl font-garamond font-bold text-lodha-black truncate">
               {navItems.find(item => item.path === location.pathname)?.name || 'Dashboard'}
             </h2>
           </div>
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-lodha-sand
-                     text-lodha-black text-sm font-jost font-semibold transition-colors duration-200
-                     border border-lodha-gold hover:border-lodha-black"
+            className="flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 rounded-lg hover:bg-lodha-sand
+                     text-lodha-black text-xs md:text-sm font-jost font-semibold transition-colors duration-200
+                     border border-lodha-gold hover:border-lodha-black flex-shrink-0"
           >
             <LogOut className="w-4 h-4" />
-            Sign Out
+            <span className="hidden sm:inline">Sign Out</span>
           </button>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 bg-lodha-sand p-6 overflow-auto">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 bg-lodha-sand p-4 md:p-6 overflow-y-auto overflow-x-hidden w-full">
+          <div className="max-w-7xl mx-auto w-full px-2 md:px-0">
             {children}
           </div>
         </main>
