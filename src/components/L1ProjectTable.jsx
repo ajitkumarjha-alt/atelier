@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, Loader } from 'lucide-react';
+import { ChevronDown, Loader, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetchJson, apiFetch } from '../lib/api';
 
-export default function L1ProjectTable({ userEmail }) {
+export default function L1ProjectTable({ userEmail, userLevel }) {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [users, setUsers] = useState([]);
   const [assigningProjectId, setAssigningProjectId] = useState(null);
   const navigate = useNavigate();
+
+  console.log('L1ProjectTable userLevel:', userLevel);
 
   useEffect(() => {
     if (userEmail) {
@@ -96,6 +98,7 @@ export default function L1ProjectTable({ userEmail }) {
             <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Progress</th>
             <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Assigned Lead</th>
             <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Action</th>
+            <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Edit</th>
           </tr>
         </thead>
         <tbody>
@@ -148,6 +151,16 @@ export default function L1ProjectTable({ userEmail }) {
                   </select>
                   <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white pointer-events-none" />
                 </div>
+              </td>
+              <td className="px-6 py-4">
+                <button
+                  onClick={() => navigate(`/project-input/${project.id}`)}
+                  className="flex items-center gap-2 px-4 py-2 bg-lodha-black text-white rounded-lg hover:bg-lodha-gold transition-colors font-jost text-sm"
+                  title="Edit project"
+                >
+                  <Edit className="w-4 h-4" />
+                  Edit
+                </button>
               </td>
             </tr>
           ))}

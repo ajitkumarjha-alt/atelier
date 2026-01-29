@@ -10,6 +10,14 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+// Validate allowed ports in development
+const allowedPorts = ['5173', '5174', '5175'];
+const currentPort = window.location.port;
+
+if (import.meta.env.DEV && currentPort && !allowedPorts.includes(currentPort)) {
+  console.warn(`⚠️ Firebase authentication is only configured for ports ${allowedPorts.join(', ')}. Current port: ${currentPort}`);
+}
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 

@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import GoogleMapComponent from '../components/GoogleMapComponent';
-import { Plus, Trash2, Edit2, MapPin, Copy } from 'lucide-react';
+import { Plus, Trash2, Edit2, MapPin, Copy, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function ProjectInput() {
   const { projectId } = useParams();
@@ -28,6 +28,8 @@ export default function ProjectInput() {
   const [showMap, setShowMap] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [warnings, setWarnings] = useState([]);
+  const [allProjects, setAllProjects] = useState([]);
 
   // Fetch standards from database
   useEffect(() => {
@@ -43,7 +45,22 @@ export default function ProjectInput() {
       }
     };
 
+    const fetchAllProjects = async () => {
+      try {
+        const response = await fetch('/api/projects-public');
+        if (response.ok) {
+          const data = await response.json();
+          setAllProjects(data);
+        } else {
+          console.error('Failed to fetch projects:', response.status);
+        }
+      } catch (err) {
+        console.error('Error fetching projects:', err);
+      }
+    };
+
     fetchStandards();
+    fetchAllProjects();
 
     // Fetch existing project if editing
     if (isEditing) {
@@ -68,30 +85,90 @@ export default function ProjectInput() {
     }
   };
 
-  // Auto-save handler
-  const autoSaveField = useCallback(async (field, value) => {
-    try {
-      const url = isEditing ? `/api/projects/${projectId}` : '/api/projects';
-      const method = isEditing ? 'PATCH' : 'POST';
-      
-      await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: value }),
-      });
-    } catch (err) {
-      console.error('Auto-save failed:', err);
+  // Similarity check function (Levenshtein distance)
+  const calculateSimilarity = (str1, str2) => {
+    const s1 = str1.toLowerCase().trim();
+    const s2 = str2.toLowerCase().trim();
+    
+    if (s1 === s2) return 1;
+    
+    const longer = s1.length > s2.length ? s1 : s2;
+    const shorter = s1.length > s2.length ? s2 : s1;
+    
+    if (longer.length === 0) return 1;
+    
+    const editDistance = getEditDistance(longer, shorter);
+    return (longer.length - editDistance) / longer.length;
+  };
+
+  const getEditDistance = (s1, s2) => {
+    const costs = [];
+    for (let i = 0; i <= s1.length; i++) {
+      let lastValue = i;
+      for (let j = 0; j <= s2.length; j++) {
+        if (i === 0) {
+          costs[j] = j;
+        } else if (j > 0) {
+          let newValue = costs[j - 1];
+          if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+          }
+          costs[j - 1] = lastValue;
+          lastValue = newValue;
+        }
+      }
+      if (i > 0) costs[s2.length] = lastValue;
     }
-  }, [projectId, isEditing]);
+    return costs[s2.length];
+  };
+
+  // Check for duplicate and similar project names
+  const checkProjectName = (name) => {
+    const newWarnings = [];
+    
+    if (!name.trim()) {
+      return newWarnings;
+    }
+
+    const existingProjects = allProjects.filter(p => !isEditing || p.id !== projectId);
+    
+    // Check for exact duplicate
+    const isDuplicate = existingProjects.some(p => p.name.toLowerCase().trim() === name.toLowerCase().trim());
+    if (isDuplicate) {
+      newWarnings.push({
+        type: 'error',
+        message: '⚠️ This project name already exists. Please choose a different name.',
+      });
+    }
+
+    // Check for similar names
+    const similarNames = existingProjects
+      .filter(p => calculateSimilarity(p.name, name) > 0.7)
+      .map(p => p.name);
+    
+    if (similarNames.length > 0 && !isDuplicate) {
+      newWarnings.push({
+        type: 'warning',
+        message: `Similar project names exist: ${similarNames.join(', ')}. Make sure you're not creating a duplicate.`,
+      });
+    }
+
+    setWarnings(newWarnings);
+    return newWarnings;
+  };
 
   const handleProjectFieldChange = (field, value) => {
     setProjectData(prev => ({ ...prev, [field]: value }));
-    autoSaveField(field, value);
+    
+    // Check project name for duplicates and similarities
+    if (field === 'name') {
+      checkProjectName(value);
+    }
   };
 
   const addBuilding = () => {
     const newBuilding = {
-      id: Date.now(),
+      id: Math.floor(Math.random() * 1000000000),
       name: '',
       applicationType: '',
       residentialType: '',
@@ -125,69 +202,188 @@ export default function ProjectInput() {
 
   const addFloor = (buildingId) => {
     const building = projectData.buildings.find(b => b.id === buildingId);
+    
+    const floorName = prompt('Enter floor name:');
+    if (!floorName || !floorName.trim()) return;
+    
+    const trimmedFloorName = floorName.trim();
+    
+    // Check if floor name already exists
+    const existingFloor = building.floors.find(f => f.floorName.toLowerCase() === trimmedFloorName.toLowerCase());
+    if (existingFloor) {
+      alert('A floor with this name already exists!');
+      return;
+    }
+    
+    const twinFloorNames = prompt('Enter twin floor names (comma-separated, optional):');
+    const baseId = Math.floor(Math.random() * 1000000000);
+    const baseFloorNumber = building.floors.length + 1;
+    
     const newFloor = {
-      id: Date.now(),
-      floorNumber: building.floors.length + 1,
-      floorName: `Floor ${building.floors.length + 1}`,
+      id: baseId,
+      floorNumber: baseFloorNumber,
+      floorName: trimmedFloorName,
       flats: [],
+      twinFloorNames: [], // Store twin names instead of IDs
     };
+    
+    const newFloors = [newFloor];
+    
+    // Create twin floors if specified
+    if (twinFloorNames && twinFloorNames.trim()) {
+      const twinNames = twinFloorNames.split(',').map(n => n.trim()).filter(n => n);
+      
+      // Check for duplicate twin names
+      const twinNamesSet = new Set();
+      for (const name of twinNames) {
+        const lowerName = name.toLowerCase();
+        if (lowerName === trimmedFloorName.toLowerCase()) {
+          alert(`Twin floor name "${name}" cannot be the same as parent floor!`);
+          return;
+        }
+        if (twinNamesSet.has(lowerName)) {
+          alert(`Duplicate twin floor name: "${name}"`);
+          return;
+        }
+        if (building.floors.find(f => f.floorName.toLowerCase() === lowerName)) {
+          alert(`Floor with name "${name}" already exists!`);
+          return;
+        }
+        twinNamesSet.add(lowerName);
+      }
+      
+      // Store twin names in parent floor
+      newFloor.twinFloorNames = twinNames;
+      
+      // Create twin floor objects
+      twinNames.forEach((twinName, index) => {
+        newFloors.push({
+          id: baseId + index + 1,
+          floorNumber: baseFloorNumber + index + 1,
+          floorName: twinName,
+          flats: [],
+          twinOfFloorName: trimmedFloorName, // Reference by name instead of ID
+        });
+      });
+    }
+    
     updateBuilding(buildingId, {
-      floors: [...building.floors, newFloor],
+      floors: [...building.floors, ...newFloors],
     });
   };
 
   const addFlat = (buildingId, floorId) => {
     const building = projectData.buildings.find(b => b.id === buildingId);
     const floor = building.floors.find(f => f.id === floorId);
+    const baseId = Math.floor(Math.random() * 1000000000);
+    
     const newFlat = {
-      id: Date.now(),
+      id: baseId,
       type: '',
       area: '',
       count: '',
     };
-    const updatedFloors = building.floors.map(f =>
-      f.id === floorId ? { ...f, flats: [...floor.flats, newFlat] } : f
-    );
+    
+    // Get all twin floors by name
+    const twinFloors = building.floors.filter(f => f.twinOfFloorName === floor.floorName);
+    
+    const updatedFloors = building.floors.map(f => {
+      if (f.id === floorId) {
+        // Add to parent floor
+        return { ...f, flats: [...f.flats, newFlat] };
+      } else if (twinFloors.find(tf => tf.id === f.id)) {
+        // Add to twin floors with unique IDs
+        const twinFlat = { ...newFlat, id: baseId + f.id };
+        return { ...f, flats: [...f.flats, twinFlat] };
+      }
+      return f;
+    });
+    
     updateBuilding(buildingId, { floors: updatedFloors });
   };
 
   const updateFlat = (buildingId, floorId, flatId, updates) => {
     const building = projectData.buildings.find(b => b.id === buildingId);
+    const floor = building.floors.find(f => f.id === floorId);
+    const flatIndex = floor.flats.findIndex(fl => fl.id === flatId);
+    
+    // Get all twin floors by name
+    const twinFloors = building.floors.filter(f => f.twinOfFloorName === floor.floorName);
+    
+    const updatedFloors = building.floors.map(f => {
+      if (f.id === floorId) {
+        // Update parent floor
+        return {
+          ...f,
+          flats: f.flats.map(fl => (fl.id === flatId ? { ...fl, ...updates } : fl)),
+        };
+      } else if (twinFloors.find(tf => tf.id === f.id)) {
+        // Update corresponding flat in twin floors (same index)
+        return {
+          ...f,
+          flats: f.flats.map((fl, idx) => (idx === flatIndex ? { ...fl, ...updates } : fl)),
+        };
+      }
+      return f;
+    });
+    
+    updateBuilding(buildingId, { floors: updatedFloors });
+  };
+
+  const updateFloor = (buildingId, floorId, updates) => {
+    const building = projectData.buildings.find(b => b.id === buildingId);
     const updatedFloors = building.floors.map(f =>
-      f.id === floorId
-        ? {
-            ...f,
-            flats: f.flats.map(fl => (fl.id === flatId ? { ...fl, ...updates } : fl)),
-          }
-        : f
+      f.id === floorId ? { ...f, ...updates } : f
     );
     updateBuilding(buildingId, { floors: updatedFloors });
   };
 
   const deleteFlat = (buildingId, floorId, flatId) => {
     const building = projectData.buildings.find(b => b.id === buildingId);
-    const updatedFloors = building.floors.map(f =>
-      f.id === floorId
-        ? { ...f, flats: f.flats.filter(fl => fl.id !== flatId) }
-        : f
+    const floor = building.floors.find(f => f.id === floorId);
+    const flatIndex = floor.flats.findIndex(fl => fl.id === flatId);
+    
+    // Get all twin floors by name
+    const twinFloors = building.floors.filter(f => f.twinOfFloorName === floor.floorName);
+    
+    const updatedFloors = building.floors.map(f => {
+      if (f.id === floorId) {
+        // Delete from parent floor
+        return { ...f, flats: f.flats.filter(fl => fl.id !== flatId) };
+      } else if (twinFloors.find(tf => tf.id === f.id)) {
+        // Delete from twin floors (same index)
+        return { ...f, flats: f.flats.filter((fl, idx) => idx !== flatIndex) };
+      }
+      return f;
+    });
+    
+    updateBuilding(buildingId, { floors: updatedFloors });
+  };
+
+  const deleteFloor = (buildingId, floorId) => {
+    const building = projectData.buildings.find(b => b.id === buildingId);
+    const floor = building.floors.find(f => f.id === floorId);
+    // Also delete all twin floors by name
+    const updatedFloors = building.floors.filter(f => 
+      f.id !== floorId && f.twinOfFloorName !== floor.floorName
     );
     updateBuilding(buildingId, { floors: updatedFloors });
   };
 
-  const copyFloorData = (buildingId, fromFloorId) => {
+  const copyFloorData = (buildingId, targetFloorId, sourceFloorId) => {
     const building = projectData.buildings.find(b => b.id === buildingId);
-    const sourceFloor = building.floors.find(f => f.id === fromFloorId);
+    const sourceFloor = building.floors.find(f => f.id === sourceFloorId);
     
-    const newFloor = {
-      id: Date.now(),
-      floorNumber: building.floors.length + 1,
-      floorName: `Floor ${building.floors.length + 1}`,
-      flats: sourceFloor.flats.map(f => ({ ...f, id: Date.now() })),
-    };
+    const updatedFloors = building.floors.map(f =>
+      f.id === targetFloorId
+        ? {
+            ...f,
+            flats: sourceFloor.flats.map(flat => ({ ...flat, id: Date.now() + Math.random() })),
+          }
+        : f
+    );
     
-    updateBuilding(buildingId, {
-      floors: [...building.floors, newFloor],
-    });
+    updateBuilding(buildingId, { floors: updatedFloors });
   };
 
   const copyBuildingData = (fromBuildingId) => {
@@ -231,9 +427,16 @@ export default function ProjectInput() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to save project');
-        console.error('Failed to save project:', errorData);
+        let errorMessage = 'Failed to save project';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.details || errorMessage;
+          console.error('Failed to save project:', errorData);
+        } catch (jsonErr) {
+          console.error('Error parsing error response:', jsonErr);
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        }
+        setError(errorMessage);
         return;
       }
 
@@ -269,6 +472,25 @@ export default function ProjectInput() {
 
           {error && (
             <div className="mb-4 p-4 bg-lodha-sand border-2 border-lodha-gold text-lodha-black rounded-lg">{error}</div>
+          )}
+
+          {/* Warnings Section */}
+          {warnings.length > 0 && (
+            <div className="mb-4 space-y-2">
+              {warnings.map((warn, idx) => (
+                <div
+                  key={idx}
+                  className={`p-4 rounded-lg flex items-start gap-3 ${
+                    warn.type === 'error'
+                      ? 'bg-red-50 border-2 border-red-500 text-red-700'
+                      : 'bg-yellow-50 border-2 border-yellow-500 text-yellow-700'
+                  }`}
+                >
+                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  <p className="font-jost">{warn.message}</p>
+                </div>
+              ))}
+            </div>
           )}
 
           {/* Project Basic Info */}
@@ -351,9 +573,6 @@ export default function ProjectInput() {
                       latitude: lat,
                       longitude: lng,
                     }));
-                    autoSaveField('location', address);
-                    autoSaveField('latitude', lat);
-                    autoSaveField('longitude', lng);
                   }}
                 />
               )}
@@ -366,7 +585,21 @@ export default function ProjectInput() {
               <h2 className="heading-secondary">Buildings</h2>
               <button
                 onClick={addBuilding}
-                className="flex items-center gap-2 px-4 py-2 bg-lodha-gold text-white rounded-lg hover:bg-lodha-gold/90"
+                disabled={!projectData.name.trim() || !projectData.location.trim() || warnings.some(w => w.type === 'error')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                  !projectData.name.trim() || !projectData.location.trim() || warnings.some(w => w.type === 'error')
+                    ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                    : 'bg-lodha-gold text-white hover:bg-lodha-gold/90'
+                }`}
+                title={
+                  !projectData.name.trim()
+                    ? 'Please enter project name'
+                    : !projectData.location.trim()
+                    ? 'Please enter project location/address'
+                    : warnings.some(w => w.type === 'error')
+                    ? 'Please resolve errors with project name'
+                    : ''
+                }
               >
                 <Plus className="w-4 h-4" />
                 Add Building
@@ -389,6 +622,8 @@ export default function ProjectInput() {
                   onDeleteFlat={deleteFlat}
                   onCopyFloor={copyFloorData}
                   onCopyBuilding={copyBuildingData}
+                  onDeleteFloor={deleteFloor}
+                  onUpdateFloor={updateFloor}
                 />
               ))}
             </div>
@@ -398,7 +633,19 @@ export default function ProjectInput() {
           <div className="flex gap-4">
             <button
               onClick={handleSubmit}
-              className="px-6 py-3 bg-lodha-gold text-white font-jost font-semibold rounded-lg hover:bg-lodha-gold/90"
+              disabled={!projectData.name.trim() || warnings.some(w => w.type === 'error')}
+              className={`px-6 py-3 font-jost font-semibold rounded-lg transition-all ${
+                !projectData.name.trim() || warnings.some(w => w.type === 'error')
+                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                  : 'bg-lodha-gold text-white hover:bg-lodha-gold/90'
+              }`}
+              title={
+                !projectData.name.trim()
+                  ? 'Please enter project name'
+                  : warnings.some(w => w.type === 'error')
+                  ? 'Please resolve errors before submitting'
+                  : ''
+              }
             >
               {isEditing ? 'Update' : 'Create'} Project
             </button>
@@ -437,6 +684,8 @@ function BuildingSection({
   onDeleteFlat,
   onCopyFloor,
   onCopyBuilding,
+  onDeleteFloor,
+  onUpdateFloor,
 }) {
   const isResidential = building.applicationType === 'Residential';
   const isVilla = building.applicationType === 'Villa';
@@ -575,7 +824,19 @@ function BuildingSection({
           <h4 className="font-jost font-semibold">Floors</h4>
           <button
             onClick={() => onAddFloor(building.id)}
-            className="flex items-center gap-1 px-3 py-1 text-sm bg-lodha-gold/20 text-lodha-gold rounded hover:bg-lodha-gold/30"
+            disabled={!building.name.trim() || !building.applicationType}
+            className={`flex items-center gap-1 px-3 py-1 text-sm rounded transition-all ${
+              !building.name.trim() || !building.applicationType
+                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                : 'bg-lodha-gold/20 text-lodha-gold hover:bg-lodha-gold/30'
+            }`}
+            title={
+              !building.name.trim()
+                ? 'Please enter building name'
+                : !building.applicationType
+                ? 'Please select application type'
+                : ''
+            }
           >
             <Plus className="w-3 h-3" />
             Add Floor
@@ -583,20 +844,28 @@ function BuildingSection({
         </div>
 
         <div className="space-y-3">
-          {building.floors.map((floor, floorIdx) => (
-            <FloorSection
-              key={floor.id}
-              floor={floor}
-              floorIndex={floorIdx}
-              buildingId={building.id}
-              allFloors={building.floors}
-              standards={standards}
-              onAddFlat={onAddFlat}
-              onUpdateFlat={onUpdateFlat}
-              onDeleteFlat={onDeleteFlat}
-              onCopyFloor={onCopyFloor}
-            />
-          ))}
+          {building.floors
+            .filter(floor => !floor.twinOfFloorName)
+            .map((floor, floorIndex) => {
+              return (
+                <FloorSection
+                  key={floor.id}
+                  floor={floor}
+                  floorIndex={floorIndex}
+                  buildingId={building.id}
+                  allFloors={building.floors}
+                  standards={standards}
+                  onAddFlat={onAddFlat}
+                  onUpdateFlat={onUpdateFlat}
+                  onDeleteFlat={onDeleteFlat}
+                  onCopyFloor={onCopyFloor}
+                  onDeleteFloor={onDeleteFloor}
+                  onUpdateFloor={onUpdateFloor}
+                  onUpdate={onUpdate}
+                  twinFloors={building.floors.filter(f => f.twinOfFloorName === floor.floorName)}
+                />
+              );
+            })}
         </div>
       </div>
     </div>
@@ -614,20 +883,79 @@ function FloorSection({
   onUpdateFlat,
   onDeleteFlat,
   onCopyFloor,
+  onDeleteFloor,
+  onUpdateFloor,
+  onUpdate,
+  twinFloors = [],
 }) {
+  const [selectedCopySource, setSelectedCopySource] = useState('');
+
+  const handleCopyFloor = () => {
+    if (selectedCopySource) {
+      onCopyFloor(buildingId, floor.id, parseInt(selectedCopySource));
+      setSelectedCopySource('');
+    }
+  };
+
   return (
     <div className="border border-lodha-grey/50 rounded p-3 bg-white">
       <div className="flex justify-between items-center mb-3">
-        <h5 className="font-jost font-semibold text-sm">{floor.floorName}</h5>
-        {floorIndex > 0 && (
+        <div className="flex-1">
+          <input
+            type="text"
+            value={floor.floorName}
+            onChange={(e) => onUpdateFloor(buildingId, floor.id, { floorName: e.target.value })}
+            placeholder="Floor name"
+            className="px-2 py-1 border border-lodha-gold rounded text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-lodha-gold"
+          />
+          {twinFloors.length > 0 && (
+            <div className="mt-1 text-xs text-lodha-grey">
+              Twin floors: {twinFloors.map(f => f.floorName).join(', ')}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2 ml-2">
+          {/* Copy from dropdown */}
+          {allFloors.filter(f => !f.twinOfFloorName).length > 1 && (
+            <div className="flex items-center gap-1">
+              <select
+                value={selectedCopySource}
+                onChange={(e) => setSelectedCopySource(e.target.value)}
+                className="text-xs px-2 py-1 border border-lodha-gold rounded focus:outline-none focus:ring-1 focus:ring-lodha-gold"
+              >
+                <option value="">Copy from...</option>
+                {allFloors
+                  .filter(f => f.id !== floor.id && !f.twinOfFloorName)
+                  .map(f => (
+                    <option key={f.id} value={f.id}>
+                      {f.floorName}
+                    </option>
+                  ))}
+              </select>
+              <button
+                onClick={handleCopyFloor}
+                disabled={!selectedCopySource}
+                className={`flex items-center gap-1 text-xs px-2 py-1 rounded ${
+                  selectedCopySource
+                    ? 'bg-lodha-sand text-lodha-black hover:bg-lodha-sand/80 border border-lodha-gold'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+                title={!selectedCopySource ? 'Select a floor to copy from' : 'Copy selected floor data'}
+              >
+                <Copy className="w-3 h-3" />
+                Copy
+              </button>
+            </div>
+          )}
+          {/* Delete floor button */}
           <button
-            onClick={() => onCopyFloor(buildingId, allFloors[floorIndex - 1].id)}
-            className="flex items-center gap-1 text-xs px-2 py-1 bg-lodha-sand text-lodha-black rounded hover:bg-lodha-sand/80 border border-lodha-gold"
+            onClick={() => onDeleteFloor(buildingId, floor.id)}
+            className="text-lodha-gold hover:text-red-600"
+            title="Delete floor"
           >
-            <Copy className="w-3 h-3" />
-            Copy prev
+            <Trash2 className="w-4 h-4" />
           </button>
-        )}
+        </div>
       </div>
 
       {/* Flats List */}
@@ -642,6 +970,7 @@ function FloorSection({
             standards={standards}
             onUpdate={onUpdateFlat}
             onDelete={onDeleteFlat}
+            twinFloorsCount={twinFloors.length}
           />
         ))}
       </div>
@@ -666,7 +995,10 @@ function FlatRow({
   standards,
   onUpdate,
   onDelete,
+  twinFloorsCount = 0,
 }) {
+  const totalCount = (parseInt(flat.count) || 0) * (1 + twinFloorsCount);
+  
   return (
     <div className="flex gap-2 items-center bg-lodha-sand p-2 rounded text-sm border border-lodha-grey/20">
       <select
@@ -682,22 +1014,32 @@ function FlatRow({
         ))}
       </select>
 
-      <input
-        type="number"
-        step="0.1"
-        value={flat.area}
-        onChange={e => onUpdate(buildingId, floorId, flatId, { area: e.target.value })}
-        placeholder="Area"
-        className="w-20 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-lodha-gold"
-      />
+      <div className="flex items-center gap-1">
+        <input
+          type="number"
+          step="0.1"
+          value={flat.area}
+          onChange={e => onUpdate(buildingId, floorId, flatId, { area: e.target.value })}
+          placeholder="Area"
+          className="w-20 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-lodha-gold"
+        />
+        <span className="text-xs text-gray-600">sqm</span>
+      </div>
 
-      <input
-        type="number"
-        value={flat.count}
-        onChange={e => onUpdate(buildingId, floorId, flatId, { count: e.target.value })}
-        placeholder="Count"
-        className="w-16 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-lodha-gold"
-      />
+      <div className="flex flex-col">
+        <input
+          type="number"
+          value={flat.count}
+          onChange={e => onUpdate(buildingId, floorId, flatId, { count: e.target.value })}
+          placeholder="Count"
+          className="w-16 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-lodha-gold"
+        />
+        {twinFloorsCount > 0 && (
+          <span className="text-xs text-lodha-grey mt-0.5">
+            Total: {totalCount}
+          </span>
+        )}
+      </div>
 
       <button
         onClick={() => onDelete(buildingId, floorId, flatId)}
@@ -711,6 +1053,21 @@ function FlatRow({
 
 // Project Preview Component
 function ProjectPreview({ data }) {
+  // Calculate flat counts by type
+  const flatTypesSummary = {};
+  data.buildings.forEach(building => {
+    building.floors.forEach(floor => {
+      floor.flats.forEach(flat => {
+        if (flat.type) {
+          const count = parseInt(flat.count) || 0;
+          flatTypesSummary[flat.type] = (flatTypesSummary[flat.type] || 0) + count;
+        }
+      });
+    });
+  });
+
+  const totalFlats = Object.values(flatTypesSummary).reduce((sum, count) => sum + count, 0);
+
   return (
     <div className="space-y-4 text-sm">
       <div>
@@ -728,13 +1085,22 @@ function ProjectPreview({ data }) {
         <div className="space-y-1 text-body">
           <p>Buildings: {data.buildings.length}</p>
           <p>Total Floors: {data.buildings.reduce((sum, b) => sum + b.floors.length, 0)}</p>
-          <p>
-            Total Flats:{' '}
-            {data.buildings.reduce(
-              (sum, b) => sum + b.floors.reduce((fSum, f) => fSum + f.flats.length, 0),
-              0
-            )}
-          </p>
+          <p>Total Flats: {totalFlats}</p>
+          
+          {Object.keys(flatTypesSummary).length > 0 && (
+            <div className="mt-2 pt-2 border-t border-lodha-grey/30">
+              <p className="font-jost font-semibold text-lodha-black mb-1">By Type:</p>
+              <div className="space-y-0.5 pl-2">
+                {Object.entries(flatTypesSummary)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([type, count]) => (
+                    <p key={type} className="text-xs text-lodha-grey">
+                      {type} — {count}
+                    </p>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -7,11 +7,30 @@ import { Plus } from 'lucide-react';
 
 export default function L1Dashboard() {
   const [user, setUser] = useState(null);
+  const [userLevel, setUserLevel] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    setUser(auth.currentUser);
+    const currentUser = auth.currentUser;
+    setUser(currentUser);
+    
+    if (currentUser?.email) {
+      fetchUserLevel(currentUser.email);
+    }
   }, []);
+
+  const fetchUserLevel = async (email) => {
+    try {
+      const response = await fetch(`/api/users/email/${encodeURIComponent(email)}`);
+      if (response.ok) {
+        const userData = await response.json();
+        setUserLevel(userData.user_level);
+      }
+    } catch (err) {
+      console.error('Error fetching user level:', err);
+      setUserLevel('L1'); // Default fallback
+    }
+  };
 
   return (
     <Layout>
@@ -32,7 +51,7 @@ export default function L1Dashboard() {
 
       {/* Projects Table */}
       <div className="card">
-        <L1ProjectTable userEmail={user?.email} />
+        <L1ProjectTable userEmail={user?.email} userLevel={userLevel} />
       </div>
     </Layout>
   );

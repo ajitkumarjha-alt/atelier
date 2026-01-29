@@ -17,7 +17,8 @@ export default function ProjectDetail() {
 
   const fetchProject = async () => {
     try {
-      const response = await fetch(`/api/projects/${id}`);
+      // Fetch full project details including buildings/floors/flats
+      const response = await fetch(`/api/projects/${id}/full`);
       if (!response.ok) throw new Error('Failed to fetch project');
       const data = await response.json();
       setProject(data);
@@ -118,6 +119,125 @@ export default function ProjectDetail() {
 
       {/* Project Details Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Project Info Card */}
+        <div className="card">
+          <h2 className="heading-secondary mb-4">Project Information</h2>
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm text-lodha-grey font-jost">Location</p>
+              <p className="text-body font-semibold">{project.description || '—'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-lodha-grey font-jost">Assigned Lead</p>
+              <p className="text-body font-semibold">{project.assigned_lead_name || 'Not assigned'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-lodha-grey font-jost">Progress</p>
+              <div className="mt-2">
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm text-lodha-grey font-jost">{project.completion_percentage}%</span>
+                </div>
+                <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-lodha-gold transition-all duration-300"
+                    style={{ width: `${project.completion_percentage}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Summary Card */}
+        <div className="card">
+          <h2 className="heading-secondary mb-4">Summary</h2>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-lodha-grey">Total Buildings:</span>
+              <span className="font-semibold">{project.buildings?.length || 0}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-lodha-grey">Total Floors:</span>
+              <span className="font-semibold">
+                {project.buildings?.reduce((sum, b) => sum + (b.floors?.length || 0), 0) || 0}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-lodha-grey">Total Flats:</span>
+              <span className="font-semibold">
+                {project.buildings?.reduce(
+                  (sum, b) => sum + (b.floors?.reduce(
+                    (fSum, f) => fSum + (f.flats?.reduce((flatSum, flat) => flatSum + (parseInt(flat.number_of_flats) || 0), 0) || 0), 0
+                  ) || 0), 0
+                ) || 0}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Floor-wise Details */}
+      {project.buildings && project.buildings.length > 0 && (
+        <div className="card mb-8">
+          <h2 className="heading-secondary mb-4">Floor-wise Details</h2>
+          <div className="space-y-6">
+            {project.buildings.map((building, idx) => (
+              <div key={building.id} className="border-l-4 border-lodha-gold pl-4">
+                <h3 className="font-jost font-bold text-lg text-lodha-black mb-3">
+                  {building.name || `Building ${idx + 1}`}
+                  <span className="ml-3 text-sm font-normal text-lodha-grey">
+                    ({building.application_type})
+                  </span>
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-lodha-grey/30">
+                        <th className="text-left py-2 px-3 font-jost font-semibold">Floor</th>
+                        <th className="text-left py-2 px-3 font-jost font-semibold">Flat Type</th>
+                        <th className="text-right py-2 px-3 font-jost font-semibold">Area (sqm)</th>
+                        <th className="text-right py-2 px-3 font-jost font-semibold">Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {building.floors && building.floors.length > 0 ? (
+                        building.floors.map((floor) => (
+                          floor.flats && floor.flats.length > 0 ? (
+                            floor.flats.map((flat, flatIdx) => (
+                              <tr key={`${floor.id}-${flat.id}`} className="border-b border-lodha-grey/10 hover:bg-lodha-sand/30">
+                                {flatIdx === 0 && (
+                                  <td rowSpan={floor.flats.length} className="py-2 px-3 font-semibold align-top">
+                                    {floor.floor_name || `Floor ${floor.floor_number}`}
+                                  </td>
+                                )}
+                                <td className="py-2 px-3">{flat.flat_type || '—'}</td>
+                                <td className="py-2 px-3 text-right">{flat.area_sqft || '—'}</td>
+                                <td className="py-2 px-3 text-right font-semibold">{flat.number_of_flats || 0}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr key={floor.id} className="border-b border-lodha-grey/10">
+                              <td className="py-2 px-3 font-semibold">{floor.floor_name || `Floor ${floor.floor_number}`}</td>
+                              <td colSpan="3" className="py-2 px-3 text-lodha-grey italic">No flats added</td>
+                            </tr>
+                          )
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="4" className="py-4 px-3 text-center text-lodha-grey italic">No floors added</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Old Project Details Grid - Remove this section */}
+      <div className="hidden grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Timeline */}
         <div className="card">
           <h3 className="heading-tertiary mb-4">Timeline</h3>

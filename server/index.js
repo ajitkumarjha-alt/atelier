@@ -6,7 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 5173;
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -286,11 +286,25 @@ async function initializeDatabase() {
         building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
         floor_number INTEGER NOT NULL,
         floor_name VARCHAR(100),
+        twin_of_floor_id INTEGER REFERENCES floors(id) ON DELETE SET NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
     console.log('✓ floors table initialized');
+
+    // Add twin_of_floor_id column if it doesn't exist (migration)
+    try {
+      await query(`
+        ALTER TABLE floors 
+        ADD COLUMN IF NOT EXISTS twin_of_floor_id INTEGER REFERENCES floors(id) ON DELETE SET NULL
+      `);
+      console.log('✓ floors table migrated (twin_of_floor_id added)');
+    } catch (err) {
+      // Column might already exist, ignore error
+      console.log('ℹ floors table migration: column may already exist');
+    }
+
 
     // Create flats table if it doesn't exist
     await query(`
@@ -376,7 +390,7 @@ async function getUserLevel(email) {
   }
 }
 
-// Projects endpoint - filters based on user level
+// Projects endpoint - filters based on user level (with auth)
 app.get('/api/projects', verifyToken, async (req, res) => {
   try {
     const userEmail = req.user.email;
@@ -429,6 +443,23 @@ app.get('/api/projects', verifyToken, async (req, res) => {
   }
 });
 
+// Public projects endpoint (no auth required) - used during project creation
+app.get('/api/projects-public', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT p.*, u.full_name as assigned_lead_name
+       FROM projects p
+       LEFT JOIN users u ON p.assigned_lead_id = u.id
+       WHERE p.is_archived = FALSE
+       ORDER BY p.updated_at DESC`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching projects:', error);
+    res.status(500).json({ error: 'Failed to fetch projects', message: error.message });
+  }
+});
+
 // Get single project by ID
 app.get('/api/projects/:id', async (req, res) => {
   try {
@@ -449,6 +480,33 @@ app.get('/api/projects/:id', async (req, res) => {
   } catch (error) {
     console.error('Error fetching project:', error);
     res.status(500).json({ error: 'Failed to fetch project' });
+  }
+});
+
+// Get user by email
+app.get('/api/users/email/:email', async (req, res) => {
+  const { email } = req.params;
+  const decodedEmail = decodeURIComponent(email);
+  console.log('📧 Fetching user by email:', decodedEmail);
+  
+  try {
+    const result = await query(
+      'SELECT id, email, full_name, role, user_level FROM users WHERE email = $1',
+      [decodedEmail]
+    );
+    
+    console.log('Found users:', result.rows.length);
+    
+    if (result.rows.length === 0) {
+      console.log('❌ User not found:', decodedEmail);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    console.log('✅ User found:', result.rows[0]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
 
@@ -824,6 +882,8 @@ app.post('/api/projects', async (req, res) => {
       return res.status(400).json({ error: 'Project name is required' });
     }
 
+    console.log('📝 Creating project:', { name, location, buildingCount: buildings?.length });
+
     // Create project
     const projectResult = await query(
       `INSERT INTO projects (name, description, lifecycle_stage, start_date, target_completion_date)
@@ -840,28 +900,55 @@ app.post('/api/projects', async (req, res) => {
         `INSERT INTO buildings (project_id, name, application_type, location_latitude, location_longitude, residential_type, villa_type, villa_count, twin_of_building_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING id`,
-        [projectId, building.name, building.applicationType, latitude, longitude, building.residentialType, building.villaType, building.villaCount, building.twinOfBuildingId]
+        [
+          projectId, 
+          building.name, 
+          building.applicationType, 
+          latitude && latitude !== '' ? latitude : null, 
+          longitude && longitude !== '' ? longitude : null, 
+          building.residentialType || null, 
+          building.villaType || null, 
+          building.villaCount && building.villaCount !== '' ? building.villaCount : null, 
+          building.twinOfBuildingId || null
+        ]
       );
 
       const buildingId = buildingResult.rows[0].id;
 
-      // Insert floors
+      // First pass: Insert all floors without twin relationships
+      const floorIdMap = {}; // Map floor names to their database IDs
       for (const floor of building.floors) {
         const floorResult = await query(
-          `INSERT INTO floors (building_id, floor_number, floor_name)
-           VALUES ($1, $2, $3)
+          `INSERT INTO floors (building_id, floor_number, floor_name, twin_of_floor_id)
+           VALUES ($1, $2, $3, $4)
            RETURNING id`,
-          [buildingId, floor.floorNumber, floor.floorName]
+          [buildingId, floor.floorNumber, floor.floorName, null]
         );
 
         const floorId = floorResult.rows[0].id;
+        floorIdMap[floor.floorName] = floorId;
 
         // Insert flats
         for (const flat of floor.flats) {
           await query(
             `INSERT INTO flats (floor_id, flat_type, area_sqft, number_of_flats)
              VALUES ($1, $2, $3, $4)`,
-            [floorId, flat.type, flat.area, flat.count]
+            [
+              floorId, 
+              flat.type || null, 
+              flat.area && flat.area !== '' ? parseFloat(flat.area) : null, 
+              flat.count && flat.count !== '' ? parseInt(flat.count) : null
+            ]
+          );
+        }
+      }
+
+      // Second pass: Update twin relationships
+      for (const floor of building.floors) {
+        if (floor.twinOfFloorName && floorIdMap[floor.twinOfFloorName]) {
+          await query(
+            `UPDATE floors SET twin_of_floor_id = $1 WHERE id = $2`,
+            [floorIdMap[floor.twinOfFloorName], floorIdMap[floor.floorName]]
           );
         }
       }
@@ -872,6 +959,100 @@ app.post('/api/projects', async (req, res) => {
     console.error('Error creating project:', error.message);
     console.error('Full error:', error);
     res.status(500).json({ error: 'Failed to create project', details: error.message });
+  }
+});
+
+// Update project - PATCH endpoint
+app.patch('/api/projects/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, location, latitude, longitude, buildings } = req.body;
+
+  console.log('🔄 PATCH /api/projects/:id called', { id, name, buildingCount: buildings?.length });
+
+  try {
+    // Validate required fields
+    if (!name) {
+      return res.status(400).json({ error: 'Project name is required' });
+    }
+
+    console.log('📝 Updating project:', { id, name, location, buildingCount: buildings?.length });
+
+    // Update project basic info
+    await query(
+      `UPDATE projects 
+       SET name = $1, description = $2, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [name, location, id]
+    );
+
+    // Delete existing buildings, floors, and flats (cascade will handle related records)
+    await query('DELETE FROM buildings WHERE project_id = $1', [id]);
+
+    // Re-insert buildings and their hierarchy
+    for (const building of buildings || []) {
+      const buildingResult = await query(
+        `INSERT INTO buildings (project_id, name, application_type, location_latitude, location_longitude, residential_type, villa_type, villa_count, twin_of_building_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING id`,
+        [
+          id, 
+          building.name, 
+          building.applicationType, 
+          building.latitude && building.latitude !== '' ? parseFloat(building.latitude) : null, 
+          building.longitude && building.longitude !== '' ? parseFloat(building.longitude) : null, 
+          building.residentialType || null, 
+          building.villaType || null, 
+          building.villaCount && building.villaCount !== '' ? parseInt(building.villaCount) : null, 
+          building.twinOfBuildingId || null
+        ]
+      );
+
+      const buildingId = buildingResult.rows[0].id;
+
+      // First pass: Insert all floors without twin relationships
+      const floorIdMap = {};
+      for (const floor of building.floors || []) {
+        const floorResult = await query(
+          `INSERT INTO floors (building_id, floor_number, floor_name, twin_of_floor_id)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id`,
+          [buildingId, floor.floorNumber, floor.floorName, null]
+        );
+
+        const floorId = floorResult.rows[0].id;
+        floorIdMap[floor.floorName] = floorId;
+
+        // Insert flats
+        for (const flat of floor.flats || []) {
+          await query(
+            `INSERT INTO flats (floor_id, flat_type, area_sqft, number_of_flats)
+             VALUES ($1, $2, $3, $4)`,
+            [
+              floorId, 
+              flat.type || null, 
+              flat.area && flat.area !== '' ? parseFloat(flat.area) : null, 
+              flat.count && flat.count !== '' ? parseInt(flat.count) : null
+            ]
+          );
+        }
+      }
+
+      // Second pass: Update twin relationships
+      for (const floor of building.floors || []) {
+        if (floor.twinOfFloorName && floorIdMap[floor.twinOfFloorName]) {
+          await query(
+            `UPDATE floors SET twin_of_floor_id = $1 WHERE id = $2`,
+            [floorIdMap[floor.twinOfFloorName], floorIdMap[floor.floorName]]
+          );
+        }
+      }
+    }
+
+    res.json({ id, message: 'Project updated successfully' });
+  } catch (error) {
+    console.error('Error updating project:', error.message);
+    console.error('Full error:', error);
+    res.status(500).json({ error: 'Failed to update project', details: error.message });
   }
 });
 
@@ -900,11 +1081,20 @@ app.get('/api/projects/:id/full', async (req, res) => {
           id: floor.id,
           floorNumber: floor.floor_number,
           floorName: floor.floor_name,
+          twinOfFloorId: floor.twin_of_floor_id,
+          // Also include snake_case for ProjectDetail page compatibility
+          floor_number: floor.floor_number,
+          floor_name: floor.floor_name,
+          twin_of_floor_id: floor.twin_of_floor_id,
           flats: flatsResult.rows.map(f => ({
             id: f.id,
             type: f.flat_type,
             area: f.area_sqft,
             count: f.number_of_flats,
+            // Also include snake_case for compatibility
+            flat_type: f.flat_type,
+            area_sqft: f.area_sqft,
+            number_of_flats: f.number_of_flats,
           })),
         });
       }
@@ -913,6 +1103,7 @@ app.get('/api/projects/:id/full', async (req, res) => {
         id: building.id,
         name: building.name,
         applicationType: building.application_type,
+        application_type: building.application_type, // snake_case for compatibility
         residentialType: building.residential_type,
         villaType: building.villa_type,
         villaCount: building.villa_count,

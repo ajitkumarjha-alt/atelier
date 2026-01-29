@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Loader } from 'lucide-react';
+import { Loader, Plus } from 'lucide-react';
 import Layout from '../components/Layout';
+import CreateMAS from '../components/CreateMAS';
 import { auth } from '../lib/firebase';
 import { apiFetchJson } from '../lib/api';
 
@@ -9,6 +10,7 @@ export default function MASPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     setUser(auth.currentUser);
@@ -34,6 +36,25 @@ export default function MASPage() {
     }
   };
 
+  const handleSaveMAS = async (formData) => {
+    try {
+      // TODO: This will be implemented when we create the backend API
+      console.log('Saving MAS:', formData);
+      
+      // For now, just close the modal and show success
+      setShowCreateModal(false);
+      
+      // Refresh the list
+      await fetchMAS();
+      
+      // TODO: Show success message
+      alert('MAS created successfully! (Backend integration pending)');
+    } catch (err) {
+      console.error('Error saving MAS:', err);
+      alert('Failed to save MAS');
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -46,9 +67,18 @@ export default function MASPage() {
 
   return (
     <Layout>
-      <div className="mb-8">
-        <h1 className="heading-primary mb-2">Material Approval Sheets</h1>
-        <p className="text-body">Track pending material approvals across projects</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="heading-primary mb-2">Material Approval Sheets</h1>
+          <p className="text-body">Track pending material approvals across projects</p>
+        </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="btn-primary flex items-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Create New MAS
+        </button>
       </div>
 
       {error && (
@@ -59,9 +89,17 @@ export default function MASPage() {
 
       <div className="card">
         {items.length === 0 ? (
-          <p className="text-center text-lodha-grey font-jost py-12">
-            No material approval sheets found
-          </p>
+          <div className="text-center py-12">
+            <p className="text-lodha-grey font-jost mb-4">
+              No material approval sheets found
+            </p>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="btn-secondary"
+            >
+              Create Your First MAS
+            </button>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -97,6 +135,14 @@ export default function MASPage() {
           </div>
         )}
       </div>
+
+      {/* Create MAS Modal */}
+      {showCreateModal && (
+        <CreateMAS
+          onClose={() => setShowCreateModal(false)}
+          onSave={handleSaveMAS}
+        />
+      )}
     </Layout>
   );
 }
