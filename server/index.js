@@ -894,7 +894,8 @@ app.post('/api/projects', async (req, res) => {
 
     const projectId = projectResult.rows[0].id;
 
-    // Insert buildings and their hierarchy
+    // First pass: Insert all buildings without twin relationships
+    const buildingIdMap = {}; // Map building names to their database IDs
     for (const building of buildings) {
       const buildingResult = await query(
         `INSERT INTO buildings (project_id, name, application_type, location_latitude, location_longitude, residential_type, villa_type, villa_count, twin_of_building_id)
@@ -909,11 +910,12 @@ app.post('/api/projects', async (req, res) => {
           building.residentialType || null, 
           building.villaType || null, 
           building.villaCount && building.villaCount !== '' ? building.villaCount : null, 
-          building.twinOfBuildingId || null
+          null // Set twin_of_building_id to null initially
         ]
       );
 
       const buildingId = buildingResult.rows[0].id;
+      buildingIdMap[building.name] = buildingId;
 
       // First pass: Insert all floors without twin relationships
       const floorIdMap = {}; // Map floor names to their database IDs
@@ -954,6 +956,16 @@ app.post('/api/projects', async (req, res) => {
       }
     }
 
+    // Second pass: Update building twin relationships
+    for (const building of buildings) {
+      if (building.twinOfBuildingName && buildingIdMap[building.twinOfBuildingName]) {
+        await query(
+          `UPDATE buildings SET twin_of_building_id = $1 WHERE id = $2`,
+          [buildingIdMap[building.twinOfBuildingName], buildingIdMap[building.name]]
+        );
+      }
+    }
+
     res.json({ id: projectId, message: 'Project created successfully' });
   } catch (error) {
     console.error('Error creating project:', error.message);
@@ -988,7 +1000,8 @@ app.patch('/api/projects/:id', async (req, res) => {
     // Delete existing buildings, floors, and flats (cascade will handle related records)
     await query('DELETE FROM buildings WHERE project_id = $1', [id]);
 
-    // Re-insert buildings and their hierarchy
+    // First pass: Insert all buildings without twin relationships
+    const buildingIdMap = {};
     for (const building of buildings || []) {
       const buildingResult = await query(
         `INSERT INTO buildings (project_id, name, application_type, location_latitude, location_longitude, residential_type, villa_type, villa_count, twin_of_building_id)
@@ -1003,11 +1016,12 @@ app.patch('/api/projects/:id', async (req, res) => {
           building.residentialType || null, 
           building.villaType || null, 
           building.villaCount && building.villaCount !== '' ? parseInt(building.villaCount) : null, 
-          building.twinOfBuildingId || null
+          null // Set twin_of_building_id to null initially
         ]
       );
 
       const buildingId = buildingResult.rows[0].id;
+      buildingIdMap[building.name] = buildingId;
 
       // First pass: Insert all floors without twin relationships
       const floorIdMap = {};
@@ -1048,6 +1062,16 @@ app.patch('/api/projects/:id', async (req, res) => {
       }
     }
 
+    // Second pass: Update building twin relationships
+    for (const building of buildings || []) {
+      if (building.twinOfBuildingName && buildingIdMap[building.twinOfBuildingName]) {
+        await query(
+          `UPDATE buildings SET twin_of_building_id = $1 WHERE id = $2`,
+          [buildingIdMap[building.twinOfBuildingName], buildingIdMap[building.name]]
+        );
+      }
+    }
+
     res.json({ id, message: 'Project updated successfully' });
   } catch (error) {
     console.error('Error updating project:', error.message);
@@ -1070,10 +1094,22 @@ app.get('/api/projects/:id/full', async (req, res) => {
     const buildingsResult = await query('SELECT * FROM buildings WHERE project_id = $1', [id]);
 
     const buildings = [];
+    // First, create a map of building IDs to names for twin reference lookup
+    const buildingIdToNameMap = {};
+    buildingsResult.rows.forEach(b => {
+      buildingIdToNameMap[b.id] = b.name;
+    });
+
     for (const building of buildingsResult.rows) {
       const floorsResult = await query('SELECT * FROM floors WHERE building_id = $1', [building.id]);
 
       const floors = [];
+      // First, create a map of floor IDs to names for twin reference lookup
+      const floorIdToNameMap = {};
+      floorsResult.rows.forEach(f => {
+        floorIdToNameMap[f.id] = f.floor_name;
+      });
+
       for (const floor of floorsResult.rows) {
         const flatsResult = await query('SELECT * FROM flats WHERE floor_id = $1', [floor.id]);
 
@@ -1082,6 +1118,7 @@ app.get('/api/projects/:id/full', async (req, res) => {
           floorNumber: floor.floor_number,
           floorName: floor.floor_name,
           twinOfFloorId: floor.twin_of_floor_id,
+          twinOfFloorName: floor.twin_of_floor_id ? floorIdToNameMap[floor.twin_of_floor_id] : null,
           // Also include snake_case for ProjectDetail page compatibility
           floor_number: floor.floor_number,
           floor_name: floor.floor_name,
@@ -1109,6 +1146,8 @@ app.get('/api/projects/:id/full', async (req, res) => {
         villaCount: building.villa_count,
         isTwin: building.is_twin,
         twinOfBuildingId: building.twin_of_building_id,
+        twinOfBuildingName: building.twin_of_building_id ? buildingIdToNameMap[building.twin_of_building_id] : null,
+        twin_of_building_id: building.twin_of_building_id, // snake_case for compatibility
         floors,
       });
     }

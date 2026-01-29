@@ -181,15 +181,29 @@ export default function ProjectDetail() {
         <div className="card mb-8">
           <h2 className="heading-secondary mb-4">Floor-wise Details</h2>
           <div className="space-y-6">
-            {project.buildings.map((building, idx) => (
-              <div key={building.id} className="border-l-4 border-lodha-gold pl-4">
-                <h3 className="font-jost font-bold text-lg text-lodha-black mb-3">
-                  {building.name || `Building ${idx + 1}`}
-                  <span className="ml-3 text-sm font-normal text-lodha-grey">
-                    ({building.application_type})
-                  </span>
-                </h3>
-                <div className="overflow-x-auto">
+            {(() => {
+              // Filter out twin buildings - only show parent buildings
+              const parentBuildings = project.buildings.filter(b => !b.twin_of_building_id);
+              
+              return parentBuildings.map((building, idx) => {
+                // Find all twin buildings for this parent building
+                const twinBuildings = project.buildings.filter(b => b.twin_of_building_id === building.id);
+                const twinBuildingNames = twinBuildings.map(tb => tb.name).join(', ');
+                
+                return (
+                  <div key={building.id} className="border-l-4 border-lodha-gold pl-4">
+                    <h3 className="font-jost font-bold text-lg text-lodha-black mb-1">
+                      {building.name || `Building ${idx + 1}`}
+                      <span className="ml-3 text-sm font-normal text-lodha-grey">
+                        ({building.application_type})
+                      </span>
+                    </h3>
+                    {twinBuildingNames && (
+                      <div className="text-xs text-lodha-grey mb-3 font-jost">
+                        Twin buildings: {twinBuildingNames}
+                      </div>
+                    )}
+                    <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-lodha-grey/30">
@@ -260,7 +274,9 @@ export default function ProjectDetail() {
                   </table>
                 </div>
               </div>
-            ))}
+            );
+          });
+        })()}
           </div>
         </div>
       )}

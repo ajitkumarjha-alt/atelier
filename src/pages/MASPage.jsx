@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Loader, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Loader, Plus, FileText } from 'lucide-react';
 import Layout from '../components/Layout';
 import CreateMAS from '../components/CreateMAS';
 import { auth } from '../lib/firebase';
 import { apiFetchJson } from '../lib/api';
 
 export default function MASPage() {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -72,13 +74,22 @@ export default function MASPage() {
           <h1 className="heading-primary mb-2">Material Approval Sheets</h1>
           <p className="text-body">Track pending material approvals across projects</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Create New MAS
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/mas-form')}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <FileText className="w-5 h-5" />
+            Form View
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Quick Create
+          </button>
+        </div>
       </div>
 
       {error && (

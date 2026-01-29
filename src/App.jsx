@@ -13,6 +13,7 @@ import VendorDashboard from './pages/VendorDashboard';
 import ProjectDetail from './pages/ProjectDetail';
 import ProjectInput from './pages/ProjectInput';
 import MASPage from './pages/MASPage';
+import MASForm from './pages/MASForm';
 import RFIPage from './pages/RFIPage';
 import ProjectStandardsManagement from './pages/ProjectStandardsManagement';
 import { createOrUpdateUser } from './services/userService';
@@ -201,9 +202,9 @@ function App() {
           } 
         />
 
-        {/* MAS Page */}
+        {/* MAS Page - List View */}
         <Route 
-          path="/mas" 
+          path="/mas-list" 
           element={
             user && (userLevel === 'L2' || userLevel === 'L1' || userLevel === 'SUPER_ADMIN' || userLevel === 'VENDOR') ? (
               <MASPage />
@@ -211,6 +212,24 @@ function App() {
               <Navigate to="/" replace />
             )
           } 
+        />
+
+        {/* MAS Form - Create/Edit */}
+        <Route 
+          path="/mas-form" 
+          element={
+            user && (userLevel === 'L2' || userLevel === 'L1' || userLevel === 'SUPER_ADMIN' || userLevel === 'VENDOR') ? (
+              <MASForm />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* MAS Legacy Route - redirect to list */}
+        <Route 
+          path="/mas" 
+          element={<Navigate to="/mas-list" replace />} 
         />
         
           {/* Vendor Dashboard */}

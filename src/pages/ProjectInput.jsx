@@ -27,6 +27,7 @@ export default function ProjectInput() {
   const [selectedFloor, setSelectedFloor] = useState(null);
   const [showMap, setShowMap] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [warnings, setWarnings] = useState([]);
   const [allProjects, setAllProjects] = useState([]);
@@ -167,20 +168,81 @@ export default function ProjectInput() {
   };
 
   const addBuilding = () => {
+    const buildingName = prompt('Enter building name:');
+    if (!buildingName || !buildingName.trim()) return;
+    
+    const trimmedBuildingName = buildingName.trim();
+    
+    // Check if building name already exists
+    const existingBuilding = projectData.buildings.find(b => b.name.toLowerCase() === trimmedBuildingName.toLowerCase());
+    if (existingBuilding) {
+      alert('A building with this name already exists!');
+      return;
+    }
+    
+    const twinBuildingNames = prompt('Enter twin building names (comma-separated, optional):');
+    const baseId = Math.floor(Math.random() * 1000000000);
+    
     const newBuilding = {
-      id: Math.floor(Math.random() * 1000000000),
-      name: '',
+      id: baseId,
+      name: trimmedBuildingName,
       applicationType: '',
       residentialType: '',
       villaType: '',
       villaCount: '',
       isTwin: false,
       twinOfBuildingId: null,
+      twinBuildingNames: [], // Store twin names
       floors: [],
     };
+    
+    const newBuildings = [newBuilding];
+    
+    // Create twin buildings if specified
+    if (twinBuildingNames && twinBuildingNames.trim()) {
+      const twinNames = twinBuildingNames.split(',').map(n => n.trim()).filter(n => n);
+      
+      // Check for duplicate twin names
+      const twinNamesSet = new Set();
+      for (const name of twinNames) {
+        const lowerName = name.toLowerCase();
+        if (lowerName === trimmedBuildingName.toLowerCase()) {
+          alert(`Twin building name "${name}" cannot be the same as parent building!`);
+          return;
+        }
+        if (twinNamesSet.has(lowerName)) {
+          alert(`Duplicate twin building name: "${name}"`);
+          return;
+        }
+        if (projectData.buildings.find(b => b.name.toLowerCase() === lowerName)) {
+          alert(`Building with name "${name}" already exists!`);
+          return;
+        }
+        twinNamesSet.add(lowerName);
+      }
+      
+      // Store twin names in parent building
+      newBuilding.twinBuildingNames = twinNames;
+      
+      // Create twin building objects
+      twinNames.forEach((twinName, index) => {
+        newBuildings.push({
+          id: baseId + index + 1,
+          name: twinName,
+          applicationType: '',
+          residentialType: '',
+          villaType: '',
+          villaCount: '',
+          isTwin: true,
+          twinOfBuildingName: trimmedBuildingName, // Reference by name
+          floors: [],
+        });
+      });
+    }
+    
     setProjectData(prev => ({
       ...prev,
-      buildings: [...prev.buildings, newBuilding],
+      buildings: [...prev.buildings, ...newBuildings],
     }));
   };
 
@@ -194,9 +256,13 @@ export default function ProjectInput() {
   };
 
   const deleteBuilding = (buildingId) => {
+    const building = projectData.buildings.find(b => b.id === buildingId);
+    
     setProjectData(prev => ({
       ...prev,
-      buildings: prev.buildings.filter(b => b.id !== buildingId),
+      buildings: prev.buildings.filter(b => 
+        b.id !== buildingId && b.twinOfBuildingName !== building.name
+      ),
     }));
   };
 
@@ -267,9 +333,39 @@ export default function ProjectInput() {
       });
     }
     
-    updateBuilding(buildingId, {
-      floors: [...building.floors, ...newFloors],
+    // Find twin buildings of this building
+    const twinBuildings = projectData.buildings.filter(b => b.twinOfBuildingName === building.name);
+    
+    // Update current building and all its twin buildings
+    const updatedBuildings = projectData.buildings.map(b => {
+      if (b.id === buildingId) {
+        // Update current building
+        return {
+          ...b,
+          floors: [...b.floors, ...newFloors],
+        };
+      } else if (twinBuildings.find(tb => tb.id === b.id)) {
+        // Update twin building with same floors (but unique IDs)
+        const twinNewFloors = newFloors.map(f => ({
+          ...f,
+          id: Math.floor(Math.random() * 1000000000),
+          flats: f.flats.map(fl => ({
+            ...fl,
+            id: Math.floor(Math.random() * 1000000000),
+          })),
+        }));
+        return {
+          ...b,
+          floors: [...b.floors, ...twinNewFloors],
+        };
+      }
+      return b;
     });
+    
+    setProjectData(prev => ({
+      ...prev,
+      buildings: updatedBuildings,
+    }));
   };
 
   const addFlat = (buildingId, floorId) => {
@@ -287,19 +383,39 @@ export default function ProjectInput() {
     // Get all twin floors by name
     const twinFloors = building.floors.filter(f => f.twinOfFloorName === floor.floorName);
     
-    const updatedFloors = building.floors.map(f => {
-      if (f.id === floorId) {
-        // Add to parent floor
-        return { ...f, flats: [...f.flats, newFlat] };
-      } else if (twinFloors.find(tf => tf.id === f.id)) {
-        // Add to twin floors with unique IDs
-        const twinFlat = { ...newFlat, id: baseId + f.id };
-        return { ...f, flats: [...f.flats, twinFlat] };
+    // Get all twin buildings
+    const twinBuildings = projectData.buildings.filter(b => b.twinOfBuildingName === building.name);
+    
+    const updatedBuildings = projectData.buildings.map(b => {
+      if (b.id === buildingId || twinBuildings.find(tb => tb.id === b.id)) {
+        // Find corresponding floor in this building
+        const currentFloor = b.floors.find(f => f.floorName === floor.floorName && !f.twinOfFloorName);
+        if (!currentFloor) return b;
+        
+        const twinFloorsInBuilding = b.floors.filter(f => f.twinOfFloorName === currentFloor.floorName);
+        
+        const updatedFloors = b.floors.map(f => {
+          if (f.id === currentFloor.id) {
+            // Add to parent floor
+            const flatId = Math.floor(Math.random() * 1000000000);
+            return { ...f, flats: [...f.flats, { ...newFlat, id: flatId }] };
+          } else if (twinFloorsInBuilding.find(tf => tf.id === f.id)) {
+            // Add to twin floors with unique IDs
+            const twinFlatId = Math.floor(Math.random() * 1000000000);
+            return { ...f, flats: [...f.flats, { ...newFlat, id: twinFlatId }] };
+          }
+          return f;
+        });
+        
+        return { ...b, floors: updatedFloors };
       }
-      return f;
+      return b;
     });
     
-    updateBuilding(buildingId, { floors: updatedFloors });
+    setProjectData(prev => ({
+      ...prev,
+      buildings: updatedBuildings,
+    }));
   };
 
   const updateFlat = (buildingId, floorId, flatId, updates) => {
@@ -310,24 +426,43 @@ export default function ProjectInput() {
     // Get all twin floors by name
     const twinFloors = building.floors.filter(f => f.twinOfFloorName === floor.floorName);
     
-    const updatedFloors = building.floors.map(f => {
-      if (f.id === floorId) {
-        // Update parent floor
-        return {
-          ...f,
-          flats: f.flats.map(fl => (fl.id === flatId ? { ...fl, ...updates } : fl)),
-        };
-      } else if (twinFloors.find(tf => tf.id === f.id)) {
-        // Update corresponding flat in twin floors (same index)
-        return {
-          ...f,
-          flats: f.flats.map((fl, idx) => (idx === flatIndex ? { ...fl, ...updates } : fl)),
-        };
+    // Get all twin buildings
+    const twinBuildings = projectData.buildings.filter(b => b.twinOfBuildingName === building.name);
+    
+    const updatedBuildings = projectData.buildings.map(b => {
+      if (b.id === buildingId || twinBuildings.find(tb => tb.id === b.id)) {
+        // Find corresponding floor in this building
+        const currentFloor = b.floors.find(f => f.floorName === floor.floorName && !f.twinOfFloorName);
+        if (!currentFloor) return b;
+        
+        const twinFloorsInBuilding = b.floors.filter(f => f.twinOfFloorName === currentFloor.floorName);
+        
+        const updatedFloors = b.floors.map(f => {
+          if (f.id === currentFloor.id) {
+            // Update parent floor
+            return {
+              ...f,
+              flats: f.flats.map((fl, idx) => (idx === flatIndex ? { ...fl, ...updates } : fl)),
+            };
+          } else if (twinFloorsInBuilding.find(tf => tf.id === f.id)) {
+            // Update corresponding flat in twin floors (same index)
+            return {
+              ...f,
+              flats: f.flats.map((fl, idx) => (idx === flatIndex ? { ...fl, ...updates } : fl)),
+            };
+          }
+          return f;
+        });
+        
+        return { ...b, floors: updatedFloors };
       }
-      return f;
+      return b;
     });
     
-    updateBuilding(buildingId, { floors: updatedFloors });
+    setProjectData(prev => ({
+      ...prev,
+      buildings: updatedBuildings,
+    }));
   };
 
   const updateFloor = (buildingId, floorId, updates) => {
@@ -346,18 +481,37 @@ export default function ProjectInput() {
     // Get all twin floors by name
     const twinFloors = building.floors.filter(f => f.twinOfFloorName === floor.floorName);
     
-    const updatedFloors = building.floors.map(f => {
-      if (f.id === floorId) {
-        // Delete from parent floor
-        return { ...f, flats: f.flats.filter(fl => fl.id !== flatId) };
-      } else if (twinFloors.find(tf => tf.id === f.id)) {
-        // Delete from twin floors (same index)
-        return { ...f, flats: f.flats.filter((fl, idx) => idx !== flatIndex) };
+    // Get all twin buildings
+    const twinBuildings = projectData.buildings.filter(b => b.twinOfBuildingName === building.name);
+    
+    const updatedBuildings = projectData.buildings.map(b => {
+      if (b.id === buildingId || twinBuildings.find(tb => tb.id === b.id)) {
+        // Find corresponding floor in this building
+        const currentFloor = b.floors.find(f => f.floorName === floor.floorName && !f.twinOfFloorName);
+        if (!currentFloor) return b;
+        
+        const twinFloorsInBuilding = b.floors.filter(f => f.twinOfFloorName === currentFloor.floorName);
+        
+        const updatedFloors = b.floors.map(f => {
+          if (f.id === currentFloor.id) {
+            // Delete from parent floor by index
+            return { ...f, flats: f.flats.filter((fl, idx) => idx !== flatIndex) };
+          } else if (twinFloorsInBuilding.find(tf => tf.id === f.id)) {
+            // Delete from twin floors (same index)
+            return { ...f, flats: f.flats.filter((fl, idx) => idx !== flatIndex) };
+          }
+          return f;
+        });
+        
+        return { ...b, floors: updatedFloors };
       }
-      return f;
+      return b;
     });
     
-    updateBuilding(buildingId, { floors: updatedFloors });
+    setProjectData(prev => ({
+      ...prev,
+      buildings: updatedBuildings,
+    }));
   };
 
   const deleteFloor = (buildingId, floorId) => {
@@ -386,26 +540,61 @@ export default function ProjectInput() {
     updateBuilding(buildingId, { floors: updatedFloors });
   };
 
-  const copyBuildingData = (fromBuildingId) => {
+  const copyBuildingData = (fromBuildingId, toBuildingId) => {
     const sourceBuilding = projectData.buildings.find(b => b.id === fromBuildingId);
-    const newBuilding = {
-      id: Date.now(),
-      name: `${sourceBuilding.name} (Copy)`,
-      applicationType: sourceBuilding.applicationType,
-      residentialType: sourceBuilding.residentialType,
-      villaType: sourceBuilding.villaType,
-      villaCount: sourceBuilding.villaCount,
-      isTwin: true,
-      twinOfBuildingId: fromBuildingId,
-      floors: sourceBuilding.floors.map(f => ({
-        ...f,
-        id: Date.now(),
-        flats: f.flats.map(fl => ({ ...fl, id: Date.now() })),
+    const targetBuilding = projectData.buildings.find(b => b.id === toBuildingId);
+    if (!sourceBuilding || !targetBuilding) return;
+    
+    // Copy floors and flats from source building to target building
+    const copiedFloors = sourceBuilding.floors.map(f => ({
+      ...f,
+      id: Math.floor(Math.random() * 1000000000),
+      flats: f.flats.map(fl => ({ 
+        ...fl, 
+        id: Math.floor(Math.random() * 1000000000) 
       })),
-    };
+    }));
+    
+    // Find all twin buildings of the target building
+    const twinBuildings = projectData.buildings.filter(b => b.twinOfBuildingName === targetBuilding.name);
+    
+    // Update the target building
+    const updatedBuildings = projectData.buildings.map(b => {
+      if (b.id === toBuildingId) {
+        // Update target building with copied data
+        return {
+          ...b,
+          applicationType: sourceBuilding.applicationType,
+          residentialType: sourceBuilding.residentialType,
+          villaType: sourceBuilding.villaType,
+          villaCount: sourceBuilding.villaCount,
+          floors: copiedFloors,
+        };
+      } else if (twinBuildings.find(tb => tb.id === b.id)) {
+        // Update twin buildings with copied data (with unique IDs)
+        const twinFloors = sourceBuilding.floors.map(f => ({
+          ...f,
+          id: Math.floor(Math.random() * 1000000000),
+          flats: f.flats.map(fl => ({ 
+            ...fl, 
+            id: Math.floor(Math.random() * 1000000000) 
+          })),
+        }));
+        return {
+          ...b,
+          applicationType: sourceBuilding.applicationType,
+          residentialType: sourceBuilding.residentialType,
+          villaType: sourceBuilding.villaType,
+          villaCount: sourceBuilding.villaCount,
+          floors: twinFloors,
+        };
+      }
+      return b;
+    });
+    
     setProjectData(prev => ({
       ...prev,
-      buildings: [...prev.buildings, newBuilding],
+      buildings: updatedBuildings,
     }));
   };
 
@@ -416,6 +605,9 @@ export default function ProjectInput() {
         setError('Project name is required');
         return;
       }
+
+      setSaving(true);
+      setError(null);
 
       const url = isEditing ? `/api/projects/${projectId}` : '/api/projects';
       const method = isEditing ? 'PATCH' : 'POST';
@@ -437,6 +629,7 @@ export default function ProjectInput() {
           errorMessage = `Server error: ${response.status} ${response.statusText}`;
         }
         setError(errorMessage);
+        setSaving(false);
         return;
       }
 
@@ -448,6 +641,7 @@ export default function ProjectInput() {
     } catch (err) {
       setError('Failed to save project: ' + err.message);
       console.error(err);
+      setSaving(false);
     }
   };
 
@@ -607,25 +801,31 @@ export default function ProjectInput() {
             </div>
 
             <div className="space-y-6">
-              {projectData.buildings.map((building, idx) => (
-                <BuildingSection
-                  key={building.id}
-                  building={building}
-                  buildingIndex={idx}
-                  allBuildings={projectData.buildings}
-                  standards={standards}
-                  onUpdate={updateBuilding}
-                  onDelete={deleteBuilding}
-                  onAddFloor={addFloor}
-                  onAddFlat={addFlat}
-                  onUpdateFlat={updateFlat}
-                  onDeleteFlat={deleteFlat}
-                  onCopyFloor={copyFloorData}
-                  onCopyBuilding={copyBuildingData}
-                  onDeleteFloor={deleteFloor}
-                  onUpdateFloor={updateFloor}
-                />
-              ))}
+              {projectData.buildings.filter(b => !b.twinOfBuildingName).map((building, idx) => {
+                // Find twin buildings for this parent
+                const twinBuildings = projectData.buildings.filter(b => b.twinOfBuildingName === building.name);
+                
+                return (
+                  <BuildingSection
+                    key={building.id}
+                    building={building}
+                    buildingIndex={idx}
+                    allBuildings={projectData.buildings}
+                    twinBuildings={twinBuildings}
+                    standards={standards}
+                    onUpdate={updateBuilding}
+                    onDelete={deleteBuilding}
+                    onAddFloor={addFloor}
+                    onAddFlat={addFlat}
+                    onUpdateFlat={updateFlat}
+                    onDeleteFlat={deleteFlat}
+                    onCopyFloor={copyFloorData}
+                    onCopyBuilding={copyBuildingData}
+                    onDeleteFloor={deleteFloor}
+                    onUpdateFloor={updateFloor}
+                  />
+                );
+              })}
             </div>
           </div>
 
@@ -633,9 +833,9 @@ export default function ProjectInput() {
           <div className="flex gap-4">
             <button
               onClick={handleSubmit}
-              disabled={!projectData.name.trim() || warnings.some(w => w.type === 'error')}
+              disabled={!projectData.name.trim() || warnings.some(w => w.type === 'error') || saving}
               className={`px-6 py-3 font-jost font-semibold rounded-lg transition-all ${
-                !projectData.name.trim() || warnings.some(w => w.type === 'error')
+                !projectData.name.trim() || warnings.some(w => w.type === 'error') || saving
                   ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                   : 'bg-lodha-gold text-white hover:bg-lodha-gold/90'
               }`}
@@ -644,14 +844,21 @@ export default function ProjectInput() {
                   ? 'Please enter project name'
                   : warnings.some(w => w.type === 'error')
                   ? 'Please resolve errors before submitting'
+                  : saving
+                  ? 'Saving...'
                   : ''
               }
             >
-              {isEditing ? 'Update' : 'Create'} Project
+              {saving ? 'Saving...' : isEditing ? 'Update' : 'Create'} Project
             </button>
             <button
               onClick={() => window.history.back()}
-              className="px-6 py-3 bg-lodha-sand text-lodha-black font-jost font-semibold rounded-lg hover:bg-lodha-sand/80 border border-lodha-gold"
+              disabled={saving}
+              className={`px-6 py-3 font-jost font-semibold rounded-lg border border-lodha-gold ${
+                saving
+                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  : 'bg-lodha-sand text-lodha-black hover:bg-lodha-sand/80'
+              }`}
             >
               Cancel
             </button>
@@ -666,6 +873,26 @@ export default function ProjectInput() {
           </div>
         </div>
       </div>
+
+      {/* Loading Overlay */}
+      {saving && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-sm mx-4 text-center">
+            <div className="mb-4">
+              <div className="w-16 h-16 border-4 border-lodha-gold border-t-transparent rounded-full animate-spin mx-auto"></div>
+            </div>
+            <h3 className="text-xl font-garamond font-bold text-lodha-black mb-2">
+              {isEditing ? 'Updating' : 'Creating'} Project
+            </h3>
+            <p className="text-lodha-grey font-jost">
+              Please wait while we {isEditing ? 'update' : 'save'} your project...
+            </p>
+            <p className="text-xs text-lodha-grey mt-4 font-jost">
+              This may take a few moments
+            </p>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
@@ -675,6 +902,7 @@ function BuildingSection({
   building,
   buildingIndex,
   allBuildings,
+  twinBuildings,
   standards,
   onUpdate,
   onDelete,
@@ -693,7 +921,14 @@ function BuildingSection({
   return (
     <div className="border border-lodha-grey rounded-lg p-4 bg-lodha-sand/30">
       <div className="flex justify-between items-start mb-4">
-        <h3 className="heading-tertiary">Building {buildingIndex + 1}</h3>
+        <div>
+          <h3 className="heading-tertiary">Building {buildingIndex + 1}</h3>
+          {twinBuildings && twinBuildings.length > 0 && (
+            <div className="text-xs text-lodha-grey mt-1 font-jost">
+              Twin buildings: {twinBuildings.map(b => b.name).join(', ')}
+            </div>
+          )}
+        </div>
         <button
           onClick={() => onDelete(building.id)}
           className="text-lodha-gold hover:text-lodha-deep"
@@ -808,7 +1043,7 @@ function BuildingSection({
           )}
           {buildingIndex > 0 && (
             <button
-              onClick={() => onCopyBuilding(allBuildings[buildingIndex - 1].id)}
+              onClick={() => onCopyBuilding(allBuildings[buildingIndex - 1].id, building.id)}
               className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 bg-lodha-gold text-white rounded hover:bg-lodha-deep"
             >
               <Copy className="w-4 h-4" />
