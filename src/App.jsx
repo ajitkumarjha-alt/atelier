@@ -4,6 +4,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './lib/firebase';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import L0Dashboard from './pages/L0Dashboard';
 import L1Dashboard from './pages/L1Dashboard';
 import L2Dashboard from './pages/L2Dashboard';
 import L3Dashboard from './pages/L3Dashboard';
@@ -83,6 +84,8 @@ function App() {
                 </div>
               ) : userLevel === 'SUPER_ADMIN' ? (
                 <Navigate to="/super-admin-dashboard" replace />
+              ) : userLevel === 'L0' ? (
+                <Navigate to="/l0-dashboard" replace />
               ) : userLevel === 'L1' ? (
                 <Navigate to="/l1-dashboard" replace />
               ) : userLevel === 'VENDOR' ? (
@@ -104,6 +107,18 @@ function App() {
           element={
             user && userLevel === 'SUPER_ADMIN' ? (
               <SuperAdminDashboard />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* L0 Dashboard */}
+        <Route 
+          path="/l0-dashboard" 
+          element={
+            user && (userLevel === 'L0' || userLevel === 'SUPER_ADMIN') ? (
+              <L0Dashboard />
             ) : (
               <Navigate to="/" replace />
             )

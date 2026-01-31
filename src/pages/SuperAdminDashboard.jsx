@@ -1,11 +1,22 @@
 import { useNavigate } from 'react-router-dom';
 import SuperAdminLayout from '../components/SuperAdminLayout';
-import { Users, Shield, TrendingUp, Settings, Database, Truck, HelpCircle } from 'lucide-react';
+import { Users, Shield, TrendingUp, Settings, Database, Truck, HelpCircle, Briefcase } from 'lucide-react';
 
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
 
   const dashboards = [
+    {
+      title: 'L0 Dashboard',
+      subtitle: 'VP/HoD MEP - Executive Overview',
+      description: 'High-level overview of all projects. View status, pending MAS, and RFIs.',
+      icon: Briefcase,
+      color: 'from-purple-100 to-purple-200',
+      textColor: 'text-lodha-black',
+      borderColor: 'border-purple-300',
+      route: '/l0-dashboard',
+      access: 'Executive overview',
+    },
     {
       title: 'L1 Dashboard',
       subtitle: 'Admin - Project Allocation',

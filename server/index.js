@@ -259,6 +259,21 @@ async function initializeDatabase() {
     `);
     console.log('✓ projects table initialized');
 
+    // Add project_status, site_status, lead_name columns if they don't exist
+    await query(`
+      ALTER TABLE projects 
+      ADD COLUMN IF NOT EXISTS project_status VARCHAR(50) DEFAULT 'Concept'
+    `);
+    await query(`
+      ALTER TABLE projects 
+      ADD COLUMN IF NOT EXISTS site_status VARCHAR(100)
+    `);
+    await query(`
+      ALTER TABLE projects 
+      ADD COLUMN IF NOT EXISTS lead_name VARCHAR(255)
+    `);
+    console.log('✓ projects table migrated (project_status, site_status, lead_name)');
+
     // Create buildings table if it doesn't exist
     await query(`
       CREATE TABLE IF NOT EXISTS buildings (
@@ -589,7 +604,9 @@ app.get('/api/projects', verifyToken, async (req, res) => {
 app.get('/api/projects-public', async (req, res) => {
   try {
     const result = await query(
-      `SELECT p.*, u.full_name as assigned_lead_name
+      `SELECT p.*, 
+              u.full_name as assigned_lead_name,
+              (SELECT COUNT(*) FROM buildings WHERE project_id = p.id) as building_count
        FROM projects p
        LEFT JOIN users u ON p.assigned_lead_id = u.id
        WHERE p.is_archived = FALSE
