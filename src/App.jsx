@@ -10,11 +10,13 @@ import L3Dashboard from './pages/L3Dashboard';
 import L4Dashboard from './pages/L4Dashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import VendorDashboard from './pages/VendorDashboard';
+import CMDashboard from './pages/CMDashboard';
 import ProjectDetail from './pages/ProjectDetail';
 import ProjectInput from './pages/ProjectInput';
 import MASPage from './pages/MASPage';
 import MASForm from './pages/MASForm';
 import RFIPage from './pages/RFIPage';
+import RFICreate from './pages/RFICreate';
 import ProjectStandardsManagement from './pages/ProjectStandardsManagement';
 import { createOrUpdateUser } from './services/userService';
 import { Loader } from 'lucide-react';
@@ -85,6 +87,8 @@ function App() {
                 <Navigate to="/l1-dashboard" replace />
               ) : userLevel === 'VENDOR' ? (
                 <Navigate to="/vendor-dashboard" replace />
+              ) : userLevel === 'CM' ? (
+                <Navigate to="/cm-dashboard" replace />
               ) : (
                 <Navigate to="/l2-dashboard" replace />
               )
@@ -243,6 +247,46 @@ function App() {
               )
             }
           />
+
+        {/* CM Dashboard */}
+        <Route 
+          path="/cm-dashboard" 
+          element={
+            user && (userLevel === 'CM' || userLevel === 'SUPER_ADMIN') ? (
+              <CMDashboard />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* RFI Create Page */}
+        <Route 
+          path="/rfi/create" 
+          element={
+            user && (userLevel === 'CM' || userLevel === 'SUPER_ADMIN') ? (
+              <RFICreate />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* RFI Detail Page (placeholder for now) */}
+        <Route 
+          path="/rfi/:id" 
+          element={
+            user && (userLevel === 'CM' || userLevel === 'L2' || userLevel === 'L1' || userLevel === 'SUPER_ADMIN') ? (
+              <div className="min-h-screen bg-lodha-sand p-8">
+                <h1 className="text-3xl font-garamond font-bold text-lodha-gold">
+                  RFI Detail (Coming Soon)
+                </h1>
+              </div>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
 
         {/* RFI Page */}
         <Route 

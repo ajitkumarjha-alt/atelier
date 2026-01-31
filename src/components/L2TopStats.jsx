@@ -42,15 +42,15 @@ export default function L2TopStats({ userEmail, projectId }) {
   const StatCard = ({ icon: Icon, title, count, color, onClick }) => (
     <div
       onClick={onClick}
-      className={`${color} rounded-lg p-6 cursor-pointer transform hover:scale-105 transition-transform duration-200 shadow-lg`}
+      className={`${color} rounded-lg p-6 cursor-pointer transform hover:scale-105 transition-transform duration-200 shadow-lg border border-gray-200`}
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-white/80 font-jost text-sm mb-1">Pending</p>
-          <p className="text-white font-garamond text-3xl font-bold">{count}</p>
-          <p className="text-white/70 font-jost text-xs mt-2">{title}</p>
+          <p className="text-gray-600 font-jost text-sm mb-1">Pending</p>
+          <p className="text-lodha-black font-garamond text-3xl font-bold">{count}</p>
+          <p className="text-gray-500 font-jost text-xs mt-2">{title}</p>
         </div>
-        <Icon className="w-12 h-12 text-white/60" />
+        <Icon className="w-12 h-12 text-gray-400" />
       </div>
     </div>
   );
@@ -69,14 +69,14 @@ export default function L2TopStats({ userEmail, projectId }) {
         icon={FileText}
         title="Material Approval Sheets"
         count={masCount}
-        color="bg-gradient-to-br from-blue-500 to-blue-600"
+        color="bg-gradient-to-br from-yellow-100 to-yellow-200"
         onClick={() => navigate('/mas')}
       />
       <StatCard
         icon={HelpCircle}
         title="Requests for Information"
         count={rfiCount}
-        color="bg-gradient-to-br from-orange-500 to-orange-600"
+        color="bg-gradient-to-br from-gray-100 to-gray-200"
         onClick={() => navigate('/rfi')}
       />
     </div>

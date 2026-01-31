@@ -64,21 +64,21 @@ export default function ProjectStatusBoard({ userEmail }) {
 
   const StageCard = ({ project }) => {
     const stageColors = {
-      'Concept': 'from-purple-500 to-purple-600',
-      'DD': 'from-blue-500 to-blue-600',
-      'Tender': 'from-yellow-500 to-yellow-600',
-      'VFC': 'from-green-500 to-green-600',
+      'Concept': 'from-yellow-100 to-yellow-200',
+      'DD': 'from-gray-100 to-gray-200',
+      'Tender': 'from-yellow-100 to-yellow-200',
+      'VFC': 'from-gray-100 to-gray-200',
     };
 
-    const stageColor = stageColors[project.lifecycle_stage] || 'from-gray-500 to-gray-600';
+    const stageColor = stageColors[project.lifecycle_stage] || 'from-yellow-100 to-yellow-200';
 
     return (
-      <div className={`bg-gradient-to-br ${stageColor} rounded-lg p-6 text-white shadow-lg transform hover:scale-105 transition-transform duration-200`}>
+      <div className={`bg-gradient-to-br ${stageColor} rounded-lg p-6 shadow-lg transform hover:scale-105 transition-transform duration-200 border border-gray-200`}>
         <div className="flex justify-between items-start mb-4">
           <div>
-            <p className="text-white/80 font-jost text-xs uppercase tracking-wide mb-1">Project</p>
+            <p className="text-gray-600 font-jost text-xs uppercase tracking-wide mb-1">Project</p>
             <h3 
-              className="text-xl font-garamond font-bold cursor-pointer hover:underline"
+              className="text-xl font-garamond font-bold text-lodha-black cursor-pointer hover:underline"
               onClick={() => navigate(`/project/${project.id}`)}
             >
               {project.name}
@@ -89,27 +89,27 @@ export default function ProjectStatusBoard({ userEmail }) {
         <div className="space-y-3 mb-4">
           <div>
             <div className="flex justify-between mb-1">
-              <span className="text-white/80 font-jost text-sm">Progress</span>
-              <span className="text-white font-jost font-semibold text-sm">{project.completion_percentage}%</span>
+              <span className="text-gray-600 font-jost text-sm">Progress</span>
+              <span className="text-lodha-black font-jost font-semibold text-sm">{project.completion_percentage}%</span>
             </div>
-            <div className="h-2 bg-white/30 rounded-full overflow-hidden">
+            <div className="h-2 bg-gray-300 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-white transition-all duration-300"
+                className="h-full bg-lodha-gold transition-all duration-300"
                 style={{ width: `${project.completion_percentage}%` }}
               />
             </div>
           </div>
 
           <div className="flex justify-between text-sm font-jost">
-            <span className="text-white/80">Floors: {project.floors_completed}/{project.total_floors}</span>
-            <span className="text-white/80">Materials: {project.material_stock_percentage}%</span>
+            <span className="text-gray-600">Floors: {project.floors_completed}/{project.total_floors}</span>
+            <span className="text-gray-600">Materials: {project.material_stock_percentage}%</span>
           </div>
         </div>
 
         <button
           onClick={() => handleArchiveProject(project.id)}
           disabled={archivingProjectId === project.id}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-jost font-semibold text-sm"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-lodha-black/10 hover:bg-lodha-black/20 text-lodha-black rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-jost font-semibold text-sm"
         >
           {archivingProjectId === project.id ? (
             <Loader className="w-4 h-4 animate-spin" />

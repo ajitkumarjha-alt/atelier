@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import SuperAdminLayout from '../components/SuperAdminLayout';
-import { Users, Shield, TrendingUp, Settings, Database, Truck } from 'lucide-react';
+import { Users, Shield, TrendingUp, Settings, Database, Truck, HelpCircle } from 'lucide-react';
 
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
@@ -49,6 +49,17 @@ export default function SuperAdminDashboard() {
       borderColor: 'border-lodha-gold/20',
       route: '/l4-dashboard',
       access: 'View-only access',
+    },
+    {
+      title: 'CM Dashboard',
+      subtitle: 'Construction Manager - RFI Management',
+      description: 'Create and manage Requests for Information (RFI). Track pending and approved RFIs.',
+      icon: HelpCircle,
+      color: 'from-yellow-100 to-yellow-200',
+      textColor: 'text-lodha-black',
+      borderColor: 'border-lodha-gold/40',
+      route: '/cm-dashboard',
+      access: 'RFI management',
     },
     {
       title: 'Vendor Dashboard',
