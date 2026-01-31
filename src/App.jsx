@@ -21,6 +21,8 @@ import RFIPage from './pages/RFIPage';
 import RFICreate from './pages/RFICreate';
 import RFIDetail from './pages/RFIDetail';
 import DrawingSchedule from './pages/DrawingSchedule';
+import ChangeRequestsPage from './pages/ChangeRequestsPage';
+import ChangeRequestDetail from './pages/ChangeRequestDetail';
 import ProjectStandardsManagement from './pages/ProjectStandardsManagement';
 import { createOrUpdateUser } from './services/userService';
 import { Loader } from 'lucide-react';
@@ -194,6 +196,29 @@ function App() {
           element={
             user && (userLevel === 'L2' || userLevel === 'L1' || userLevel === 'SUPER_ADMIN') ? (
               <DrawingSchedule />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* Change Requests */}
+        <Route 
+          path="/change-requests/:projectId" 
+          element={
+            user && (userLevel === 'L2' || userLevel === 'L1' || userLevel === 'SUPER_ADMIN') ? (
+              <ChangeRequestsPage />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        <Route 
+          path="/change-request/:id" 
+          element={
+            user && (userLevel === 'L2' || userLevel === 'L1' || userLevel === 'SUPER_ADMIN') ? (
+              <ChangeRequestDetail />
             ) : (
               <Navigate to="/" replace />
             )

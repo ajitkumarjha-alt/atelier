@@ -115,6 +115,13 @@ export default function ProjectStatusBoard({ userEmail }) {
           </button>
 
           <button
+            onClick={() => navigate(`/change-requests/${project.id}`)}
+            className="w-full px-3 py-2 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
+          >
+            Change Requests
+          </button>
+
+          <button
             onClick={() => handleArchiveProject(project.id)}
             disabled={archivingProjectId === project.id}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-lodha-black/10 hover:bg-lodha-black/20 text-lodha-black rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-jost font-semibold text-sm"
