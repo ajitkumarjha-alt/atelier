@@ -39,14 +39,44 @@ export default function MASForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Validate required fields
+    if (!formData.projectName || !formData.materialCategory || !formData.manufacturer) {
+      alert('Please fill in all required fields (Project Name, Material Category, Manufacturer)');
+      return;
+    }
+
     try {
-      // TODO: Implement API call
-      console.log('Submitting MAS:', formData);
-      alert('MAS created successfully! (Backend integration pending)');
-      navigate('/mas-list');
+      const response = await fetch('/api/mas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dev-user-email': localStorage.getItem('devUserEmail') || 'vendor@lodhagroup.com',
+        },
+        body: JSON.stringify({
+          projectId: 1, // In production, get from project selection
+          materialName: formData.materialDescription || formData.brandModel,
+          materialCategory: formData.materialCategory,
+          manufacturer: formData.manufacturer,
+          modelSpecification: `${formData.brandModel} - ${formData.gradeSpecification}`,
+          quantity: formData.quantity ? parseFloat(formData.quantity) : null,
+          unit: formData.unit,
+          submittedByVendor: formData.contractorName || 'Vendor',
+          vendorEmail: localStorage.getItem('devUserEmail') || 'vendor@lodhagroup.com',
+          attachmentUrls: [], // File upload to be implemented
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(`MAS created successfully! MAS Ref: ${data.mas_ref_no}`);
+        navigate('/mas-list');
+      } else {
+        const error = await response.json();
+        alert(`Failed to create MAS: ${error.error}`);
+      }
     } catch (err) {
       console.error('Error saving MAS:', err);
-      alert('Failed to save MAS');
+      alert('Failed to save MAS. Please try again.');
     }
   };
 

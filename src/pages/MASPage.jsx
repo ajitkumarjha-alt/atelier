@@ -13,23 +13,29 @@ export default function MASPage() {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [filter, setFilter] = useState('All'); // 'All', 'Pending', 'Approved', 'Rejected'
 
   useEffect(() => {
     setUser(auth.currentUser);
   }, []);
 
   useEffect(() => {
-    if (user) {
-      fetchMAS();
-    }
-  }, [user]);
+    fetchMAS();
+  }, []);
 
   const fetchMAS = async () => {
     try {
       setLoading(true);
-      // Fetch all MAS items - in a real app, this would be filtered by user's projects
-      const data = await apiFetchJson('/api/mas/project/1'); // For now, fetch from project 1
-      setItems(data);
+      const response = await fetch('/api/mas', {
+        headers: {
+          'x-dev-user-email': localStorage.getItem('devUserEmail') || 'l2@lodhagroup.com',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setItems(data);
+      }
     } catch (err) {
       console.error('Error fetching MAS:', err);
       setError('Failed to load Material Approval Sheets');
@@ -98,14 +104,32 @@ export default function MASPage() {
         </div>
       )}
 
+      {/* Filter Tabs */}
+      <div className="flex gap-4 border-b border-gray-200 mb-6">
+        {['All', 'Pending', 'Approved', 'Rejected'].map((status) => (
+          <button
+            key={status}
+            onClick={() => setFilter(status)}
+            className={`px-4 py-2 font-jost font-semibold transition-colors ${
+              filter === status
+                ? 'text-lodha-gold border-b-2 border-lodha-gold'
+                : 'text-gray-500 hover:text-lodha-black'
+            }`}
+          >
+            {status} ({items.filter(i => status === 'All' || i.status === status).length})
+          </button>
+        ))}
+      </div>
+
       <div className="card">
-        {items.length === 0 ? (
+        {items.filter(i => filter === 'All' || i.status === filter).length === 0 ? (
           <div className="text-center py-12">
+            <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-lodha-grey font-jost mb-4">
               No material approval sheets found
             </p>
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => navigate('/mas-form')}
               className="btn-secondary"
             >
               Create Your First MAS
@@ -116,24 +140,60 @@ export default function MASPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b-2 border-lodha-gold bg-lodha-sand">
+                  <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">MAS Ref</th>
                   <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Material</th>
+                  <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Manufacturer</th>
                   <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Quantity</th>
-                  <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Status</th>
+                  <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">L2 Status</th>
+                  <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">L1 Status</th>
+                  <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Final Status</th>
                   <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Date</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map(item => (
-                  <tr key={item.id} className="border-b border-gray-200 hover:bg-lodha-sand/50">
+                {items.filter(i => filter === 'All' || i.status === filter).map(item => (
+                  <tr 
+                    key={item.id} 
+                    className="border-b border-gray-200 hover:bg-lodha-sand/50 cursor-pointer"
+                    onClick={() => navigate(`/mas/${item.id}`)}
+                  >
+                    <td className="px-6 py-4 text-lodha-gold font-jost font-semibold">{item.mas_ref_no}</td>
                     <td className="px-6 py-4 text-lodha-black font-jost">{item.material_name}</td>
-                    <td className="px-6 py-4 text-lodha-black font-jost">{item.quantity}</td>
+                    <td className="px-6 py-4 text-lodha-black font-jost">{item.manufacturer}</td>
+                    <td className="px-6 py-4 text-lodha-black font-jost">
+                      {item.quantity} {item.unit}
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        item.status === 'pending' 
-                          ? 'bg-lodha-sand text-lodha-black border border-lodha-gold/50'
-                          : 'bg-lodha-gold/20 text-lodha-black border border-lodha-gold'
+                        item.l2_status === 'Approved' 
+                          ? 'bg-green-100 text-green-700'
+                          : item.l2_status === 'Rejected'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-orange-100 text-orange-700'
                       }`}>
-                        {item.status}
+                        {item.l2_status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        item.l1_status === 'Approved' 
+                          ? 'bg-green-100 text-green-700'
+                          : item.l1_status === 'Rejected'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-orange-100 text-orange-700'
+                      }`}>
+                        {item.l1_status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        item.final_status === 'Approved' 
+                          ? 'bg-green-100 text-green-700 border border-green-300'
+                          : item.final_status === 'Rejected'
+                          ? 'bg-red-100 text-red-700 border border-red-300'
+                          : 'bg-gray-100 text-gray-700 border border-gray-300'
+                      }`}>
+                        {item.final_status}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-lodha-grey font-jost">

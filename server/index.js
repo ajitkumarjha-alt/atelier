@@ -447,14 +447,63 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS material_approval_sheets (
         id SERIAL PRIMARY KEY,
         project_id INTEGER NOT NULL REFERENCES projects(id),
+        mas_ref_no VARCHAR(100) UNIQUE,
         material_name VARCHAR(255) NOT NULL,
-        quantity INTEGER NOT NULL,
-        status VARCHAR(50) NOT NULL DEFAULT 'pending',
+        material_category VARCHAR(100),
+        manufacturer VARCHAR(255),
+        model_specification TEXT,
+        quantity DECIMAL(10, 2),
+        unit VARCHAR(50),
+        submitted_by_vendor VARCHAR(255),
+        vendor_email VARCHAR(255),
+        attachment_urls JSONB,
+        l2_status VARCHAR(50) DEFAULT 'Pending',
+        l2_comments TEXT,
+        l2_reviewed_by VARCHAR(255),
+        l2_reviewed_at TIMESTAMP WITH TIME ZONE,
+        l1_status VARCHAR(50) DEFAULT 'Pending',
+        l1_comments TEXT,
+        l1_reviewed_by VARCHAR(255),
+        l1_reviewed_at TIMESTAMP WITH TIME ZONE,
+        final_status VARCHAR(50) DEFAULT 'Pending',
+        submitted_by_id INTEGER REFERENCES users(id),
+        status VARCHAR(50) NOT NULL DEFAULT 'Pending',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
     console.log('✓ material_approval_sheets table initialized');
+    
+    // Add MAS columns if they don't exist (migration for existing databases)
+    const masColumns = [
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS mas_ref_no VARCHAR(100)',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS material_category VARCHAR(100)',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS manufacturer VARCHAR(255)',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS model_specification TEXT',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS unit VARCHAR(50)',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS submitted_by_vendor VARCHAR(255)',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS vendor_email VARCHAR(255)',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS attachment_urls JSONB',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS l2_status VARCHAR(50) DEFAULT \'Pending\'',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS l2_comments TEXT',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS l2_reviewed_by VARCHAR(255)',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS l2_reviewed_at TIMESTAMP WITH TIME ZONE',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS l1_status VARCHAR(50) DEFAULT \'Pending\'',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS l1_comments TEXT',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS l1_reviewed_by VARCHAR(255)',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS l1_reviewed_at TIMESTAMP WITH TIME ZONE',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS final_status VARCHAR(50) DEFAULT \'Pending\'',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS submitted_by_id INTEGER REFERENCES users(id)',
+    ];
+    
+    for (const alterSql of masColumns) {
+      try {
+        await query(alterSql);
+      } catch (err) {
+        // Ignore errors for columns that already exist
+      }
+    }
+    console.log('✓ material_approval_sheets table migrated');
 
     // Create requests_for_information table if it doesn't exist
     await query(`
@@ -1577,6 +1626,313 @@ app.delete('/api/rfi/:id', async (req, res) => {
 });
 
 // ============= END RFI ENDPOINTS =============
+
+// ============= MAS ENDPOINTS =============
+
+// Create new MAS
+app.post('/api/mas', async (req, res) => {
+  const {
+    projectId,
+    materialName,
+    materialCategory,
+    manufacturer,
+    modelSpecification,
+    quantity,
+    unit,
+    submittedByVendor,
+    vendorEmail,
+    attachmentUrls,
+  } = req.body;
+
+  try {
+    // Generate MAS reference number
+    const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const countResult = await query(
+      'SELECT COUNT(*) as count FROM material_approval_sheets WHERE mas_ref_no LIKE $1',
+      [`MAS-${datePrefix}%`]
+    );
+    const count = parseInt(countResult.rows[0].count) + 1;
+    const masRefNo = `MAS-${datePrefix}-${String(count).padStart(3, '0')}`;
+
+    const result = await query(
+      `INSERT INTO material_approval_sheets (
+        project_id, mas_ref_no, material_name, material_category, manufacturer,
+        model_specification, quantity, unit, submitted_by_vendor, vendor_email,
+        attachment_urls, l2_status, l1_status, final_status, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      RETURNING *`,
+      [
+        projectId,
+        masRefNo,
+        materialName,
+        materialCategory,
+        manufacturer,
+        modelSpecification,
+        quantity,
+        unit,
+        submittedByVendor,
+        vendorEmail,
+        JSON.stringify(attachmentUrls || []),
+        'Pending',
+        'Pending',
+        'Pending',
+        'Pending',
+      ]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating MAS:', error);
+    res.status(500).json({ error: 'Failed to create MAS' });
+  }
+});
+
+// Get all MAS (with optional filters)
+app.get('/api/mas', async (req, res) => {
+  const { status, projectId, l2_status, l1_status } = req.query;
+
+  try {
+    let queryText = 'SELECT * FROM material_approval_sheets WHERE 1=1';
+    const params = [];
+    let paramIndex = 1;
+
+    if (status && status !== 'All') {
+      queryText += ` AND status = $${paramIndex}`;
+      params.push(status);
+      paramIndex++;
+    }
+
+    if (l2_status && l2_status !== 'All') {
+      queryText += ` AND l2_status = $${paramIndex}`;
+      params.push(l2_status);
+      paramIndex++;
+    }
+
+    if (l1_status && l1_status !== 'All') {
+      queryText += ` AND l1_status = $${paramIndex}`;
+      params.push(l1_status);
+      paramIndex++;
+    }
+
+    if (projectId) {
+      queryText += ` AND project_id = $${paramIndex}`;
+      params.push(projectId);
+      paramIndex++;
+    }
+
+    queryText += ' ORDER BY created_at DESC';
+
+    const result = await query(queryText, params);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching MAS:', error);
+    res.status(500).json({ error: 'Failed to fetch MAS' });
+  }
+});
+
+// Get single MAS by ID
+app.get('/api/mas/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await query(
+      `SELECT m.*, p.name as project_name 
+       FROM material_approval_sheets m
+       LEFT JOIN projects p ON m.project_id = p.id
+       WHERE m.id = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'MAS not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching MAS:', error);
+    res.status(500).json({ error: 'Failed to fetch MAS' });
+  }
+});
+
+// Update MAS - L2 Review
+app.patch('/api/mas/:id/l2-review', async (req, res) => {
+  const { id } = req.params;
+  const { status, comments, reviewedBy } = req.body;
+
+  try {
+    const result = await query(
+      `UPDATE material_approval_sheets 
+       SET l2_status = $1, 
+           l2_comments = $2, 
+           l2_reviewed_by = $3, 
+           l2_reviewed_at = CURRENT_TIMESTAMP,
+           final_status = CASE 
+             WHEN $1 = 'Rejected' THEN 'Rejected'
+             WHEN $1 = 'Approved' AND l1_status = 'Approved' THEN 'Approved'
+             ELSE 'Pending'
+           END,
+           status = CASE 
+             WHEN $1 = 'Rejected' THEN 'Rejected'
+             WHEN $1 = 'Approved' AND l1_status = 'Approved' THEN 'Approved'
+             ELSE 'Pending'
+           END,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4
+       RETURNING *`,
+      [status, comments, reviewedBy, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'MAS not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating MAS L2 review:', error);
+    res.status(500).json({ error: 'Failed to update MAS' });
+  }
+});
+
+// Update MAS - L1 Review
+app.patch('/api/mas/:id/l1-review', async (req, res) => {
+  const { id } = req.params;
+  const { status, comments, reviewedBy } = req.body;
+
+  try {
+    const result = await query(
+      `UPDATE material_approval_sheets 
+       SET l1_status = $1, 
+           l1_comments = $2, 
+           l1_reviewed_by = $3, 
+           l1_reviewed_at = CURRENT_TIMESTAMP,
+           final_status = CASE 
+             WHEN $1 = 'Rejected' THEN 'Rejected'
+             WHEN $1 = 'Approved' AND l2_status = 'Approved' THEN 'Approved'
+             ELSE 'Pending'
+           END,
+           status = CASE 
+             WHEN $1 = 'Rejected' THEN 'Rejected'
+             WHEN $1 = 'Approved' AND l2_status = 'Approved' THEN 'Approved'
+             ELSE 'Pending'
+           END,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4
+       RETURNING *`,
+      [status, comments, reviewedBy, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'MAS not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating MAS L1 review:', error);
+    res.status(500).json({ error: 'Failed to update MAS' });
+  }
+});
+
+// Update MAS general info
+app.patch('/api/mas/:id', async (req, res) => {
+  const { id } = req.params;
+  const {
+    materialName,
+    materialCategory,
+    manufacturer,
+    modelSpecification,
+    quantity,
+    unit,
+  } = req.body;
+
+  try {
+    const updates = [];
+    const params = [];
+    let paramIndex = 1;
+
+    if (materialName) {
+      updates.push(`material_name = $${paramIndex}`);
+      params.push(materialName);
+      paramIndex++;
+    }
+
+    if (materialCategory) {
+      updates.push(`material_category = $${paramIndex}`);
+      params.push(materialCategory);
+      paramIndex++;
+    }
+
+    if (manufacturer) {
+      updates.push(`manufacturer = $${paramIndex}`);
+      params.push(manufacturer);
+      paramIndex++;
+    }
+
+    if (modelSpecification) {
+      updates.push(`model_specification = $${paramIndex}`);
+      params.push(modelSpecification);
+      paramIndex++;
+    }
+
+    if (quantity !== undefined) {
+      updates.push(`quantity = $${paramIndex}`);
+      params.push(quantity);
+      paramIndex++;
+    }
+
+    if (unit) {
+      updates.push(`unit = $${paramIndex}`);
+      params.push(unit);
+      paramIndex++;
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    params.push(id);
+
+    const result = await query(
+      `UPDATE material_approval_sheets 
+       SET ${updates.join(', ')}
+       WHERE id = $${paramIndex}
+       RETURNING *`,
+      params
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'MAS not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating MAS:', error);
+    res.status(500).json({ error: 'Failed to update MAS' });
+  }
+});
+
+// Delete MAS
+app.delete('/api/mas/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await query(
+      'DELETE FROM material_approval_sheets WHERE id = $1 RETURNING *',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'MAS not found' });
+    }
+
+    res.json({ message: 'MAS deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting MAS:', error);
+    res.status(500).json({ error: 'Failed to delete MAS' });
+  }
+});
+
+// ============= END MAS ENDPOINTS =============
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
