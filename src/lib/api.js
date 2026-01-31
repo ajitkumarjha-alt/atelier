@@ -14,9 +14,13 @@ const DEV_USER_EMAIL = 'lodhaatelier@gmail.com'; // Super admin for testing
  */
 export const apiFetch = async (url, options = {}) => {
   const headers = {
-    'Content-Type': 'application/json',
     ...options.headers,
   };
+
+  // Don't set Content-Type for FormData - browser will set it with boundary
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   // In development, add x-dev-user-email header for protected endpoints
   // This allows testing protected APIs without Firebase auth configured

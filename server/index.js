@@ -4,6 +4,7 @@ import admin from 'firebase-admin';
 import { query } from './db.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { upload, uploadToGCS, deleteFromGCS, isStorageConfigured } from './storage.js';
 
 const app = express();
 const port = process.env.PORT || 5175;
@@ -207,6 +208,90 @@ const requireRole = (...allowedRoles) => {
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// ============================================================================
+// File Upload Endpoints
+// ============================================================================
+
+// Upload multiple files
+app.post('/api/upload', verifyToken, upload.array('files', 10), async (req, res) => {
+  try {
+    if (!isStorageConfigured()) {
+      return res.status(503).json({ 
+        error: 'File upload service not configured',
+        message: 'Cloud storage is not available'
+      });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    const folder = req.body.folder || 'general';
+    const uploadPromises = req.files.map(file => 
+      uploadToGCS(file.buffer, file.originalname, file.mimetype, folder)
+    );
+
+    const urls = await Promise.all(uploadPromises);
+    
+    res.json({ 
+      success: true,
+      files: urls.map((url, index) => ({
+        url,
+        originalName: req.files[index].originalname,
+        size: req.files[index].size,
+        mimetype: req.files[index].mimetype
+      }))
+    });
+  } catch (error) {
+    console.error('File upload error:', error);
+    res.status(500).json({ 
+      error: 'File upload failed',
+      message: error.message 
+    });
+  }
+});
+
+// Delete file
+app.delete('/api/upload', verifyToken, async (req, res) => {
+  try {
+    if (!isStorageConfigured()) {
+      return res.status(503).json({ 
+        error: 'File upload service not configured'
+      });
+    }
+
+    const { fileUrl } = req.body;
+    
+    if (!fileUrl) {
+      return res.status(400).json({ error: 'File URL is required' });
+    }
+
+    await deleteFromGCS(fileUrl);
+    
+    res.json({ success: true, message: 'File deleted successfully' });
+  } catch (error) {
+    console.error('File deletion error:', error);
+    res.status(500).json({ 
+      error: 'File deletion failed',
+      message: error.message 
+    });
+  }
+});
+
+// Check if storage is configured
+app.get('/api/upload/status', (req, res) => {
+  res.json({ 
+    configured: isStorageConfigured(),
+    message: isStorageConfigured() 
+      ? 'File upload service is available' 
+      : 'File upload service is not configured'
+  });
+});
+
+// ============================================================================
+// End File Upload Endpoints
+// ============================================================================
 
 // Super Admin Email
 const SUPER_ADMIN_EMAIL = 'lodhaatelier@gmail.com';

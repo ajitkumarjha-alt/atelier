@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Save, ArrowLeft } from 'lucide-react';
 import Layout from '../components/Layout';
+import FileUpload from '../components/FileUpload';
 
 export default function MASForm() {
   const navigate = useNavigate();
@@ -27,6 +28,8 @@ export default function MASForm() {
     purposeOfUse: '',
     technicalSpecifications: '',
   });
+
+  const [attachments, setAttachments] = useState([]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -62,7 +65,7 @@ export default function MASForm() {
           unit: formData.unit,
           submittedByVendor: formData.contractorName || 'Vendor',
           vendorEmail: localStorage.getItem('devUserEmail') || 'vendor@lodhagroup.com',
-          attachmentUrls: [], // File upload to be implemented
+          attachmentUrls: attachments.map(file => file.url),
         }),
       });
 
@@ -337,6 +340,17 @@ export default function MASForm() {
                   rows={4}
                   placeholder="Enter technical specifications, standards, certifications required..."
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-lodha-gold focus:outline-none font-jost resize-none"
+                />
+              </div>
+
+              {/* File Upload */}
+              <div>
+                <FileUpload
+                  folder="mas"
+                  maxFiles={10}
+                  existingFiles={attachments}
+                  onFilesChange={setAttachments}
+                  label="Attachments (Datasheets, Specifications, Photos)"
                 />
               </div>
             </div>
