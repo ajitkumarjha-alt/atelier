@@ -16,8 +16,10 @@ import ProjectDetail from './pages/ProjectDetail';
 import ProjectInput from './pages/ProjectInput';
 import MASPage from './pages/MASPage';
 import MASForm from './pages/MASForm';
+import MASDetail from './pages/MASDetail';
 import RFIPage from './pages/RFIPage';
 import RFICreate from './pages/RFICreate';
+import RFIDetail from './pages/RFIDetail';
 import ProjectStandardsManagement from './pages/ProjectStandardsManagement';
 import { createOrUpdateUser } from './services/userService';
 import { Loader } from 'lucide-react';
@@ -245,6 +247,18 @@ function App() {
           } 
         />
 
+        {/* MAS Detail Page */}
+        <Route 
+          path="/mas/:id" 
+          element={
+            user && (userLevel === 'L2' || userLevel === 'L1' || userLevel === 'SUPER_ADMIN' || userLevel === 'VENDOR') ? (
+              <MASDetail />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
         {/* MAS Legacy Route - redirect to list */}
         <Route 
           path="/mas" 
@@ -287,16 +301,12 @@ function App() {
           } 
         />
 
-        {/* RFI Detail Page (placeholder for now) */}
+        {/* RFI Detail Page */}
         <Route 
           path="/rfi/:id" 
           element={
             user && (userLevel === 'CM' || userLevel === 'L2' || userLevel === 'L1' || userLevel === 'SUPER_ADMIN') ? (
-              <div className="min-h-screen bg-lodha-sand p-8">
-                <h1 className="text-3xl font-garamond font-bold text-lodha-gold">
-                  RFI Detail (Coming Soon)
-                </h1>
-              </div>
+              <RFIDetail />
             ) : (
               <Navigate to="/" replace />
             )
