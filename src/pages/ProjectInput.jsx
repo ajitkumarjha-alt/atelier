@@ -21,6 +21,7 @@ export default function ProjectInput() {
     applicationTypes: [],
     residentialTypes: [],
     flatTypes: [],
+    buildingTypes: [],
   });
 
   const [selectedBuilding, setSelectedBuilding] = useState(null);
@@ -188,8 +189,26 @@ export default function ProjectInput() {
       name: trimmedBuildingName,
       applicationType: '',
       residentialType: '',
+      buildingType: '',
       villaType: '',
       villaCount: '',
+      // Villa-specific fields
+      poolVolume: '',
+      hasLift: false,
+      liftName: '',
+      liftPassengerCapacity: '',
+      // MLCP/Parking fields
+      carParkingCountPerFloor: '',
+      carParkingArea: '',
+      twoWheelerParkingCount: '',
+      twoWheelerParkingArea: '',
+      evParkingPercentage: '',
+      shopCount: '',
+      shopArea: '',
+      // Commercial fields
+      officeCount: '',
+      officeArea: '',
+      commonArea: '',
       isTwin: false,
       twinOfBuildingId: null,
       twinBuildingNames: [], // Store twin names
@@ -231,8 +250,26 @@ export default function ProjectInput() {
           name: twinName,
           applicationType: '',
           residentialType: '',
+          buildingType: '',
           villaType: '',
           villaCount: '',
+          // Villa-specific fields
+          poolVolume: '',
+          hasLift: false,
+          liftName: '',
+          liftPassengerCapacity: '',
+          // MLCP/Parking fields
+          carParkingCountPerFloor: '',
+          carParkingArea: '',
+          twoWheelerParkingCount: '',
+          twoWheelerParkingArea: '',
+          evParkingPercentage: '',
+          shopCount: '',
+          shopArea: '',
+          // Commercial fields
+          officeCount: '',
+          officeArea: '',
+          commonArea: '',
           isTwin: true,
           twinOfBuildingName: trimmedBuildingName, // Reference by name
           floors: [],
@@ -968,6 +1005,23 @@ function BuildingSection({
         </div>
       </div>
 
+      {/* Building Type Selection - NEW */}
+      <div className="mb-4">
+        <label className="block text-sm font-jost font-semibold mb-2">Building Type</label>
+        <select
+          value={building.buildingType || ''}
+          onChange={e => onUpdate(building.id, { buildingType: e.target.value })}
+          className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+        >
+          <option value="">Select building type...</option>
+          {standards.buildingTypes?.map(type => (
+            <option key={type} value={type}>
+              {type}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Residential Type */}
       {isResidential && (
         <div className="mb-4">
@@ -1010,6 +1064,185 @@ function BuildingSection({
               placeholder="e.g., 10"
               className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
             />
+          </div>
+        </div>
+      )}
+
+      {/* Villa-Specific Fields - NEW */}
+      {building.buildingType === 'Villa' && (
+        <div className="border border-lodha-gold/30 rounded-lg p-4 mb-4 bg-yellow-50/30">
+          <h4 className="text-sm font-jost font-semibold mb-3 text-lodha-gold">Villa Specifications</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-jost font-semibold mb-2">Pool Volume (m³)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={building.poolVolume || ''}
+                onChange={e => onUpdate(building.id, { poolVolume: e.target.value })}
+                placeholder="e.g., 50.00"
+                className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+              />
+            </div>
+            <div>
+              <label className="flex items-center gap-2 font-jost mt-6">
+                <input
+                  type="checkbox"
+                  checked={building.hasLift || false}
+                  onChange={e => onUpdate(building.id, { hasLift: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <span>Has Lift?</span>
+              </label>
+            </div>
+            {building.hasLift && (
+              <>
+                <div>
+                  <label className="block text-sm font-jost font-semibold mb-2">Lift Name/Model</label>
+                  <input
+                    type="text"
+                    value={building.liftName || ''}
+                    onChange={e => onUpdate(building.id, { liftName: e.target.value })}
+                    placeholder="e.g., Otis 2000"
+                    className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-jost font-semibold mb-2">Lift Passenger Capacity</label>
+                  <input
+                    type="number"
+                    value={building.liftPassengerCapacity || ''}
+                    onChange={e => onUpdate(building.id, { liftPassengerCapacity: e.target.value })}
+                    placeholder="e.g., 8"
+                    className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MLCP/Parking-Specific Fields - NEW */}
+      {building.buildingType === 'MLCP/Parking' && (
+        <div className="border border-lodha-gold/30 rounded-lg p-4 mb-4 bg-yellow-50/30">
+          <h4 className="text-sm font-jost font-semibold mb-3 text-lodha-gold">Parking Specifications</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-jost font-semibold mb-2">Car Parking Count (per floor)</label>
+              <input
+                type="number"
+                value={building.carParkingCountPerFloor || ''}
+                onChange={e => onUpdate(building.id, { carParkingCountPerFloor: e.target.value })}
+                placeholder="e.g., 50"
+                className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-jost font-semibold mb-2">Car Parking Area (m²)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={building.carParkingArea || ''}
+                onChange={e => onUpdate(building.id, { carParkingArea: e.target.value })}
+                placeholder="e.g., 1500.00"
+                className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-jost font-semibold mb-2">2-Wheeler Parking Count</label>
+              <input
+                type="number"
+                value={building.twoWheelerParkingCount || ''}
+                onChange={e => onUpdate(building.id, { twoWheelerParkingCount: e.target.value })}
+                placeholder="e.g., 100"
+                className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-jost font-semibold mb-2">2-Wheeler Parking Area (m²)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={building.twoWheelerParkingArea || ''}
+                onChange={e => onUpdate(building.id, { twoWheelerParkingArea: e.target.value })}
+                placeholder="e.g., 200.00"
+                className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-jost font-semibold mb-2">EV Parking %</label>
+              <input
+                type="number"
+                step="0.01"
+                value={building.evParkingPercentage || ''}
+                onChange={e => onUpdate(building.id, { evParkingPercentage: e.target.value })}
+                placeholder="e.g., 20.00"
+                className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-jost font-semibold mb-2">Shop Count</label>
+              <input
+                type="number"
+                value={building.shopCount || ''}
+                onChange={e => onUpdate(building.id, { shopCount: e.target.value })}
+                placeholder="e.g., 5"
+                className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-jost font-semibold mb-2">Shop Area (m²)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={building.shopArea || ''}
+                onChange={e => onUpdate(building.id, { shopArea: e.target.value })}
+                placeholder="e.g., 500.00"
+                className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Commercial-Specific Fields - NEW */}
+      {building.buildingType === 'Commercial' && (
+        <div className="border border-lodha-gold/30 rounded-lg p-4 mb-4 bg-yellow-50/30">
+          <h4 className="text-sm font-jost font-semibold mb-3 text-lodha-gold">Commercial Specifications</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-jost font-semibold mb-2">Office Count</label>
+              <input
+                type="number"
+                value={building.officeCount || ''}
+                onChange={e => onUpdate(building.id, { officeCount: e.target.value })}
+                placeholder="e.g., 20"
+                className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-jost font-semibold mb-2">Office Area (m²)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={building.officeArea || ''}
+                onChange={e => onUpdate(building.id, { officeArea: e.target.value })}
+                placeholder="e.g., 2000.00"
+                className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-jost font-semibold mb-2">Common Area (m²)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={building.commonArea || ''}
+                onChange={e => onUpdate(building.id, { commonArea: e.target.value })}
+                placeholder="e.g., 500.00"
+                className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+              />
+            </div>
           </div>
         </div>
       )}

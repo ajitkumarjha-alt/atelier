@@ -6,7 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const app = express();
-const port = process.env.PORT || 5173;
+const port = process.env.PORT || 5175;
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -265,6 +265,7 @@ async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
         name VARCHAR(255) NOT NULL,
+        building_type VARCHAR(100),
         application_type VARCHAR(100) NOT NULL,
         location_latitude DECIMAL(10, 8),
         location_longitude DECIMAL(11, 8),
@@ -277,6 +278,75 @@ async function initializeDatabase() {
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    
+    // Add building_type column if it doesn't exist
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS building_type VARCHAR(100)
+    `);
+    
+    // Villa-specific fields
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS pool_volume DECIMAL(10, 2)
+    `);
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS has_lift BOOLEAN DEFAULT FALSE
+    `);
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS lift_name VARCHAR(255)
+    `);
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS lift_passenger_capacity INTEGER
+    `);
+    
+    // MLCP/Parking-specific fields
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS car_parking_count_per_floor INTEGER
+    `);
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS car_parking_area DECIMAL(10, 2)
+    `);
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS two_wheeler_parking_count INTEGER
+    `);
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS two_wheeler_parking_area DECIMAL(10, 2)
+    `);
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS ev_parking_percentage DECIMAL(5, 2)
+    `);
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS shop_count INTEGER
+    `);
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS shop_area DECIMAL(10, 2)
+    `);
+    
+    // Commercial-specific fields
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS office_count INTEGER
+    `);
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS office_area DECIMAL(10, 2)
+    `);
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS common_area DECIMAL(10, 2)
+    `);
+    
     console.log('✓ buildings table initialized');
 
     // Create floors table if it doesn't exist
@@ -334,6 +404,28 @@ async function initializeDatabase() {
       )
     `);
     console.log('✓ project_standards table initialized');
+    
+    // Seed building types
+    const buildingTypes = [
+      { category: 'building_type', value: 'Residential', description: 'Residential apartments and towers' },
+      { category: 'building_type', value: 'Villa', description: 'Individual villas and bungalows' },
+      { category: 'building_type', value: 'MLCP/Parking', description: 'Multi-Level Car Parking' },
+      { category: 'building_type', value: 'Commercial', description: 'Commercial office buildings' },
+      { category: 'building_type', value: 'Clubhouse', description: 'Club and recreational facilities' },
+      { category: 'building_type', value: 'Institute', description: 'Educational institutions' },
+      { category: 'building_type', value: 'Shop', description: 'Retail shops and markets' },
+      { category: 'building_type', value: 'Hospital', description: 'Healthcare facilities' },
+      { category: 'building_type', value: 'Data Center', description: 'Data centers and server facilities' },
+      { category: 'building_type', value: 'Industrial', description: 'Industrial and manufacturing facilities' }
+    ];
+    
+    for (const type of buildingTypes) {
+      await query(`
+        INSERT INTO project_standards (category, value, description, is_active)
+        VALUES ($1, $2, $3, TRUE)
+        ON CONFLICT (category, value) DO NOTHING
+      `, [type.category, type.value, type.description]);
+    }
 
     // Create material_approval_sheets table if it doesn't exist
     await query(`
@@ -354,19 +446,69 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS requests_for_information (
         id SERIAL PRIMARY KEY,
         project_id INTEGER NOT NULL REFERENCES projects(id),
-        title VARCHAR(255) NOT NULL,
-        description TEXT,
-        raised_by_id INTEGER NOT NULL REFERENCES users(id),
-        status VARCHAR(50) NOT NULL DEFAULT 'pending',
+        rfi_ref_no VARCHAR(100) UNIQUE NOT NULL,
+        
+        -- Part A: Project & Record Information
+        project_name VARCHAR(255),
+        record_no VARCHAR(100),
+        revision VARCHAR(50),
+        date_raised DATE,
+        
+        -- Part B: Disciplines
+        disciplines JSONB,
+        
+        -- Part C: RFI Details
+        rfi_subject TEXT,
+        rfi_description TEXT,
+        attachment_urls JSONB,
+        raised_by VARCHAR(255),
+        raised_by_email VARCHAR(255),
+        
+        -- Part D: Project Team Response
+        project_team_response JSONB,
+        
+        -- Part E: Design Team Response  
+        design_team_response JSONB,
+        
+        -- Metadata
+        raised_by_id INTEGER REFERENCES users(id),
+        status VARCHAR(50) NOT NULL DEFAULT 'Pending',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
     console.log('✓ requests_for_information table initialized');
+    
+    // Add RFI columns if they don't exist (migration for existing databases)
+    const rfiColumns = [
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS rfi_ref_no VARCHAR(100)',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS project_name VARCHAR(255)',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS record_no VARCHAR(100)',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS revision VARCHAR(50)',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS date_raised DATE',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS disciplines JSONB',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS rfi_subject TEXT',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS rfi_description TEXT',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS attachment_urls JSONB',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS raised_by VARCHAR(255)',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS raised_by_email VARCHAR(255)',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS project_team_response JSONB',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS design_team_response JSONB',
+    ];
+    
+    for (const alterSql of rfiColumns) {
+      try {
+        await query(alterSql);
+      } catch (err) {
+        // Ignore errors for columns that already exist
+      }
+    }
+    console.log('✓ requests_for_information table migrated');
 
     console.log('✅ All database tables initialized');
   } catch (error) {
     console.error('Error initializing database:', error.message);
+    console.error('Stack trace:', error.stack);
   }
 }
 
@@ -764,11 +906,16 @@ app.get('/api/project-standards', async (req, res) => {
       'SELECT DISTINCT value FROM project_standards WHERE category = $1 AND is_active = true ORDER BY value',
       ['flat_type']
     );
+    const buildingTypes = await query(
+      'SELECT DISTINCT value FROM project_standards WHERE category = $1 AND is_active = true ORDER BY value',
+      ['building_type']
+    );
 
     res.json({
       applicationTypes: applicationTypes.rows.map(r => r.value),
       residentialTypes: residentialTypes.rows.map(r => r.value),
       flatTypes: flatTypes.rows.map(r => r.value),
+      buildingTypes: buildingTypes.rows.map(r => r.value),
     });
   } catch (error) {
     console.error('Error fetching standards:', error);
@@ -898,8 +1045,15 @@ app.post('/api/projects', async (req, res) => {
     const buildingIdMap = {}; // Map building names to their database IDs
     for (const building of buildings) {
       const buildingResult = await query(
-        `INSERT INTO buildings (project_id, name, application_type, location_latitude, location_longitude, residential_type, villa_type, villa_count, twin_of_building_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `INSERT INTO buildings (
+          project_id, name, application_type, location_latitude, location_longitude, 
+          residential_type, villa_type, villa_count, building_type,
+          pool_volume, has_lift, lift_name, lift_passenger_capacity,
+          car_parking_count_per_floor, car_parking_area, two_wheeler_parking_count, 
+          two_wheeler_parking_area, ev_parking_percentage, shop_count, shop_area,
+          office_count, office_area, common_area, twin_of_building_id
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
          RETURNING id`,
         [
           projectId, 
@@ -909,7 +1063,22 @@ app.post('/api/projects', async (req, res) => {
           longitude && longitude !== '' ? longitude : null, 
           building.residentialType || null, 
           building.villaType || null, 
-          building.villaCount && building.villaCount !== '' ? building.villaCount : null, 
+          building.villaCount && building.villaCount !== '' ? building.villaCount : null,
+          building.buildingType || null,
+          building.poolVolume && building.poolVolume !== '' ? building.poolVolume : null,
+          building.hasLift || false,
+          building.liftName || null,
+          building.liftPassengerCapacity && building.liftPassengerCapacity !== '' ? building.liftPassengerCapacity : null,
+          building.carParkingCountPerFloor && building.carParkingCountPerFloor !== '' ? building.carParkingCountPerFloor : null,
+          building.carParkingArea && building.carParkingArea !== '' ? building.carParkingArea : null,
+          building.twoWheelerParkingCount && building.twoWheelerParkingCount !== '' ? building.twoWheelerParkingCount : null,
+          building.twoWheelerParkingArea && building.twoWheelerParkingArea !== '' ? building.twoWheelerParkingArea : null,
+          building.evParkingPercentage && building.evParkingPercentage !== '' ? building.evParkingPercentage : null,
+          building.shopCount && building.shopCount !== '' ? building.shopCount : null,
+          building.shopArea && building.shopArea !== '' ? building.shopArea : null,
+          building.officeCount && building.officeCount !== '' ? building.officeCount : null,
+          building.officeArea && building.officeArea !== '' ? building.officeArea : null,
+          building.commonArea && building.commonArea !== '' ? building.commonArea : null,
           null // Set twin_of_building_id to null initially
         ]
       );
@@ -1004,8 +1173,15 @@ app.patch('/api/projects/:id', async (req, res) => {
     const buildingIdMap = {};
     for (const building of buildings || []) {
       const buildingResult = await query(
-        `INSERT INTO buildings (project_id, name, application_type, location_latitude, location_longitude, residential_type, villa_type, villa_count, twin_of_building_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `INSERT INTO buildings (
+          project_id, name, application_type, location_latitude, location_longitude, 
+          residential_type, villa_type, villa_count, building_type,
+          pool_volume, has_lift, lift_name, lift_passenger_capacity,
+          car_parking_count_per_floor, car_parking_area, two_wheeler_parking_count, 
+          two_wheeler_parking_area, ev_parking_percentage, shop_count, shop_area,
+          office_count, office_area, common_area, twin_of_building_id
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
          RETURNING id`,
         [
           id, 
@@ -1015,7 +1191,22 @@ app.patch('/api/projects/:id', async (req, res) => {
           building.longitude && building.longitude !== '' ? parseFloat(building.longitude) : null, 
           building.residentialType || null, 
           building.villaType || null, 
-          building.villaCount && building.villaCount !== '' ? parseInt(building.villaCount) : null, 
+          building.villaCount && building.villaCount !== '' ? parseInt(building.villaCount) : null,
+          building.buildingType || null,
+          building.poolVolume && building.poolVolume !== '' ? parseFloat(building.poolVolume) : null,
+          building.hasLift || false,
+          building.liftName || null,
+          building.liftPassengerCapacity && building.liftPassengerCapacity !== '' ? parseInt(building.liftPassengerCapacity) : null,
+          building.carParkingCountPerFloor && building.carParkingCountPerFloor !== '' ? parseInt(building.carParkingCountPerFloor) : null,
+          building.carParkingArea && building.carParkingArea !== '' ? parseFloat(building.carParkingArea) : null,
+          building.twoWheelerParkingCount && building.twoWheelerParkingCount !== '' ? parseInt(building.twoWheelerParkingCount) : null,
+          building.twoWheelerParkingArea && building.twoWheelerParkingArea !== '' ? parseFloat(building.twoWheelerParkingArea) : null,
+          building.evParkingPercentage && building.evParkingPercentage !== '' ? parseFloat(building.evParkingPercentage) : null,
+          building.shopCount && building.shopCount !== '' ? parseInt(building.shopCount) : null,
+          building.shopArea && building.shopArea !== '' ? parseFloat(building.shopArea) : null,
+          building.officeCount && building.officeCount !== '' ? parseInt(building.officeCount) : null,
+          building.officeArea && building.officeArea !== '' ? parseFloat(building.officeArea) : null,
+          building.commonArea && building.commonArea !== '' ? parseFloat(building.commonArea) : null,
           null // Set twin_of_building_id to null initially
         ]
       );
@@ -1165,6 +1356,210 @@ app.get('/api/projects/:id/full', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch project' });
   }
 });
+
+// ============= RFI ENDPOINTS =============
+
+// Create new RFI
+app.post('/api/rfi', async (req, res) => {
+  const {
+    projectId,
+    projectName,
+    recordNo,
+    revision,
+    dateRaised,
+    disciplines,
+    rfiSubject,
+    rfiDescription,
+    attachmentUrls,
+    raisedBy,
+    raisedByEmail,
+    projectTeamResponse,
+    designTeamResponse,
+  } = req.body;
+
+  try {
+    // Generate RFI reference number
+    const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const countResult = await query(
+      'SELECT COUNT(*) as count FROM requests_for_information WHERE rfi_ref_no LIKE $1',
+      [`RFI-${datePrefix}%`]
+    );
+    const count = parseInt(countResult.rows[0].count) + 1;
+    const rfiRefNo = `RFI-${datePrefix}-${String(count).padStart(3, '0')}`;
+
+    const result = await query(
+      `INSERT INTO requests_for_information (
+        project_id, rfi_ref_no, project_name, record_no, revision, date_raised,
+        disciplines, rfi_subject, rfi_description, attachment_urls,
+        raised_by, raised_by_email, project_team_response, design_team_response,
+        status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      RETURNING *`,
+      [
+        projectId,
+        rfiRefNo,
+        projectName,
+        recordNo,
+        revision,
+        dateRaised,
+        JSON.stringify(disciplines),
+        rfiSubject,
+        rfiDescription,
+        JSON.stringify(attachmentUrls || []),
+        raisedBy,
+        raisedByEmail,
+        JSON.stringify(projectTeamResponse || []),
+        JSON.stringify(designTeamResponse || []),
+        'Pending',
+      ]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating RFI:', error);
+    res.status(500).json({ error: 'Failed to create RFI' });
+  }
+});
+
+// Get all RFIs (with optional filters)
+app.get('/api/rfi', async (req, res) => {
+  const { status, projectId } = req.query;
+
+  try {
+    let queryText = 'SELECT * FROM requests_for_information WHERE 1=1';
+    const params = [];
+    let paramIndex = 1;
+
+    if (status && status !== 'All') {
+      queryText += ` AND status = $${paramIndex}`;
+      params.push(status);
+      paramIndex++;
+    }
+
+    if (projectId) {
+      queryText += ` AND project_id = $${paramIndex}`;
+      params.push(projectId);
+      paramIndex++;
+    }
+
+    queryText += ' ORDER BY created_at DESC';
+
+    const result = await query(queryText, params);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching RFIs:', error);
+    res.status(500).json({ error: 'Failed to fetch RFIs' });
+  }
+});
+
+// Get single RFI by ID
+app.get('/api/rfi/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await query(
+      'SELECT * FROM requests_for_information WHERE id = $1',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'RFI not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching RFI:', error);
+    res.status(500).json({ error: 'Failed to fetch RFI' });
+  }
+});
+
+// Update RFI
+app.patch('/api/rfi/:id', async (req, res) => {
+  const { id } = req.params;
+  const {
+    status,
+    projectTeamResponse,
+    designTeamResponse,
+    rfiDescription,
+  } = req.body;
+
+  try {
+    const updates = [];
+    const params = [];
+    let paramIndex = 1;
+
+    if (status) {
+      updates.push(`status = $${paramIndex}`);
+      params.push(status);
+      paramIndex++;
+    }
+
+    if (projectTeamResponse) {
+      updates.push(`project_team_response = $${paramIndex}`);
+      params.push(JSON.stringify(projectTeamResponse));
+      paramIndex++;
+    }
+
+    if (designTeamResponse) {
+      updates.push(`design_team_response = $${paramIndex}`);
+      params.push(JSON.stringify(designTeamResponse));
+      paramIndex++;
+    }
+
+    if (rfiDescription) {
+      updates.push(`rfi_description = $${paramIndex}`);
+      params.push(rfiDescription);
+      paramIndex++;
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    params.push(id);
+
+    const result = await query(
+      `UPDATE requests_for_information 
+       SET ${updates.join(', ')}
+       WHERE id = $${paramIndex}
+       RETURNING *`,
+      params
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'RFI not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating RFI:', error);
+    res.status(500).json({ error: 'Failed to update RFI' });
+  }
+});
+
+// Delete RFI
+app.delete('/api/rfi/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await query(
+      'DELETE FROM requests_for_information WHERE id = $1 RETURNING *',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'RFI not found' });
+    }
+
+    res.json({ message: 'RFI deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting RFI:', error);
+    res.status(500).json({ error: 'Failed to delete RFI' });
+  }
+});
+
+// ============= END RFI ENDPOINTS =============
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

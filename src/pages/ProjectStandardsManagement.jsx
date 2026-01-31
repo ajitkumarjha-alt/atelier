@@ -15,6 +15,7 @@ export default function ProjectStandardsManagement() {
     { value: 'application_type', label: 'Application Types' },
     { value: 'residential_type', label: 'Residential Types' },
     { value: 'flat_type', label: 'Flat Types' },
+    { value: 'building_type', label: 'Building Types' },
   ];
 
   // Fetch standards

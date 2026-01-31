@@ -79,13 +79,61 @@ export default function RFICreate() {
     setAttachmentFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Will be implemented with API later
-    console.log('RFI Data:', formData);
-    console.log('Attachments:', attachmentFiles);
-    alert('RFI created successfully! (Database integration pending)');
-    navigate('/cm-dashboard');
+    
+    // Validate required fields
+    if (!formData.projectName || !formData.rfiSubject) {
+      alert('Please fill in all required fields (Project Name and RFI Subject)');
+      return;
+    }
+
+    try {
+      // In production, you would upload files to Cloud Storage first
+      // For now, we'll just store file names
+      const attachmentUrls = attachmentFiles.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        // In production, this would be the Cloud Storage URL
+        url: `pending-upload/${file.name}`,
+      }));
+
+      const response = await fetch('/api/rfi', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dev-user-email': localStorage.getItem('devUserEmail') || 'cm@lodhagroup.com',
+        },
+        body: JSON.stringify({
+          projectId: 1, // In production, get from project selection
+          projectName: formData.projectName,
+          recordNo: formData.recordNo,
+          revision: formData.revision,
+          dateRaised: formData.dateRaised,
+          disciplines: formData.disciplines,
+          rfiSubject: formData.rfiSubject,
+          rfiDescription: formData.rfiDescription,
+          attachmentUrls,
+          raisedBy: formData.raisedBy,
+          raisedByEmail: formData.email,
+          projectTeamResponse: formData.projectTeamResponse,
+          designTeamResponse: formData.designTeamResponse,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(`RFI created successfully! RFI Ref: ${data.rfi_ref_no}`);
+        navigate('/cm-dashboard');
+      } else {
+        const error = await response.json();
+        alert(`Failed to create RFI: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error creating RFI:', error);
+      alert('An error occurred while creating the RFI. Please try again.');
+    }
   };
 
   return (
