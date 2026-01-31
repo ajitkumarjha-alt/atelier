@@ -106,20 +106,29 @@ export default function ProjectStatusBoard({ userEmail }) {
           </div>
         </div>
 
-        <button
-          onClick={() => handleArchiveProject(project.id)}
-          disabled={archivingProjectId === project.id}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-lodha-black/10 hover:bg-lodha-black/20 text-lodha-black rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-jost font-semibold text-sm"
-        >
-          {archivingProjectId === project.id ? (
-            <Loader className="w-4 h-4 animate-spin" />
-          ) : (
-            <>
-              <Archive className="w-4 h-4" />
-              Hand Over
-            </>
-          )}
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={() => navigate(`/drawing-schedule/${project.id}`)}
+            className="w-full px-3 py-2 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
+          >
+            Drawing Schedule
+          </button>
+
+          <button
+            onClick={() => handleArchiveProject(project.id)}
+            disabled={archivingProjectId === project.id}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-lodha-black/10 hover:bg-lodha-black/20 text-lodha-black rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-jost font-semibold text-sm"
+          >
+            {archivingProjectId === project.id ? (
+              <Loader className="w-4 h-4 animate-spin" />
+            ) : (
+              <>
+                <Archive className="w-4 h-4" />
+                Hand Over
+              </>
+            )}
+          </button>
+        </div>
       </div>
     );
   };

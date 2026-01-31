@@ -20,6 +20,7 @@ import MASDetail from './pages/MASDetail';
 import RFIPage from './pages/RFIPage';
 import RFICreate from './pages/RFICreate';
 import RFIDetail from './pages/RFIDetail';
+import DrawingSchedule from './pages/DrawingSchedule';
 import ProjectStandardsManagement from './pages/ProjectStandardsManagement';
 import { createOrUpdateUser } from './services/userService';
 import { Loader } from 'lucide-react';
@@ -181,6 +182,18 @@ function App() {
           element={
             user && userLevel === 'SUPER_ADMIN' ? (
               <ProjectStandardsManagement />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* Drawing Schedule */}
+        <Route 
+          path="/drawing-schedule/:projectId" 
+          element={
+            user && (userLevel === 'L2' || userLevel === 'L1' || userLevel === 'SUPER_ADMIN') ? (
+              <DrawingSchedule />
             ) : (
               <Navigate to="/" replace />
             )
