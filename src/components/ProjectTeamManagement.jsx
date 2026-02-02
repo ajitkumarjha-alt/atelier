@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Users, Plus, Trash2, UserPlus, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import ConsultantRegistration from './ConsultantRegistration';
+import VendorRegistration from './VendorRegistration';
 
 export default function ProjectTeamManagement({ projectId, currentUserLevel, currentUserId }) {
   const [teamMembers, setTeamMembers] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showConsultantModal, setShowConsultantModal] = useState(false);
+  const [showVendorModal, setShowVendorModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedUserType, setSelectedUserType] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
@@ -177,13 +181,29 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
           </div>
           
           {(currentUserLevel === 'L1' || currentUserLevel === 'L0' || currentUserLevel === 'SUPER_ADMIN') && (
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-lodha-gold text-white rounded-lg hover:bg-lodha-gold/90 transition-colors font-medium"
-            >
-              <UserPlus className="w-5 h-5" />
-              Add Team Member
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowConsultantModal(true)}
+                className="flex items-center gap-2 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Add Consultant
+              </button>
+              <button
+                onClick={() => setShowVendorModal(true)}
+                className="flex items-center gap-2 px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Add Vendor
+              </button>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-lodha-gold text-white rounded-lg hover:bg-lodha-gold/90 transition-colors font-medium"
+              >
+                <UserPlus className="w-5 h-5" />
+                Add Team Member
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -403,6 +423,32 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
             </div>
           </div>
         </div>
+      )}
+
+      {/* Consultant Registration Modal */}
+      {showConsultantModal && (
+        <ConsultantRegistration
+          projectId={projectId}
+          onSuccess={() => {
+            setShowConsultantModal(false);
+            setSuccess('Consultant registered successfully! They can now login with their email.');
+            setTimeout(() => setSuccess(''), 5000);
+          }}
+          onClose={() => setShowConsultantModal(false)}
+        />
+      )}
+
+      {/* Vendor Registration Modal */}
+      {showVendorModal && (
+        <VendorRegistration
+          projectId={projectId}
+          onSuccess={() => {
+            setShowVendorModal(false);
+            setSuccess('Vendor registered successfully! They can now login with their email.');
+            setTimeout(() => setSuccess(''), 5000);
+          }}
+          onClose={() => setShowVendorModal(false)}
+        />
       )}
     </div>
   );

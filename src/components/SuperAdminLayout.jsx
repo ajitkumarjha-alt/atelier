@@ -11,6 +11,7 @@ export default function SuperAdminLayout({ children }) {
   const handleSignOut = async () => {
     try {
       await auth.signOut();
+      localStorage.removeItem('devUserEmail');
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);

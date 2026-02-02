@@ -98,7 +98,7 @@ export default function ConsultantDashboard() {
     localStorage.removeItem('consultantEmail');
     localStorage.removeItem('consultantToken');
     localStorage.removeItem('consultantId');
-    navigate('/consultant-login');
+    navigate('/');
   };
 
   const handleViewDrawings = (projectId) => {

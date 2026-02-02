@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { UserProvider, useUser } from './lib/UserContext';
+import WelcomePage from './pages/WelcomePage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import L0Dashboard from './pages/L0Dashboard';
@@ -9,6 +10,7 @@ import L3Dashboard from './pages/L3Dashboard';
 import L4Dashboard from './pages/L4Dashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import VendorDashboard from './pages/VendorDashboard';
+import VendorLogin from './pages/VendorLogin';
 import CMDashboard from './pages/CMDashboard';
 import ConsultantLogin from './pages/ConsultantLogin';
 import ConsultantDashboard from './pages/ConsultantDashboard';
@@ -65,10 +67,11 @@ function AppRoutes() {
   return (
     <Router>
       <Routes>
-        <Route 
-          path="/" 
-          element={user ? <Navigate to="/dashboard" replace /> : <Login />}
-        />
+        {/* Welcome Page - Main Landing Page */}
+        <Route path="/" element={<WelcomePage />} />
+        
+        {/* Legacy Login Route (redirects to welcome) */}
+        <Route path="/login" element={<Navigate to="/" replace />} />
 
         {/* Default Dashboard - shows based on user level */}
         <Route
@@ -441,14 +444,15 @@ function AppRoutes() {
           element={<Navigate to="/mas-list" replace />} 
         />
         
-          {/* Vendor Dashboard */}
+          {/* Vendor Routes */}
+          <Route path="/vendor-login" element={<VendorLogin />} />
           <Route 
             path="/vendor-dashboard" 
             element={
-              user && (userLevel === 'VENDOR' || userLevel === 'SUPER_ADMIN') ? (
+              (localStorage.getItem('vendorEmail') || (user && (userLevel === 'VENDOR' || userLevel === 'SUPER_ADMIN'))) ? (
                 <VendorDashboard />
               ) : (
-                <Navigate to="/" replace />
+                <Navigate to="/vendor-login" replace />
               )
             }
           />

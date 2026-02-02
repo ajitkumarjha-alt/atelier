@@ -234,6 +234,52 @@ CREATE TRIGGER update_consultants_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+-- Create vendors table for material suppliers/contractors
+CREATE TABLE IF NOT EXISTS vendors (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    contact_number VARCHAR(50),
+    company_name VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create project_vendors junction table
+CREATE TABLE IF NOT EXISTS project_vendors (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    vendor_id INTEGER NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+    assigned_by_id INTEGER REFERENCES users(id),
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(project_id, vendor_id)
+);
+
+-- Create vendor_otp table for OTP-based authentication
+CREATE TABLE IF NOT EXISTS vendor_otp (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    otp VARCHAR(10) NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    is_used BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for faster vendor lookups
+CREATE INDEX IF NOT EXISTS idx_vendors_email ON vendors(email);
+CREATE INDEX IF NOT EXISTS idx_project_vendors_project ON project_vendors(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_vendors_vendor ON project_vendors(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_vendor_otp_email ON vendor_otp(email);
+
+-- Create triggers for vendors table
+DROP TRIGGER IF EXISTS update_vendors_updated_at ON vendors;
+CREATE TRIGGER update_vendors_updated_at
+    BEFORE UPDATE ON vendors
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
 -- Insert default project standards
 INSERT INTO project_standards (category, value, description) VALUES
 -- Building Application Types

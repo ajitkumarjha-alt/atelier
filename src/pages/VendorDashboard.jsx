@@ -9,17 +9,48 @@ export default function VendorDashboard() {
   const [projects, setProjects] = useState([]);
   const [summary, setSummary] = useState({});
   const [error, setError] = useState(null);
+  const [vendor, setVendor] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check if vendor is logged in via OTP
+    const vendorEmail = localStorage.getItem('vendorEmail');
+    const vendorToken = localStorage.getItem('vendorToken');
+    const isSuperAdmin = localStorage.getItem('devUserEmail')?.includes('@lodhagroup.com');
+
+    if (!vendorEmail && !vendorToken && !isSuperAdmin) {
+      navigate('/vendor-login');
+      return;
+    }
+
     fetchData();
-  }, []);
+  }, [navigate]);
 
   async function fetchData() {
     try {
       setLoading(true);
-      const pData = await apiFetchJson('/api/projects');
-      setProjects(pData);
+      const vendorEmail = localStorage.getItem('vendorEmail');
+      const vendorToken = localStorage.getItem('vendorToken');
+      const isSuperAdmin = localStorage.getItem('devUserEmail')?.includes('@lodhagroup.com');
+
+      const headers = isSuperAdmin && !vendorEmail ? {
+        'x-dev-user-email': localStorage.getItem('devUserEmail'),
+      } : {
+        'Authorization': `Bearer ${vendorToken}`,
+        'x-vendor-email': vendorEmail,
+      };
+
+      // Fetch vendor profile and projects
+      const vendorRes = await fetch('/api/vendors/profile', { headers });
+      if (vendorRes.ok) {
+        const vendorData = await vendorRes.json();
+        setVendor(vendorData.vendor);
+        setProjects(vendorData.projects || []);
+      } else {
+        // Fallback to old method for backward compatibility
+        const pData = await apiFetchJson('/api/projects');
+        setProjects(pData);
+      }
 
       // Fetch MAS summary (counts grouped by project)
       const sData = await apiFetchJson('/api/mas/summary');
@@ -52,14 +83,23 @@ export default function VendorDashboard() {
     );
   }
 
+  const handleLogout = () => {
+    localStorage.removeItem('vendorEmail');
+    localStorage.removeItem('vendorToken');
+    localStorage.removeItem('vendorId');
+    navigate('/');
+  };
+
   return (
     <Layout>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="heading-primary">Vendor Dashboard</h1>
-          <p className="text-body">Summary of Material Approval Sheets you have sent</p>
+          <p className="text-body">
+            {vendor ? `Welcome, ${vendor.name}` : 'Summary of Material Approval Sheets you have sent'}
+          </p>
         </div>
-        <div>
+        <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/mas?create=true')}
             className="inline-flex items-center gap-2 px-4 py-2 bg-lodha-gold hover:bg-lodha-deep text-white rounded-md shadow"
@@ -67,6 +107,14 @@ export default function VendorDashboard() {
             <Plus className="w-4 h-4" />
             Create New MAS
           </button>
+          {localStorage.getItem('vendorEmail') && (
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+            >
+              Logout
+            </button>
+          )}
         </div>
       </div>
 
