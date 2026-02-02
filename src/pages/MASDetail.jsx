@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Calendar, User, Building, Package, CheckCircle, XCircle, Clock, MessageSquare } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, User, Building, Package, CheckCircle, XCircle, Clock, MessageSquare, UserPlus } from 'lucide-react';
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
 import { auth } from '../lib/firebase';
@@ -25,6 +25,12 @@ export default function MASDetail() {
   const [l1Comments, setL1Comments] = useState('');
   const [submittingL1, setSubmittingL1] = useState(false);
 
+  // Consultant Referral State
+  const [consultants, setConsultants] = useState([]);
+  const [showConsultantReferral, setShowConsultantReferral] = useState(false);
+  const [selectedConsultantId, setSelectedConsultantId] = useState('');
+  const [submittingReferral, setSubmittingReferral] = useState(false);
+
   useEffect(() => {
     const currentUser = auth.currentUser;
     if (currentUser) {
@@ -32,6 +38,7 @@ export default function MASDetail() {
       fetchUserLevel(currentUser.email);
     }
     fetchMASDetail();
+    fetchConsultants();
   }, [id]);
 
   const fetchUserLevel = async (email) => {
@@ -64,6 +71,22 @@ export default function MASDetail() {
       console.error('Error fetching MAS details:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchConsultants = async () => {
+    try {
+      const response = await apiFetch('/api/consultants/list', {
+        headers: {
+          'x-dev-user-email': user?.email,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setConsultants(data);
+      }
+    } catch (error) {
+      console.error('Error fetching consultants:', error);
     }
   };
 
@@ -138,6 +161,42 @@ export default function MASDetail() {
       alert('Error submitting L1 review');
     } finally {
       setSubmittingL1(false);
+    }
+  };
+
+  const handleReferToConsultant = async () => {
+    if (!selectedConsultantId) {
+      alert('Please select a consultant');
+      return;
+    }
+
+    try {
+      setSubmittingReferral(true);
+      const response = await apiFetch(`/api/mas/${id}/refer-consultant`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dev-user-email': user?.email,
+        },
+        body: JSON.stringify({
+          consultant_id: selectedConsultantId,
+        }),
+      });
+
+      if (response.ok) {
+        alert('Successfully referred to consultant');
+        setShowConsultantReferral(false);
+        setSelectedConsultantId('');
+        fetchMASDetail(); // Refresh data
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.error || 'Failed to refer to consultant'}`);
+      }
+    } catch (error) {
+      console.error('Error referring to consultant:', error);
+      alert('Error referring to consultant');
+    } finally {
+      setSubmittingReferral(false);
     }
   };
 
@@ -470,6 +529,92 @@ export default function MASDetail() {
               </div>
             )}
           </div>
+
+          {/* Consultant Referral Section */}
+          {(userLevel === 'L1' || userLevel === 'L2') && (
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-garamond font-semibold text-lodha-black flex items-center">
+                  <UserPlus className="w-5 h-5 mr-2 text-lodha-gold" />
+                  MEP Consultant Review
+                </h2>
+                {mas.consultant_replied_at && (
+                  <span className="px-3 py-1 bg-green-100 text-green-700 border border-green-200 rounded-full text-sm font-medium">
+                    Replied
+                  </span>
+                )}
+              </div>
+
+              {mas.referred_to_consultant_id && (
+                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800 mb-2">
+                    Referred to consultant
+                  </p>
+                  {mas.consultant_reply && (
+                    <div className="mt-3 p-3 bg-white rounded border border-blue-200">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Consultant Response:</p>
+                      <p className="text-gray-900 whitespace-pre-wrap">{mas.consultant_reply}</p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Replied on: {formatDate(mas.consultant_replied_at)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!mas.referred_to_consultant_id && (
+                <div className="mt-4">
+                  {!showConsultantReferral ? (
+                    <button
+                      onClick={() => setShowConsultantReferral(true)}
+                      className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Refer to Consultant
+                    </button>
+                  ) : (
+                    <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Select Consultant *
+                        </label>
+                        <select
+                          value={selectedConsultantId}
+                          onChange={(e) => setSelectedConsultantId(e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                        >
+                          <option value="">Choose a consultant</option>
+                          {consultants.map(consultant => (
+                            <option key={consultant.id} value={consultant.id}>
+                              {consultant.name} - {consultant.company_name || consultant.email}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={handleReferToConsultant}
+                          disabled={submittingReferral}
+                          className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                        >
+                          {submittingReferral ? 'Referring...' : 'Refer Now'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowConsultantReferral(false);
+                            setSelectedConsultantId('');
+                          }}
+                          className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Column - Status Summary */}

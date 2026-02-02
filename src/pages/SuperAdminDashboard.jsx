@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import SuperAdminLayout from '../components/SuperAdminLayout';
-import { Users, Shield, TrendingUp, Settings, Database, Truck, HelpCircle, Briefcase } from 'lucide-react';
+import { Users, Shield, TrendingUp, Settings, Database, Truck, HelpCircle, Briefcase, UserCog } from 'lucide-react';
 
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
@@ -82,6 +82,17 @@ export default function SuperAdminDashboard() {
       borderColor: 'border-lodha-gold/30',
       route: '/vendor-dashboard',
       access: 'Vendor access: upload MAS',
+    },
+    {
+      title: 'Consultant Portal',
+      subtitle: 'MEP CONSULTANT - Review & Respond',
+      description: 'View projects, drawings, calculations, and respond to MAS/RFI referrals.',
+      icon: UserCog,
+      color: 'from-blue-100 to-blue-200',
+      textColor: 'text-lodha-black',
+      borderColor: 'border-blue-400',
+      route: '/consultant-dashboard',
+      access: 'Consultant access: technical review',
     },
     {
       title: 'Project Standards',

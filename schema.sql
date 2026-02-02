@@ -172,6 +172,68 @@ CREATE TABLE IF NOT EXISTS project_team (
 CREATE INDEX IF NOT EXISTS idx_project_team_project ON project_team(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_team_user ON project_team(user_id);
 
+-- Create consultants table for MEP consultants
+CREATE TABLE IF NOT EXISTS consultants (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    contact_number VARCHAR(50),
+    company_name VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create project_consultants junction table
+CREATE TABLE IF NOT EXISTS project_consultants (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    consultant_id INTEGER NOT NULL REFERENCES consultants(id) ON DELETE CASCADE,
+    assigned_by_id INTEGER REFERENCES users(id),
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(project_id, consultant_id)
+);
+
+-- Create consultant_otp table for OTP-based authentication
+CREATE TABLE IF NOT EXISTS consultant_otp (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    otp VARCHAR(10) NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    is_used BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add consultant reference fields to MAS table
+ALTER TABLE material_approval_sheets 
+ADD COLUMN IF NOT EXISTS referred_to_consultant_id INTEGER REFERENCES consultants(id),
+ADD COLUMN IF NOT EXISTS consultant_reply TEXT,
+ADD COLUMN IF NOT EXISTS consultant_replied_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS consultant_reply_status VARCHAR(50);
+
+-- Add consultant reference fields to RFI table
+ALTER TABLE requests_for_information 
+ADD COLUMN IF NOT EXISTS referred_to_consultant_id INTEGER REFERENCES consultants(id),
+ADD COLUMN IF NOT EXISTS consultant_reply TEXT,
+ADD COLUMN IF NOT EXISTS consultant_replied_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS consultant_reply_status VARCHAR(50);
+
+-- Create indexes for faster consultant lookups
+CREATE INDEX IF NOT EXISTS idx_consultants_email ON consultants(email);
+CREATE INDEX IF NOT EXISTS idx_project_consultants_project ON project_consultants(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_consultants_consultant ON project_consultants(consultant_id);
+CREATE INDEX IF NOT EXISTS idx_consultant_otp_email ON consultant_otp(email);
+CREATE INDEX IF NOT EXISTS idx_mas_consultant ON material_approval_sheets(referred_to_consultant_id);
+CREATE INDEX IF NOT EXISTS idx_rfi_consultant ON requests_for_information(referred_to_consultant_id);
+
+-- Create triggers for consultants table
+DROP TRIGGER IF EXISTS update_consultants_updated_at ON consultants;
+CREATE TRIGGER update_consultants_updated_at
+    BEFORE UPDATE ON consultants
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
 -- Insert default project standards
 INSERT INTO project_standards (category, value, description) VALUES
 -- Building Application Types

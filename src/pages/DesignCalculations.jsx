@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, Calculator, Download, Upload, FileText, AlertCircle, Filter } from 'lucide-react';
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
-import { auth } from '../lib/firebase';
+import { useUser } from '../lib/UserContext';
+import { getEffectiveUserLevel, canCreateEditCalculations } from '../lib/userLevel';
 
 export default function DesignCalculations() {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const location = useLocation();
+  const { user, userLevel } = useUser();
   const [calculations, setCalculations] = useState([]);
   const [filteredCalculations, setFilteredCalculations] = useState([]);
   const [project, setProject] = useState(null);
@@ -56,10 +58,6 @@ export default function DesignCalculations() {
   const statuses = ['Draft', 'Under Review', 'Approved', 'Rejected', 'Revised'];
 
   useEffect(() => {
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      setUser(currentUser);
-    }
     if (projectId) {
       fetchProjectDetails();
       fetchBuildings();
@@ -196,7 +194,7 @@ export default function DesignCalculations() {
       floor_id: '',
       title: '',
       description: '',
-      calculatedBy: '',
+      calculatedBy: user?.displayName || user?.email || '',
       verifiedBy: '',
       status: 'Draft',
       remarks: '',
@@ -241,6 +239,45 @@ export default function DesignCalculations() {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
+  const getCalculationUrlSlug = (calculationType) => {
+    const slugMap = {
+      'Electrical Load Calculation': 'electrical-load',
+      'Water Demand Calculation': 'water-demand',
+      'Cable Selection Sheet': 'cable-selection',
+      'Rising Main Design': 'rising-main',
+      'Down Take Design': 'down-take',
+      'Bus Riser Design': 'bus-riser',
+      'Lighting Load Calculation': 'lighting-load',
+      'HVAC Load Calculation': 'hvac-load',
+      'Fire Pump Calculation': 'fire-pump',
+      'Plumbing Fixture Calculation': 'plumbing-fixture',
+      'Earthing & Lightning Calculation': 'earthing-lightning',
+      'Panel Schedule': 'panel-schedule',
+    };
+    return slugMap[calculationType] || 'other';
+  };
+
+  const handleViewCalculation = (calculation) => {
+    const slug = getCalculationUrlSlug(calculation.calculation_type);
+    navigate(`/projects/${projectId}/calculations/${slug}/${calculation.id}`);
+  };
+
+  const canCreateEdit = () => {
+    if (!userLevel) {
+      console.log('canCreateEdit: No userLevel yet');
+      return false;
+    }
+    const effectiveLevel = getEffectiveUserLevel(userLevel, location.pathname);
+    const canEdit = canCreateEditCalculations(effectiveLevel);
+    console.log('canCreateEdit called:', { userLevel, path: location.pathname, effectiveLevel, canEdit });
+    return canEdit;
+  };
+
+  const getEffectiveLevel = () => {
+    if (!userLevel) return null;
+    return getEffectiveUserLevel(userLevel, location.pathname);
+  };
+
   if (loading && !project) {
     return (
       <Layout>
@@ -270,18 +307,26 @@ export default function DesignCalculations() {
                 Design Calculations
               </h1>
               <p className="text-lodha-grey">{project?.name}</p>
+              {userLevel === 'SUPER_ADMIN' && getEffectiveLevel() !== 'SUPER_ADMIN' && (
+                <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                  <AlertCircle className="w-4 h-4" />
+                  Testing as {getEffectiveLevel()} user
+                </div>
+              )}
             </div>
-            <button
-              onClick={() => {
-                setEditingCalculation(null);
-                resetForm();
-                setShowCreateModal(true);
-              }}
-              className="flex items-center gap-2 bg-lodha-gold text-white px-6 py-2 rounded hover:bg-lodha-deep transition"
-            >
-              <Plus className="w-5 h-5" />
-              Add Calculation
-            </button>
+            {canCreateEdit() && (
+              <button
+                onClick={() => {
+                  setEditingCalculation(null);
+                  resetForm();
+                  setShowCreateModal(true);
+                }}
+                className="flex items-center gap-2 bg-lodha-gold text-white px-6 py-2 rounded hover:bg-lodha-deep transition"
+              >
+                <Plus className="w-5 h-5" />
+                Add Calculation
+              </button>
+            )}
           </div>
         </div>
 
@@ -382,7 +427,11 @@ export default function DesignCalculations() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {filteredCalculations.map((calc) => (
-                    <tr key={calc.id} className="hover:bg-lodha-sand transition">
+                    <tr 
+                      key={calc.id} 
+                      className="hover:bg-lodha-sand transition cursor-pointer"
+                      onClick={() => handleViewCalculation(calc)}
+                    >
                       <td className="px-4 py-3 text-sm text-lodha-black">{calc.calculation_type}</td>
                       <td className="px-4 py-3 text-sm text-lodha-black font-medium">{calc.title}</td>
                       <td className="px-4 py-3 text-sm text-lodha-grey">
@@ -395,7 +444,7 @@ export default function DesignCalculations() {
                           {calc.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         {calc.file_url ? (
                           <button
                             onClick={() => handleDownload(calc.file_url, calc.file_name)}
@@ -408,13 +457,21 @@ export default function DesignCalculations() {
                           <span className="text-sm text-lodha-grey">No file</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
                         <button
-                          onClick={() => handleEdit(calc)}
-                          className="text-lodha-gold hover:text-lodha-deep text-sm"
+                          onClick={() => handleViewCalculation(calc)}
+                          className="text-blue-600 hover:text-blue-800 text-sm"
                         >
-                          Edit
+                          View
                         </button>
+                        {canCreateEdit() && (
+                          <button
+                            onClick={() => handleEdit(calc)}
+                            className="text-lodha-gold hover:text-lodha-deep text-sm"
+                          >
+                            Edit
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -500,10 +557,11 @@ export default function DesignCalculations() {
                         type="text"
                         required
                         value={formData.calculatedBy}
-                        onChange={(e) => setFormData({ ...formData, calculatedBy: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
-                        placeholder="Engineer name"
+                        disabled
+                        className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-gray-700 cursor-not-allowed"
+                        placeholder="Auto-populated from logged-in user"
                       />
+                      <p className="text-xs text-gray-500 mt-1">Auto-populated from your account</p>
                     </div>
 
                     <div>

@@ -1,7 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from './lib/firebase';
+import { UserProvider, useUser } from './lib/UserContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import L0Dashboard from './pages/L0Dashboard';
@@ -12,6 +10,12 @@ import L4Dashboard from './pages/L4Dashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import VendorDashboard from './pages/VendorDashboard';
 import CMDashboard from './pages/CMDashboard';
+import ConsultantLogin from './pages/ConsultantLogin';
+import ConsultantDashboard from './pages/ConsultantDashboard';
+import ConsultantProjectDrawings from './pages/ConsultantProjectDrawings';
+import ConsultantProjectCalculations from './pages/ConsultantProjectCalculations';
+import ConsultantMASDetail from './pages/ConsultantMASDetail';
+import ConsultantRFIDetail from './pages/ConsultantRFIDetail';
 import ProjectDetail from './pages/ProjectDetail';
 import ProjectInput from './pages/ProjectInput';
 import MASPage from './pages/MASPage';
@@ -28,34 +32,22 @@ import ProjectStandardsManagement from './pages/ProjectStandardsManagement';
 import { createOrUpdateUser } from './services/userService';
 import { Loader } from 'lucide-react';
 
-function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [userLevel, setUserLevel] = useState(null);
+// Calculation Pages
+import ElectricalLoadCalculation from './pages/calculations/ElectricalLoadCalculation';
+import WaterDemandCalculation from './pages/calculations/WaterDemandCalculation';
+import CableSelectionSheet from './pages/calculations/CableSelectionSheet';
+import RisingMainDesign from './pages/calculations/RisingMainDesign';
+import DownTakeDesign from './pages/calculations/DownTakeDesign';
+import BusRiserDesign from './pages/calculations/BusRiserDesign';
+import LightingLoadCalculation from './pages/calculations/LightingLoadCalculation';
+import HVACLoadCalculation from './pages/calculations/HVACLoadCalculation';
+import FirePumpCalculation from './pages/calculations/FirePumpCalculation';
+import PlumbingFixtureCalculation from './pages/calculations/PlumbingFixtureCalculation';
+import EarthingLightningCalculation from './pages/calculations/EarthingLightningCalculation';
+import PanelSchedule from './pages/calculations/PanelSchedule';
 
-  useEffect(() => {
-    console.log('Setting up auth state listener');
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('Auth state changed:', user ? user.email : 'No user');
-      setUser(user);
-      
-      // Determine user level by syncing with backend
-      if (user) {
-        try {
-          const userData = await createOrUpdateUser(user.email, user.displayName);
-          console.log('User data from backend:', userData);
-          setUserLevel(userData.user_level || 'L2');
-        } catch (error) {
-          console.error('Error fetching user level:', error);
-          setUserLevel('L2'); // Default fallback
-        }
-      }
-      
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+function AppRoutes() {
+  const { user, userLevel, loading } = useUser();
 
   if (loading) {
     return (
@@ -215,6 +207,139 @@ function App() {
           } 
         />
 
+        {/* Individual Calculation Pages */}
+        <Route 
+          path="/projects/:projectId/calculations/electrical-load/:calculationId?" 
+          element={
+            user ? (
+              <ElectricalLoadCalculation />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        <Route 
+          path="/projects/:projectId/calculations/water-demand/:calculationId?" 
+          element={
+            user ? (
+              <WaterDemandCalculation />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        <Route 
+          path="/projects/:projectId/calculations/cable-selection/:calculationId?" 
+          element={
+            user ? (
+              <CableSelectionSheet />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        <Route 
+          path="/projects/:projectId/calculations/rising-main/:calculationId?" 
+          element={
+            user ? (
+              <RisingMainDesign />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        <Route 
+          path="/projects/:projectId/calculations/down-take/:calculationId?" 
+          element={
+            user ? (
+              <DownTakeDesign />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        <Route 
+          path="/projects/:projectId/calculations/bus-riser/:calculationId?" 
+          element={
+            user ? (
+              <BusRiserDesign />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        <Route 
+          path="/projects/:projectId/calculations/lighting-load/:calculationId?" 
+          element={
+            user ? (
+              <LightingLoadCalculation />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        <Route 
+          path="/projects/:projectId/calculations/hvac-load/:calculationId?" 
+          element={
+            user ? (
+              <HVACLoadCalculation />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        <Route 
+          path="/projects/:projectId/calculations/fire-pump/:calculationId?" 
+          element={
+            user ? (
+              <FirePumpCalculation />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        <Route 
+          path="/projects/:projectId/calculations/plumbing-fixture/:calculationId?" 
+          element={
+            user ? (
+              <PlumbingFixtureCalculation />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        <Route 
+          path="/projects/:projectId/calculations/earthing-lightning/:calculationId?" 
+          element={
+            user ? (
+              <EarthingLightningCalculation />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        <Route 
+          path="/projects/:projectId/calculations/panel-schedule/:calculationId?" 
+          element={
+            user ? (
+              <PanelSchedule />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
         {/* Change Requests */}
         <Route 
           path="/change-requests/:projectId" 
@@ -328,6 +453,59 @@ function App() {
             }
           />
 
+        {/* Consultant Routes - accessible by consultants and super admin */}
+        <Route path="/consultant-login" element={<ConsultantLogin />} />
+        <Route 
+          path="/consultant-dashboard" 
+          element={
+            (localStorage.getItem('consultantEmail') || (user && userLevel === 'SUPER_ADMIN')) ? (
+              <ConsultantDashboard />
+            ) : (
+              <Navigate to="/consultant-login" replace />
+            )
+          } 
+        />
+        <Route 
+          path="/consultant/project/:projectId/drawings" 
+          element={
+            (localStorage.getItem('consultantEmail') || (user && userLevel === 'SUPER_ADMIN')) ? (
+              <ConsultantProjectDrawings />
+            ) : (
+              <Navigate to="/consultant-login" replace />
+            )
+          } 
+        />
+        <Route 
+          path="/consultant/project/:projectId/calculations" 
+          element={
+            (localStorage.getItem('consultantEmail') || (user && userLevel === 'SUPER_ADMIN')) ? (
+              <ConsultantProjectCalculations />
+            ) : (
+              <Navigate to="/consultant-login" replace />
+            )
+          } 
+        />
+        <Route 
+          path="/consultant/mas/:masId" 
+          element={
+            (localStorage.getItem('consultantEmail') || (user && userLevel === 'SUPER_ADMIN')) ? (
+              <ConsultantMASDetail />
+            ) : (
+              <Navigate to="/consultant-login" replace />
+            )
+          } 
+        />
+        <Route 
+          path="/consultant/rfi/:rfiId" 
+          element={
+            (localStorage.getItem('consultantEmail') || (user && userLevel === 'SUPER_ADMIN')) ? (
+              <ConsultantRFIDetail />
+            ) : (
+              <Navigate to="/consultant-login" replace />
+            )
+          } 
+        />
+
         {/* CM Dashboard */}
         <Route 
           path="/cm-dashboard" 
@@ -426,6 +604,14 @@ function App() {
         />
       </Routes>
     </Router>
+  );
+}
+
+function App() {
+  return (
+    <UserProvider>
+      <AppRoutes />
+    </UserProvider>
   );
 }
 
