@@ -21,6 +21,7 @@ import RFIPage from './pages/RFIPage';
 import RFICreate from './pages/RFICreate';
 import RFIDetail from './pages/RFIDetail';
 import DrawingSchedule from './pages/DrawingSchedule';
+import DesignCalculations from './pages/DesignCalculations';
 import ChangeRequestsPage from './pages/ChangeRequestsPage';
 import ChangeRequestDetail from './pages/ChangeRequestDetail';
 import ProjectStandardsManagement from './pages/ProjectStandardsManagement';
@@ -196,6 +197,18 @@ function App() {
           element={
             user && (userLevel === 'L2' || userLevel === 'L1' || userLevel === 'SUPER_ADMIN') ? (
               <DrawingSchedule />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* Design Calculations */}
+        <Route 
+          path="/design-calculations/:projectId" 
+          element={
+            user ? (
+              <DesignCalculations />
             ) : (
               <Navigate to="/" replace />
             )

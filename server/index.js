@@ -802,6 +802,30 @@ async function initializeDatabase() {
     `);
     console.log('✓ drawing_schedules table initialized');
 
+    // Design Calculations table
+    await query(`
+      CREATE TABLE IF NOT EXISTS design_calculations (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+        building_id INTEGER REFERENCES buildings(id) ON DELETE SET NULL,
+        floor_id INTEGER REFERENCES floors(id) ON DELETE SET NULL,
+        calculation_type VARCHAR(200) NOT NULL,
+        title VARCHAR(500) NOT NULL,
+        description TEXT,
+        calculated_by VARCHAR(255) NOT NULL,
+        verified_by VARCHAR(255),
+        status VARCHAR(50) DEFAULT 'Draft',
+        file_url TEXT,
+        file_name VARCHAR(500),
+        remarks TEXT,
+        created_by VARCHAR(255),
+        updated_by VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ design_calculations table initialized');
+
     // Project Change Requests table
     await query(`
       CREATE TABLE IF NOT EXISTS project_change_requests (
@@ -2550,6 +2574,283 @@ app.get('/api/drawing-schedules/stats/:projectId', verifyToken, async (req, res)
 });
 
 // ============= END DRAWING SCHEDULE ENDPOINTS =============
+
+// ============= DESIGN CALCULATIONS ENDPOINTS =============
+
+// Create a new design calculation
+app.post('/api/design-calculations', verifyToken, upload.single('calculationFile'), async (req, res) => {
+  try {
+    const {
+      projectId,
+      building_id,
+      floor_id,
+      calculationType,
+      title,
+      description,
+      calculatedBy,
+      verifiedBy,
+      status,
+      remarks
+    } = req.body;
+
+    const userEmail = req.user?.email;
+    let fileUrl = null;
+    let fileName = null;
+
+    // Upload file if provided
+    if (req.file && isStorageConfigured()) {
+      const uploadResult = await uploadToGCS(req.file);
+      fileUrl = uploadResult.url;
+      fileName = req.file.originalname;
+    }
+
+    const result = await query(
+      `INSERT INTO design_calculations (
+        project_id, building_id, floor_id, calculation_type, title, description,
+        calculated_by, verified_by, status, file_url, file_name, remarks, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      RETURNING *`,
+      [
+        projectId,
+        building_id || null,
+        floor_id || null,
+        calculationType,
+        title,
+        description || null,
+        calculatedBy,
+        verifiedBy || null,
+        status || 'Draft',
+        fileUrl,
+        fileName,
+        remarks || null,
+        userEmail
+      ]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating design calculation:', error);
+    res.status(500).json({ error: 'Failed to create design calculation', message: error.message });
+  }
+});
+
+// Get all design calculations for a project
+app.get('/api/design-calculations', verifyToken, async (req, res) => {
+  try {
+    const { projectId } = req.query;
+
+    if (!projectId) {
+      return res.status(400).json({ error: 'Project ID is required' });
+    }
+
+    const result = await query(
+      `SELECT 
+        dc.*,
+        b.name as building_name,
+        f.floor_name
+      FROM design_calculations dc
+      LEFT JOIN buildings b ON dc.building_id = b.id
+      LEFT JOIN floors f ON dc.floor_id = f.id
+      WHERE dc.project_id = $1
+      ORDER BY dc.created_at DESC`,
+      [projectId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching design calculations:', error);
+    res.status(500).json({ error: 'Failed to fetch design calculations' });
+  }
+});
+
+// Get single design calculation by ID
+app.get('/api/design-calculations/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await query(
+      `SELECT 
+        dc.*,
+        b.name as building_name,
+        f.floor_name,
+        p.name as project_name
+      FROM design_calculations dc
+      LEFT JOIN buildings b ON dc.building_id = b.id
+      LEFT JOIN floors f ON dc.floor_id = f.id
+      LEFT JOIN projects p ON dc.project_id = p.id
+      WHERE dc.id = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Design calculation not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching design calculation:', error);
+    res.status(500).json({ error: 'Failed to fetch design calculation' });
+  }
+});
+
+// Update design calculation
+app.patch('/api/design-calculations/:id', verifyToken, upload.single('calculationFile'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      building_id,
+      floor_id,
+      calculationType,
+      title,
+      description,
+      calculatedBy,
+      verifiedBy,
+      status,
+      remarks
+    } = req.body;
+
+    const userEmail = req.user?.email;
+
+    // Get current calculation for file management
+    const currentCalc = await query('SELECT * FROM design_calculations WHERE id = $1', [id]);
+    
+    if (currentCalc.rows.length === 0) {
+      return res.status(404).json({ error: 'Design calculation not found' });
+    }
+
+    let fileUrl = currentCalc.rows[0].file_url;
+    let fileName = currentCalc.rows[0].file_name;
+
+    // Upload new file if provided
+    if (req.file && isStorageConfigured()) {
+      // Delete old file if exists
+      if (fileUrl) {
+        try {
+          await deleteFromGCS(fileUrl);
+        } catch (error) {
+          console.error('Error deleting old file:', error);
+        }
+      }
+      
+      const uploadResult = await uploadToGCS(req.file);
+      fileUrl = uploadResult.url;
+      fileName = req.file.originalname;
+    }
+
+    const result = await query(
+      `UPDATE design_calculations SET
+        building_id = COALESCE($1, building_id),
+        floor_id = COALESCE($2, floor_id),
+        calculation_type = COALESCE($3, calculation_type),
+        title = COALESCE($4, title),
+        description = COALESCE($5, description),
+        calculated_by = COALESCE($6, calculated_by),
+        verified_by = COALESCE($7, verified_by),
+        status = COALESCE($8, status),
+        file_url = $9,
+        file_name = $10,
+        remarks = COALESCE($11, remarks),
+        updated_by = $12,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $13
+      RETURNING *`,
+      [
+        building_id || null,
+        floor_id || null,
+        calculationType,
+        title,
+        description,
+        calculatedBy,
+        verifiedBy,
+        status,
+        fileUrl,
+        fileName,
+        remarks,
+        userEmail,
+        id
+      ]
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating design calculation:', error);
+    res.status(500).json({ error: 'Failed to update design calculation' });
+  }
+});
+
+// Delete design calculation
+app.delete('/api/design-calculations/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get calculation to delete file
+    const calc = await query('SELECT * FROM design_calculations WHERE id = $1', [id]);
+    
+    if (calc.rows.length === 0) {
+      return res.status(404).json({ error: 'Design calculation not found' });
+    }
+
+    // Delete file if exists
+    if (calc.rows[0].file_url && isStorageConfigured()) {
+      try {
+        await deleteFromGCS(calc.rows[0].file_url);
+      } catch (error) {
+        console.error('Error deleting file:', error);
+      }
+    }
+
+    await query('DELETE FROM design_calculations WHERE id = $1', [id]);
+
+    res.json({ message: 'Design calculation deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting design calculation:', error);
+    res.status(500).json({ error: 'Failed to delete design calculation' });
+  }
+});
+
+// Get design calculations statistics
+app.get('/api/design-calculations/stats/:projectId', verifyToken, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const result = await query(
+      `SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN status = 'Draft' THEN 1 END) as draft,
+        COUNT(CASE WHEN status = 'Under Review' THEN 1 END) as "underReview",
+        COUNT(CASE WHEN status = 'Approved' THEN 1 END) as approved,
+        COUNT(CASE WHEN status = 'Rejected' THEN 1 END) as rejected,
+        COUNT(CASE WHEN status = 'Revised' THEN 1 END) as revised
+      FROM design_calculations
+      WHERE project_id = $1`,
+      [projectId]
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching design calculation stats:', error);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
+
+// Get buildings for a project
+app.get('/api/projects/:projectId/buildings', verifyToken, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const result = await query(
+      'SELECT * FROM buildings WHERE project_id = $1 ORDER BY name',
+      [projectId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching buildings:', error);
+    res.status(500).json({ error: 'Failed to fetch buildings' });
+  }
+});
+
+// ============= END DESIGN CALCULATIONS ENDPOINTS =============
 
 // ============= PROJECT CHANGE REQUEST ENDPOINTS =============
 
