@@ -11,13 +11,20 @@ module.exports = {
         'garamond': ['Cormorant Garamond', 'serif'],
       },
       colors: {
+        // Primary Colors
         'lodha-gold': '#9D7F1B',
-        'lodha-black': '#000000',
         'lodha-grey': '#6D6E71',
+        'lodha-cream': '#F0EADC',
         'lodha-sand': '#F3F1E7',
-        // Legacy colors for backward compatibility
-        'lodha-deep': '#9E7E1D',
-        'lodha-bronze': '#5C4B13',
+        // Secondary Colors
+        'lodha-muted-gold': '#CAC6A3',
+        'lodha-sage': '#E8E6D4',
+        'lodha-cool-grey': '#949CA1',
+        'lodha-steel': '#CED8DD',
+        // Legacy compatibility (mapped to new colors)
+        'lodha-deep': '#9D7F1B',
+        'lodha-bronze': '#6D6E71',
+        'lodha-black': '#6D6E71', // Mapped to grey, not pure black
       },
     },
   },

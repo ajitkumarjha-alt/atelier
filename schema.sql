@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE NOT NULL,
     full_name VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL DEFAULT 'user',
-    user_level VARCHAR(2) NOT NULL DEFAULT 'L4',
+    user_level VARCHAR(20) NOT NULL DEFAULT 'L4',
     last_login TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -155,6 +155,22 @@ CREATE TRIGGER update_project_standards_updated_at
     BEFORE UPDATE ON project_standards
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Create project_team table for managing project team members
+CREATE TABLE IF NOT EXISTS project_team (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role VARCHAR(100),
+    assigned_by INTEGER REFERENCES users(id),
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(project_id, user_id)
+);
+
+-- Create index for faster team member lookups
+CREATE INDEX IF NOT EXISTS idx_project_team_project ON project_team(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_team_user ON project_team(user_id);
 
 -- Insert default project standards
 INSERT INTO project_standards (category, value, description) VALUES

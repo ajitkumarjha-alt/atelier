@@ -5,6 +5,13 @@ import { query } from './db.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { upload, uploadToGCS, deleteFromGCS, isStorageConfigured } from './storage.js';
+import { 
+  isLLMConfigured, 
+  executeNaturalLanguageQuery, 
+  suggestVisualization,
+  generateProjectStory,
+  chatWithDatabase 
+} from './llm.js';
 
 const app = express();
 const port = process.env.PORT || 5175;
@@ -291,6 +298,122 @@ app.get('/api/upload/status', (req, res) => {
 
 // ============================================================================
 // End File Upload Endpoints
+// ============================================================================
+
+// ============================================================================
+// LLM / AI Endpoints
+// ============================================================================
+
+// Natural language query endpoint
+app.post('/api/llm/query', verifyToken, async (req, res) => {
+  try {
+    if (!isLLMConfigured()) {
+      return res.status(503).json({ 
+        error: 'LLM service not configured',
+        message: 'Gemini AI is not available'
+      });
+    }
+
+    const { query: userQuery } = req.body;
+    const userLevel = req.user?.userLevel || 'L2';
+
+    if (!userQuery) {
+      return res.status(400).json({ error: 'Query is required' });
+    }
+
+    const result = await executeNaturalLanguageQuery(userQuery, userLevel);
+    
+    if (result.success) {
+      // Suggest visualization
+      const viz = await suggestVisualization(result.data, userQuery);
+      
+      res.json({
+        success: true,
+        data: result.data,
+        rowCount: result.rowCount,
+        query: result.query,
+        visualization: viz
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: result.error
+      });
+    }
+  } catch (error) {
+    console.error('LLM query error:', error);
+    res.status(500).json({ 
+      error: 'Failed to process query',
+      message: error.message 
+    });
+  }
+});
+
+// Chat with database
+app.post('/api/llm/chat', verifyToken, async (req, res) => {
+  try {
+    if (!isLLMConfigured()) {
+      return res.status(503).json({ 
+        error: 'LLM service not configured'
+      });
+    }
+
+    const { message, history } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    const result = await chatWithDatabase(message, history || []);
+    
+    res.json({
+      success: true,
+      answer: result.answer
+    });
+  } catch (error) {
+    console.error('Chat error:', error);
+    res.status(500).json({ 
+      error: 'Failed to process chat',
+      message: error.message 
+    });
+  }
+});
+
+// Generate project story
+app.get('/api/llm/project-story/:projectId', verifyToken, async (req, res) => {
+  try {
+    if (!isLLMConfigured()) {
+      return res.status(503).json({ 
+        error: 'LLM service not configured'
+      });
+    }
+
+    const { projectId } = req.params;
+
+    const result = await generateProjectStory(projectId);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Project story error:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate project story',
+      message: error.message 
+    });
+  }
+});
+
+// Check if LLM is configured
+app.get('/api/llm/status', (req, res) => {
+  res.json({ 
+    configured: isLLMConfigured(),
+    message: isLLMConfigured() 
+      ? 'LLM service is available' 
+      : 'LLM service is not configured'
+  });
+});
+
+// ============================================================================
+// End LLM Endpoints
 // ============================================================================
 
 // Super Admin Email
@@ -878,6 +1001,81 @@ app.get('/api/users/level/:level', async (req, res) => {
   }
 });
 
+// Get project team members
+app.get('/api/projects/:id/team', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const text = `
+      SELECT 
+        pt.id,
+        pt.user_id,
+        pt.role,
+        pt.assigned_at,
+        u.email,
+        u.full_name,
+        u.user_level,
+        assigned_by_user.full_name as assigned_by_name
+      FROM project_team pt
+      JOIN users u ON pt.user_id = u.id
+      LEFT JOIN users assigned_by_user ON pt.assigned_by = assigned_by_user.id
+      WHERE pt.project_id = $1
+      ORDER BY u.user_level, u.full_name
+    `;
+    
+    const result = await query(text, [id]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching project team:', error);
+    res.status(500).json({ error: 'Failed to fetch project team' });
+  }
+});
+
+// Add team member to project
+app.post('/api/projects/:id/team', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, role, assignedBy } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    const text = `
+      INSERT INTO project_team (project_id, user_id, role, assigned_by)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (project_id, user_id) 
+      DO UPDATE SET role = $3, assigned_by = $4, assigned_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `;
+    
+    const result = await query(text, [id, userId, role || null, assignedBy || null]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error adding team member:', error);
+    res.status(500).json({ error: 'Failed to add team member' });
+  }
+});
+
+// Remove team member from project
+app.delete('/api/projects/:id/team/:userId', async (req, res) => {
+  try {
+    const { id, userId } = req.params;
+    
+    const text = 'DELETE FROM project_team WHERE project_id = $1 AND user_id = $2 RETURNING *';
+    const result = await query(text, [id, userId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Team member not found' });
+    }
+    
+    res.json({ success: true, message: 'Team member removed' });
+  } catch (error) {
+    console.error('Error removing team member:', error);
+    res.status(500).json({ error: 'Failed to remove team member' });
+  }
+});
+
 // Assign lead to project (L1 and SUPER_ADMIN only)
 app.post('/api/projects/:id/assign-lead', async (req, res) => {
   try {
@@ -1234,7 +1432,7 @@ app.delete('/api/project-standards/:id', async (req, res) => {
 
 // Create new project
 app.post('/api/projects', async (req, res) => {
-  const { name, location, latitude, longitude, buildings, userEmail } = req.body;
+  const { name, location, latitude, longitude, buildings, assignedLeadId, userEmail } = req.body;
 
   try {
     // Validate required fields
@@ -1242,14 +1440,14 @@ app.post('/api/projects', async (req, res) => {
       return res.status(400).json({ error: 'Project name is required' });
     }
 
-    console.log('📝 Creating project:', { name, location, buildingCount: buildings?.length });
+    console.log('📝 Creating project:', { name, location, buildingCount: buildings?.length, assignedLeadId });
 
-    // Create project
+    // Create project with optional assigned lead
     const projectResult = await query(
-      `INSERT INTO projects (name, description, lifecycle_stage, start_date, target_completion_date)
-       VALUES ($1, $2, 'Concept', CURRENT_DATE, CURRENT_DATE + INTERVAL '12 months')
+      `INSERT INTO projects (name, description, lifecycle_stage, start_date, target_completion_date, assigned_lead_id)
+       VALUES ($1, $2, 'Concept', CURRENT_DATE, CURRENT_DATE + INTERVAL '12 months', $3)
        RETURNING id`,
-      [name, location]
+      [name, location, assignedLeadId || null]
     );
 
     const projectId = projectResult.rows[0].id;
@@ -1359,9 +1557,9 @@ app.post('/api/projects', async (req, res) => {
 // Update project - PATCH endpoint
 app.patch('/api/projects/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, location, latitude, longitude, buildings } = req.body;
+  const { name, location, latitude, longitude, buildings, assignedLeadId } = req.body;
 
-  console.log('🔄 PATCH /api/projects/:id called', { id, name, buildingCount: buildings?.length });
+  console.log('🔄 PATCH /api/projects/:id called', { id, name, buildingCount: buildings?.length, assignedLeadId });
 
   try {
     // Validate required fields
@@ -1369,14 +1567,14 @@ app.patch('/api/projects/:id', async (req, res) => {
       return res.status(400).json({ error: 'Project name is required' });
     }
 
-    console.log('📝 Updating project:', { id, name, location, buildingCount: buildings?.length });
+    console.log('📝 Updating project:', { id, name, location, buildingCount: buildings?.length, assignedLeadId });
 
-    // Update project basic info
+    // Update project basic info including assigned lead
     await query(
       `UPDATE projects 
-       SET name = $1, description = $2, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3`,
-      [name, location, id]
+       SET name = $1, description = $2, assigned_lead_id = $3, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4`,
+      [name, location, assignedLeadId || null, id]
     );
 
     // Delete existing buildings, floors, and flats (cascade will handle related records)

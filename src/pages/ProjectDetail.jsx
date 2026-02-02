@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader, ArrowLeft } from 'lucide-react';
 import Layout from '../components/Layout';
+import ProjectTeamManagement from '../components/ProjectTeamManagement';
+import { auth } from '../lib/firebase';
+import { createOrUpdateUser } from '../services/userService';
 
 export default function ProjectDetail() {
   const { id } = useParams();
@@ -10,10 +13,26 @@ export default function ProjectDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updatingStage, setUpdatingStage] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userLevel, setUserLevel] = useState(null);
 
   useEffect(() => {
     fetchProject();
+    fetchCurrentUser();
   }, [id]);
+
+  const fetchCurrentUser = async () => {
+    const user = auth.currentUser;
+    if (user) {
+      try {
+        const userData = await createOrUpdateUser(user.email, user.displayName);
+        setCurrentUser(userData);
+        setUserLevel(userData.user_level);
+      } catch (err) {
+        console.error('Error fetching user:', err);
+      }
+    }
+  };
 
   const fetchProject = async () => {
     try {
@@ -330,6 +349,17 @@ export default function ProjectDetail() {
           <p className="heading-tertiary text-lodha-gold capitalize">{project.mep_status}</p>
         </div>
       </div>
+
+      {/* Project Team Management */}
+      {currentUser && (
+        <div className="mb-8">
+          <ProjectTeamManagement 
+            projectId={id} 
+            currentUserLevel={userLevel}
+            currentUserId={currentUser.id}
+          />
+        </div>
+      )}
 
       {/* Lifecycle Stage Update */}
       <div className="card">

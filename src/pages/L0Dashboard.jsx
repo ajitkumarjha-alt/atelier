@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FolderKanban, AlertCircle, FileText, Clock, MapPin, User } from 'lucide-react';
 import Layout from '../components/Layout';
+import AIReports from '../components/AIReports';
 
 export default function L0Dashboard() {
   const [projects, setProjects] = useState([]);
@@ -85,6 +86,17 @@ export default function L0Dashboard() {
         <p className="text-body">Overview of all projects and their current status</p>
       </div>
 
+      {/* Create Project Button */}
+      <div className="mb-6 flex justify-end">
+        <button
+          onClick={() => navigate('/project-input')}
+          className="bg-lodha-gold text-white px-6 py-3 rounded-lg hover:bg-lodha-gold/90 transition-colors flex items-center gap-2 font-jost font-semibold shadow-lg"
+        >
+          <FolderKanban className="w-5 h-5" />
+          Create New Project
+        </button>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-lg p-6 shadow-lg border border-gray-200">
@@ -134,7 +146,7 @@ export default function L0Dashboard() {
             <div
               key={project.id}
               className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer border border-gray-200"
-              onClick={() => navigate(`/project-detail/${project.id}`)}
+              onClick={() => navigate(`/project/${project.id}`)}
             >
               {/* Project Header */}
               <div className="bg-gradient-to-r from-yellow-100 to-yellow-200 p-4 border-b border-gray-200">
@@ -191,7 +203,7 @@ export default function L0Dashboard() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/project-detail/${project.id}`);
+                      navigate(`/project/${project.id}`);
                     }}
                     className="flex-1 bg-lodha-gold hover:bg-lodha-deep text-white px-3 py-2 rounded text-xs font-jost font-semibold transition-colors"
                   >
@@ -214,6 +226,11 @@ export default function L0Dashboard() {
           ))}
         </div>
       )}
+
+      {/* AI Reports Section */}
+      <div className="mt-8">
+        <AIReports />
+      </div>
 
       {/* Quick Links Section */}
       <div className="mt-8 bg-gradient-to-br from-yellow-50 to-gray-50 rounded-lg p-6 border border-gray-200">

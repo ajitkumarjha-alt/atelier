@@ -14,6 +14,7 @@ export default function ProjectInput() {
     location: '',
     latitude: '',
     longitude: '',
+    assignedLeadId: null,
     buildings: [],
   });
 
@@ -32,6 +33,7 @@ export default function ProjectInput() {
   const [error, setError] = useState(null);
   const [warnings, setWarnings] = useState([]);
   const [allProjects, setAllProjects] = useState([]);
+  const [l1Users, setL1Users] = useState([]);
 
   // Fetch standards from database
   useEffect(() => {
@@ -61,8 +63,21 @@ export default function ProjectInput() {
       }
     };
 
+    const fetchL1Users = async () => {
+      try {
+        const response = await fetch('/api/users/level/L1');
+        if (response.ok) {
+          const data = await response.json();
+          setL1Users(data);
+        }
+      } catch (err) {
+        console.error('Error fetching L1 users:', err);
+      }
+    };
+
     fetchStandards();
     fetchAllProjects();
+    fetchL1Users();
 
     // Fetch existing project if editing
     if (isEditing) {
@@ -753,6 +768,25 @@ export default function ProjectInput() {
                   placeholder="Enter full address"
                   rows="3"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">
+                  Assign Project Lead (L1 Manager)
+                </label>
+                <select
+                  value={projectData.assignedLeadId || ''}
+                  onChange={e => handleProjectFieldChange('assignedLeadId', e.target.value ? parseInt(e.target.value) : null)}
+                  className="w-full px-4 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                >
+                  <option value="">Select L1 Manager (Optional)</option>
+                  {l1Users.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.full_name} ({user.email})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-600 mt-1">Assign an L1 manager who will be responsible for this project</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

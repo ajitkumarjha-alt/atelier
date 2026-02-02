@@ -229,7 +229,7 @@ function App() {
         <Route 
           path="/project-input" 
           element={
-            user && (userLevel === 'L1' || userLevel === 'SUPER_ADMIN') ? (
+            user && (userLevel === 'L0' || userLevel === 'L1' || userLevel === 'SUPER_ADMIN') ? (
               <ProjectInput />
             ) : (
               <Navigate to="/" replace />
@@ -241,7 +241,7 @@ function App() {
         <Route 
           path="/project-input/:projectId" 
           element={
-            user && (userLevel === 'L1' || userLevel === 'SUPER_ADMIN') ? (
+            user && (userLevel === 'L0' || userLevel === 'L1' || userLevel === 'SUPER_ADMIN') ? (
               <ProjectInput />
             ) : (
               <Navigate to="/" replace />
