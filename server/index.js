@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import admin from 'firebase-admin';
-import { query } from './db.js';
+import { query, transaction, closePool } from './db.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { upload, uploadToGCS, deleteFromGCS, isStorageConfigured } from './storage.js';
@@ -12,9 +12,22 @@ import {
   generateProjectStory,
   chatWithDatabase 
 } from './llm.js';
+import {
+  rateLimiter,
+  authRateLimiter,
+  requestLogger,
+  securityHeaders,
+  compressionMiddleware,
+  errorHandler,
+  notFoundHandler,
+  asyncHandler
+} from './middleware/index.js';
+import logger from './utils/logger.js';
+import { performHealthCheck } from './utils/health.js';
 
 const app = express();
 const port = process.env.PORT || 5175;
+const API_VERSION = 'v1';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -36,7 +49,7 @@ try {
     const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
     adminConfig = JSON.parse(fs.readFileSync(credPath, 'utf8'));
   } else {
-    console.warn('⚠️  Firebase Admin SDK not configured. Auth middleware will be disabled.');
+    logger.warn('⚠️  Firebase Admin SDK not configured. Auth middleware will be disabled.');
   }
   
   if (adminConfig) {
@@ -44,15 +57,34 @@ try {
       credential: admin.credential.cert(adminConfig),
     });
     firebaseAdmin = admin;
-    console.log('✅ Firebase Admin SDK initialized');
+    logger.info('✅ Firebase Admin SDK initialized');
   }
 } catch (error) {
-  console.warn('⚠️  Failed to initialize Firebase Admin SDK:', error.message);
+  logger.error('Failed to initialize Firebase Admin SDK:', error);
 }
 
-// Middleware
+// ============================================================================
+// Middleware Setup
+// ============================================================================
+
+// Security headers
+app.use(securityHeaders);
+
+// CORS
 app.use(cors());
-app.use(express.json());
+
+// Body parsing
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request logging
+app.use(requestLogger);
+
+// Response compression
+app.use(compressionMiddleware);
+
+// Rate limiting (applied globally)
+app.use(rateLimiter);
 
 // Serve static files (frontend)
 app.use(express.static(path.join(__dirname, '../public')));
@@ -211,9 +243,35 @@ const requireRole = (...allowedRoles) => {
 // Routes
 // ============================================================================
 
-// Public health check (no auth required)
+// ============================================================================
+// Health Check Endpoints
+// ============================================================================
+
+// Simple health check (no auth required)
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Detailed health check (no auth required)
+app.get('/api/health/detailed', asyncHandler(async (req, res) => {
+  const healthStatus = await performHealthCheck(firebaseAdmin);
+  const statusCode = healthStatus.status === 'healthy' ? 200 : 503;
+  res.status(statusCode).json(healthStatus);
+}));
+
+// Readiness probe for Kubernetes/Cloud Run
+app.get('/api/ready', asyncHandler(async (req, res) => {
+  try {
+    await query('SELECT 1');
+    res.status(200).json({ ready: true });
+  } catch (error) {
+    res.status(503).json({ ready: false, error: error.message });
+  }
+}));
+
+// Liveness probe for Kubernetes/Cloud Run
+app.get('/api/alive', (req, res) => {
+  res.status(200).json({ alive: true });
 });
 
 // ============================================================================
@@ -416,8 +474,10 @@ app.get('/api/llm/status', (req, res) => {
 // End LLM Endpoints
 // ============================================================================
 
-// Super Admin Emails
-const SUPER_ADMIN_EMAILS = ['lodhaatelier@gmail.com', 'ajit.kumarjha@lodhagroup.com'];
+// Super Admin Emails - load from environment or use defaults
+const SUPER_ADMIN_EMAILS = process.env.SUPER_ADMIN_EMAILS 
+  ? process.env.SUPER_ADMIN_EMAILS.split(',').map(email => email.trim())
+  : ['lodhaatelier@gmail.com', 'ajit.kumarjha@lodhagroup.com'];
 
 // Initialize database tables on server start
 async function initializeDatabase() {
@@ -4155,22 +4215,66 @@ app.get('/api/vendors/profile', async (req, res) => {
 
 // ============= END VENDOR ENDPOINTS =============
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'healthy', timestamp: new Date() });
-});
+// 404 handler (must be after all routes)
+app.use(notFoundHandler);
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something broke!' });
-});
+// Error handling middleware (must be last)
+app.use(errorHandler);
 
 // Start server
-app.listen(port, async () => {
-  console.log(`Server running on port ${port}`);
-  console.log(`Health check available at http://localhost:${port}/api/health`);
+const server = app.listen(port, async () => {
+  logger.info(`Server running on port ${port}`);
+  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.info(`API Version: ${API_VERSION}`);
+  logger.info(`Health check available at http://localhost:${port}/api/health`);
   
   // Initialize database tables
   await initializeDatabase();
+});
+
+// ============================================================================
+// Graceful Shutdown
+// ============================================================================
+
+const gracefulShutdown = async (signal) => {
+  logger.info(`${signal} received. Starting graceful shutdown...`);
+  
+  // Stop accepting new requests
+  server.close(async () => {
+    logger.info('HTTP server closed');
+    
+    try {
+      // Close database connections
+      await closePool();
+      
+      // Close other resources if needed
+      logger.info('All resources closed successfully');
+      process.exit(0);
+    } catch (error) {
+      logger.error('Error during shutdown:', error);
+      process.exit(1);
+    }
+  });
+  
+  // Force shutdown after 30 seconds
+  setTimeout(() => {
+    logger.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 30000);
+};
+
+// Handle shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error);
+  gracefulShutdown('uncaughtException');
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  gracefulShutdown('unhandledRejection');
 });
