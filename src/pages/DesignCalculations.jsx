@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, Calculator, Download, Upload, FileText, AlertCircle, Filter } from 'lucide-react';
+import { ArrowLeft, Plus, Calculator, Download, Upload, FileText, AlertCircle, Filter, Droplet } from 'lucide-react';
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
 import { useUser } from '../lib/UserContext';
@@ -348,6 +348,53 @@ export default function DesignCalculations() {
             <div className="bg-white p-4 rounded-lg shadow border border-lodha-sand">
               <div className="text-sm text-lodha-grey mb-1">Draft</div>
               <div className="text-2xl font-bold text-gray-600">{stats.draft || 0}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Calculators */}
+        {canCreateEdit() && (
+          <div className="bg-gradient-to-r from-lodha-sand to-white p-6 rounded-lg shadow mb-6 border-2 border-lodha-gold">
+            <div className="flex items-center gap-2 mb-4">
+              <Calculator className="w-6 h-6 text-lodha-gold" />
+              <h3 className="font-garamond font-bold text-lodha-black text-lg">Quick Calculators</h3>
+              <span className="text-sm text-lodha-grey ml-2">(Auto-calculate from project data)</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button
+                onClick={() => navigate(`/water-demand-calculation/${projectId}`)}
+                className="flex items-center gap-3 p-4 bg-white border-2 border-lodha-gold rounded-lg hover:bg-lodha-sand transition group"
+              >
+                <Droplet className="w-8 h-8 text-blue-600 group-hover:scale-110 transition" />
+                <div className="text-left">
+                  <div className="font-semibold text-lodha-black">Water Demand</div>
+                  <div className="text-xs text-lodha-grey">Auto-calculate from buildings</div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => alert('Electrical Load Calculator - Coming Soon!')}
+                className="flex items-center gap-3 p-4 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition group opacity-60 cursor-not-allowed"
+                disabled
+              >
+                <Calculator className="w-8 h-8 text-yellow-600 group-hover:scale-110 transition" />
+                <div className="text-left">
+                  <div className="font-semibold text-lodha-black">Electrical Load</div>
+                  <div className="text-xs text-lodha-grey">Coming soon</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => alert('HVAC Load Calculator - Coming Soon!')}
+                className="flex items-center gap-3 p-4 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition group opacity-60 cursor-not-allowed"
+                disabled
+              >
+                <Calculator className="w-8 h-8 text-green-600 group-hover:scale-110 transition" />
+                <div className="text-left">
+                  <div className="font-semibold text-lodha-black">HVAC Load</div>
+                  <div className="text-xs text-lodha-grey">Coming soon</div>
+                </div>
+              </button>
             </div>
           </div>
         )}

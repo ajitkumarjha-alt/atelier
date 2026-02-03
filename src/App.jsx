@@ -37,7 +37,7 @@ import { Loader } from 'lucide-react';
 
 // Calculation Pages
 import ElectricalLoadCalculation from './pages/calculations/ElectricalLoadCalculation';
-import WaterDemandCalculation from './pages/calculations/WaterDemandCalculation';
+import WaterDemandCalculation from './pages/WaterDemandCalculation';
 import CableSelectionSheet from './pages/calculations/CableSelectionSheet';
 import RisingMainDesign from './pages/calculations/RisingMainDesign';
 import DownTakeDesign from './pages/calculations/DownTakeDesign';
@@ -338,6 +338,17 @@ function AppRoutes() {
           element={
             user ? (
               <PanelSchedule />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        <Route 
+          path="/projects/:projectId/calculations/water-demand/:calculationId?" 
+          element={
+            user ? (
+              <WaterDemandCalculation />
             ) : (
               <Navigate to="/" replace />
             )
