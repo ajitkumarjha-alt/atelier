@@ -300,33 +300,98 @@ Format in clear sections with headers.`;
 }
 
 /**
+ * Get standards documents context for LLM
+ */
+async function getStandardsDocumentsContext(projectId = null) {
+  try {
+    let queryText = `
+      SELECT category, document_name, description, created_at 
+      FROM project_standards_documents 
+      WHERE 1=1
+    `;
+    const params = [];
+    
+    if (projectId) {
+      params.push(projectId);
+      queryText += ` AND (project_id = $1 OR project_id IS NULL)`;
+    }
+    
+    queryText += ' ORDER BY category, created_at DESC';
+    
+    const result = await query(queryText, params);
+    
+    if (result.rows.length === 0) {
+      return '';
+    }
+    
+    // Group documents by category
+    const docsByCategory = result.rows.reduce((acc, doc) => {
+      if (!acc[doc.category]) {
+        acc[doc.category] = [];
+      }
+      acc[doc.category].push(doc);
+      return acc;
+    }, {});
+    
+    // Format for context
+    let context = '\n\nAVAILABLE REFERENCE DOCUMENTS:\n';
+    context += 'The following standards and reference documents are available:\n\n';
+    
+    for (const [category, docs] of Object.entries(docsByCategory)) {
+      const categoryLabel = category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      context += `${categoryLabel}:\n`;
+      docs.forEach(doc => {
+        context += `  - ${doc.document_name}`;
+        if (doc.description) {
+          context += `: ${doc.description}`;
+        }
+        context += '\n';
+      });
+      context += '\n';
+    }
+    
+    context += 'When answering questions about standards, codes, or policies, reference these documents.\n';
+    context += 'For design calculations, consider compliance with uploaded IS codes, NBC codes, and company policies.\n';
+    
+    return context;
+  } catch (error) {
+    console.error('Error fetching standards documents context:', error);
+    return '';
+  }
+}
+
+/**
  * Chat with database context
  */
-export async function chatWithDatabase(userMessage, conversationHistory = []) {
+export async function chatWithDatabase(userMessage, conversationHistory = [], projectId = null) {
   if (!model) {
     throw new Error('Gemini AI is not configured');
   }
 
   const schema = await getDatabaseSchema();
+  const standardsContext = await getStandardsDocumentsContext(projectId);
 
   const systemContext = `You are an AI assistant for the Atelier MEP Project Management System.
 You help users with project details, scheduling, design calculations, MAS/RFI analysis, and trends.
 
 IMPORTANT RULES:
-1. You can ONLY answer questions using data from the database
+1. You can ONLY answer questions using data from the database and uploaded reference documents
 2. Do NOT use external knowledge or make assumptions
 3. If data is not in the database, say "I don't have that information in the database"
 4. Be professional and concise
 5. When discussing numbers, be specific (e.g., "5 pending MAS" not "several")
+6. When asked about standards, codes, or regulations, refer to the uploaded reference documents
+7. For design calculations, ensure compliance with uploaded standards documents
 
 ${schema}
+${standardsContext}
 
 Previous conversation:
 ${conversationHistory.map(msg => `${msg.role}: ${msg.content}`).join('\n')}
 
 User: ${userMessage}
 
-Answer the user's question professionally and accurately based on the database schema and context above.`;
+Answer the user's question professionally and accurately based on the database schema, uploaded standards documents, and context above.`;
 
   try {
     const result = await model.generateContent(systemContext);

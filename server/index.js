@@ -358,13 +358,13 @@ app.post('/api/llm/chat', verifyToken, async (req, res) => {
       });
     }
 
-    const { message, history } = req.body;
+    const { message, history, projectId } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    const result = await chatWithDatabase(message, history || []);
+    const result = await chatWithDatabase(message, history || [], projectId);
     
     res.json({
       success: true,
@@ -627,6 +627,24 @@ async function initializeDatabase() {
       )
     `);
     console.log('✓ project_standards table initialized');
+    
+    // Create project_standards_documents table for PDF documents
+    await query(`
+      CREATE TABLE IF NOT EXISTS project_standards_documents (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+        document_name VARCHAR(255) NOT NULL,
+        category VARCHAR(100) NOT NULL,
+        file_url TEXT NOT NULL,
+        file_size INTEGER,
+        file_type VARCHAR(50),
+        uploaded_by_id INTEGER REFERENCES users(id),
+        description TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ project_standards_documents table initialized');
     
     // Seed building types
     const buildingTypes = [
@@ -1451,6 +1469,171 @@ app.delete('/api/project-standards/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting standard:', error.message, error.code);
     res.status(500).json({ error: 'Failed to delete standard', details: error.message });
+  }
+});
+
+// ============================================================================
+// Project Standards Documents Endpoints
+// ============================================================================
+
+// Upload a standards document (PDF)
+app.post('/api/project-standards-documents/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const { category, description, projectId } = req.body;
+    
+    if (!category) {
+      return res.status(400).json({ error: 'Category is required' });
+    }
+
+    // Upload to Google Cloud Storage or local storage
+    let fileUrl;
+    if (isStorageConfigured()) {
+      fileUrl = await uploadToGCS(req.file, 'standards-documents');
+    } else {
+      // For development without GCS, store file info (in production, this should always use GCS)
+      fileUrl = `/uploads/standards-documents/${req.file.filename || Date.now()}_${req.file.originalname}`;
+    }
+
+    // Get user info from request (if authenticated)
+    const userEmail = req.user?.email || req.headers['x-dev-user-email'];
+    let uploadedById = null;
+    
+    if (userEmail) {
+      const userResult = await query('SELECT id FROM users WHERE email = $1', [userEmail]);
+      if (userResult.rows.length > 0) {
+        uploadedById = userResult.rows[0].id;
+      }
+    }
+
+    // Insert document record
+    const result = await query(
+      `INSERT INTO project_standards_documents 
+       (project_id, document_name, category, file_url, file_size, file_type, uploaded_by_id, description) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+       RETURNING *`,
+      [
+        projectId || null,
+        req.file.originalname,
+        category,
+        fileUrl,
+        req.file.size,
+        req.file.mimetype,
+        uploadedById,
+        description || null
+      ]
+    );
+
+    res.json({
+      success: true,
+      document: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error uploading standards document:', error);
+    res.status(500).json({ error: 'Failed to upload document', details: error.message });
+  }
+});
+
+// Get all standards documents (optionally filtered by category or project)
+app.get('/api/project-standards-documents', async (req, res) => {
+  try {
+    const { category, projectId } = req.query;
+    
+    let queryText = `
+      SELECT psd.*, u.full_name as uploaded_by_name 
+      FROM project_standards_documents psd
+      LEFT JOIN users u ON psd.uploaded_by_id = u.id
+      WHERE 1=1
+    `;
+    const params = [];
+    
+    if (category) {
+      params.push(category);
+      queryText += ` AND psd.category = $${params.length}`;
+    }
+    
+    if (projectId) {
+      params.push(projectId);
+      queryText += ` AND (psd.project_id = $${params.length} OR psd.project_id IS NULL)`;
+    }
+    
+    queryText += ' ORDER BY psd.category, psd.created_at DESC';
+    
+    const result = await query(queryText, params);
+    
+    // Group by category
+    const documentsByCategory = result.rows.reduce((acc, doc) => {
+      if (!acc[doc.category]) {
+        acc[doc.category] = [];
+      }
+      acc[doc.category].push(doc);
+      return acc;
+    }, {});
+    
+    res.json({
+      documents: result.rows,
+      documentsByCategory
+    });
+  } catch (error) {
+    console.error('Error fetching standards documents:', error);
+    res.status(500).json({ error: 'Failed to fetch documents', details: error.message });
+  }
+});
+
+// Delete a standards document
+app.delete('/api/project-standards-documents/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get document info before deletion (to delete file from storage)
+    const docResult = await query('SELECT * FROM project_standards_documents WHERE id = $1', [id]);
+    
+    if (docResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    const document = docResult.rows[0];
+    
+    // Delete from storage if using GCS
+    if (isStorageConfigured() && document.file_url) {
+      try {
+        await deleteFromGCS(document.file_url);
+      } catch (storageError) {
+        console.warn('Warning: Failed to delete file from storage:', storageError.message);
+      }
+    }
+    
+    // Delete from database
+    await query('DELETE FROM project_standards_documents WHERE id = $1', [id]);
+    
+    res.json({ success: true, id: parseInt(id) });
+  } catch (error) {
+    console.error('Error deleting standards document:', error);
+    res.status(500).json({ error: 'Failed to delete document', details: error.message });
+  }
+});
+
+// Get document categories
+app.get('/api/project-standards-documents/categories', async (req, res) => {
+  try {
+    const categories = [
+      { value: 'company_policies', label: 'Company Policies' },
+      { value: 'local_bylaws', label: 'Local Bylaws' },
+      { value: 'is_codes', label: 'IS Codes' },
+      { value: 'nbc_codes', label: 'NBC Codes' },
+      { value: 'design_standards', label: 'Design Standards' },
+      { value: 'safety_regulations', label: 'Safety Regulations' },
+      { value: 'material_specs', label: 'Material Specifications' },
+      { value: 'other', label: 'Other Documents' }
+    ];
+    
+    res.json({ categories });
+  } catch (error) {
+    console.error('Error fetching document categories:', error);
+    res.status(500).json({ error: 'Failed to fetch categories', details: error.message });
   }
 });
 

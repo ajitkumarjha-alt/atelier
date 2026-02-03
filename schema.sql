@@ -72,6 +72,21 @@ CREATE TABLE IF NOT EXISTS project_standards (
     UNIQUE(category, value)
 );
 
+-- Create project_standards_documents table for PDF reference documents
+CREATE TABLE IF NOT EXISTS project_standards_documents (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+    document_name VARCHAR(255) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    file_url TEXT NOT NULL,
+    file_size INTEGER,
+    file_type VARCHAR(50),
+    uploaded_by_id INTEGER REFERENCES users(id),
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create buildings table
 CREATE TABLE IF NOT EXISTS buildings (
     id SERIAL PRIMARY KEY,
