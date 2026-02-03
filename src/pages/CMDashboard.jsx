@@ -144,25 +144,26 @@ export default function CMDashboard() {
         </div>
       ) : (
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
+        <div className="w-full overflow-x-auto">
+        <table className="w-full min-w-max divide-y divide-gray-200">
           <thead className="bg-lodha-gold/10">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-jost font-bold text-lodha-black uppercase tracking-wider">
+              <th className="py-2 md:py-3 px-[2%] text-left text-xs font-jost font-bold text-lodha-black uppercase tracking-wider whitespace-nowrap">
                 RFI Ref. No
               </th>
-              <th className="px-6 py-3 text-left text-xs font-jost font-bold text-lodha-black uppercase tracking-wider">
+              <th className="py-2 md:py-3 px-[2%] text-left text-xs font-jost font-bold text-lodha-black uppercase tracking-wider whitespace-nowrap">
                 Project Name
               </th>
-              <th className="px-6 py-3 text-left text-xs font-jost font-bold text-lodha-black uppercase tracking-wider">
+              <th className="py-2 md:py-3 px-[2%] text-left text-xs font-jost font-bold text-lodha-black uppercase tracking-wider whitespace-nowrap">
                 Subject
               </th>
-              <th className="px-6 py-3 text-left text-xs font-jost font-bold text-lodha-black uppercase tracking-wider">
+              <th className="py-2 md:py-3 px-[2%] text-left text-xs font-jost font-bold text-lodha-black uppercase tracking-wider whitespace-nowrap">
                 Discipline
               </th>
-              <th className="px-6 py-3 text-left text-xs font-jost font-bold text-lodha-black uppercase tracking-wider">
+              <th className="py-2 md:py-3 px-[2%] text-left text-xs font-jost font-bold text-lodha-black uppercase tracking-wider whitespace-nowrap">
                 Raised Date
               </th>
-              <th className="px-6 py-3 text-left text-xs font-jost font-bold text-lodha-black uppercase tracking-wider">
+              <th className="py-2 md:py-3 px-[2%] pr-[3%] text-left text-xs font-jost font-bold text-lodha-black uppercase tracking-wider whitespace-nowrap">
                 Status
               </th>
             </tr>
@@ -170,7 +171,7 @@ export default function CMDashboard() {
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredRfis.length === 0 ? (
               <tr>
-                <td colSpan="6" className="px-6 py-8 text-center text-gray-500 font-jost">
+                <td colSpan="6" className="py-4 md:py-8 px-[2%] text-center text-gray-500 font-jost">
                   No RFIs found
                 </td>
               </tr>
@@ -181,22 +182,22 @@ export default function CMDashboard() {
                   className="hover:bg-gray-50 cursor-pointer transition-colors"
                   onClick={() => navigate(`/rfi/${rfi.id}`)}
                 >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-jost font-semibold text-lodha-gold">
+                  <td className="py-2 md:py-4 px-[2%] whitespace-nowrap text-sm font-jost font-semibold text-lodha-gold">
                     {rfi.rfiRefNo}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-jost text-lodha-black">
-                    {rfi.projectName}
+                  <td className="py-2 md:py-4 px-[2%] text-sm font-jost text-lodha-black">
+                    <div className="truncate max-w-[150px]">{rfi.projectName}</div>
                   </td>
-                  <td className="px-6 py-4 text-sm font-jost text-lodha-black">
-                    {rfi.subject}
+                  <td className="py-2 md:py-4 px-[2%] text-sm font-jost text-lodha-black">
+                    <div className="truncate max-w-[200px]">{rfi.subject}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-jost text-gray-600">
-                    {rfi.discipline}
+                  <td className="py-2 md:py-4 px-[2%] text-sm font-jost text-gray-600">
+                    <div className="truncate max-w-[120px]">{rfi.discipline}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-jost text-gray-600">
+                  <td className="py-2 md:py-4 px-[2%] whitespace-nowrap text-sm font-jost text-gray-600">
                     {new Date(rfi.raisedDate).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="py-2 md:py-4 px-[2%] pr-[3%] whitespace-nowrap">
                     <span
                       className={`px-3 py-1 inline-flex text-xs leading-5 font-jost font-semibold rounded-full ${
                         rfi.status === 'Approved'
@@ -212,6 +213,7 @@ export default function CMDashboard() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
       )}
     </Layout>

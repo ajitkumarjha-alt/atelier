@@ -241,8 +241,8 @@ export default function ChangeRequestsPage() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to L2 Dashboard
         </button>
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex-1 min-w-0">
             <h1 className="heading-primary mb-2">Project Change Requests</h1>
             <p className="text-body">{project?.project_name || 'Project'}</p>
           </div>
@@ -251,7 +251,7 @@ export default function ChangeRequestsPage() {
               resetForm();
               setShowCreateModal(true);
             }}
-            className="flex items-center gap-2 bg-lodha-gold text-white px-6 py-3 rounded-lg hover:bg-lodha-gold/90 transition-colors"
+            className="flex items-center justify-center gap-2 bg-lodha-gold text-white px-6 py-3 rounded-lg hover:bg-lodha-gold/90 transition-colors w-full sm:w-auto whitespace-nowrap"
           >
             <Plus className="w-5 h-5" />
             Request Change
@@ -321,21 +321,21 @@ export default function ChangeRequestsPage() {
 
       {/* Change Requests Table */}
       <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full min-w-max">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ref No</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requested By</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">L2 Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">L1 Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Ref No</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Description</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Type</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Category</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Requested By</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Date</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">L2 Status</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">L1 Status</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Final Status</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Priority</th>
+                <th className="py-2 md:py-3 px-[2%] pr-[3%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">

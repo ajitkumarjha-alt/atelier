@@ -52,7 +52,7 @@ export default function Login() {
   return (
     <div className="min-h-screen w-full flex">
       {/* Left Side - Image Section */}
-      <div className="hidden lg:block w-1/2 relative">
+      <div className="hidden lg:block w-1/2 relative" role="img" aria-label="Modern MEP engineering workspace">
         <div className="absolute inset-0 bg-lodha-deep/20" />
         <div 
           className="absolute inset-0 bg-cover bg-center"
@@ -87,6 +87,8 @@ export default function Login() {
               <button
                 onClick={handleGoogleSignIn}
                 disabled={isLoading}
+                aria-label={isLoading ? 'Signing in with Google' : 'Sign in with Google'}
+                aria-busy={isLoading}
                 className="w-full flex items-center justify-center gap-3 px-4 py-3 
                          border border-transparent text-sm font-medium rounded-md 
                          text-white bg-lodha-gold hover:bg-lodha-black 
@@ -96,16 +98,25 @@ export default function Login() {
                          shadow-lg hover:shadow-xl font-jost font-semibold"
               >
                 {isLoading ? (
-                  <Loader className="w-5 h-5 animate-spin" />
+                  <>
+                    <Loader className="w-5 h-5 animate-spin" aria-hidden="true" />
+                    <span>Signing in...</span>
+                  </>
                 ) : (
-                  <LogIn className="w-5 h-5" />
+                  <>
+                    <LogIn className="w-5 h-5" aria-hidden="true" />
+                    <span>Sign in with Google</span>
+                  </>
                 )}
-                {isLoading ? 'Signing in...' : 'Sign in with Google'}
               </button>
 
               {/* Error Message */}
               {error && (
-                <div className="text-lodha-black text-sm text-center p-3 bg-lodha-sand rounded-md border border-lodha-gold font-jost">
+                <div 
+                  role="alert" 
+                  aria-live="polite"
+                  className="text-lodha-black text-sm text-center p-3 bg-lodha-sand rounded-md border border-lodha-gold font-jost"
+                >
                   {error}
                 </div>
               )}

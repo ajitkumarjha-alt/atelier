@@ -125,7 +125,7 @@ export default function WelcomePage() {
           </div>
 
           {/* Login Options */}
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
             {/* Lodha Employee Login */}
             <div 
               className={`relative group ${hoveredCard === 'employee' ? 'z-20' : 'z-10'}`}

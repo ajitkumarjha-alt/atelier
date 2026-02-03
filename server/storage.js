@@ -2,6 +2,11 @@ import { Storage } from '@google-cloud/storage';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Initialize Google Cloud Storage
 let storage = null;
@@ -22,14 +27,35 @@ try {
     bucket = storage.bucket(BUCKET_NAME);
     console.log(`✅ Google Cloud Storage initialized (bucket: ${BUCKET_NAME})`);
   } else {
-    console.warn('⚠️  Google Cloud Storage not configured. File uploads will be disabled.');
+    console.warn('⚠️  Google Cloud Storage not configured. Using local file storage for development.');
   }
 } catch (error) {
   console.error('Error initializing Google Cloud Storage:', error.message);
 }
 
-// Configure multer for memory storage
-const multerStorage = multer.memoryStorage();
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('✅ Created uploads directory for local file storage');
+}
+
+// Configure multer for disk or memory storage
+const multerStorage = storage && bucket ? multer.memoryStorage() : multer.diskStorage({
+  destination: (req, file, cb) => {
+    const folder = req.body.folder || 'documents';
+    const destPath = path.join(uploadsDir, folder);
+    if (!fs.existsSync(destPath)) {
+      fs.mkdirSync(destPath, { recursive: true });
+    }
+    cb(null, destPath);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const filename = `${uuidv4()}${ext}`;
+    cb(null, filename);
+  }
+});
 
 const fileFilter = (req, file, cb) => {
   // Allow common file types
@@ -66,21 +92,33 @@ export const upload = multer({
 });
 
 /**
- * Upload file to Google Cloud Storage
- * @param {Buffer} fileBuffer - File buffer from multer
+ * Upload file to Google Cloud Storage or local storage
+ * @param {Object} file - File object from multer (has buffer for GCS, path for local)
  * @param {string} originalName - Original file name
  * @param {string} mimetype - File MIME type
  * @param {string} folder - Folder path in bucket (e.g., 'mas', 'rfi', 'drawings')
- * @returns {Promise<string>} - Public URL of uploaded file
+ * @returns {Promise<string>} - Public URL or local path of uploaded file
  */
-export async function uploadToGCS(fileBuffer, originalName, mimetype, folder = 'general') {
+export async function uploadToGCS(file, originalName = null, mimetype = null, folder = 'general') {
+  // If using local storage
   if (!storage || !bucket) {
-    throw new Error('Google Cloud Storage is not configured');
+    // File is already saved by multer diskStorage
+    if (file.path) {
+      // Return relative path from uploads directory
+      const relativePath = path.relative(path.join(__dirname, '../uploads'), file.path);
+      return `/uploads/${relativePath.replace(/\\/g, '/')}`;
+    }
+    throw new Error('File storage failed');
   }
 
+  // Use Google Cloud Storage
   try {
+    const fileBuffer = file.buffer;
+    const fileName = originalName || file.originalname;
+    const mimeType = mimetype || file.mimetype;
+    
     // Generate unique filename
-    const ext = path.extname(originalName);
+    const ext = path.extname(fileName);
     const filename = `${uuidv4()}${ext}`;
     const filePath = `${folder}/${filename}`;
 
@@ -89,9 +127,9 @@ export async function uploadToGCS(fileBuffer, originalName, mimetype, folder = '
     const blobStream = blob.createWriteStream({
       resumable: false,
       metadata: {
-        contentType: mimetype,
+        contentType: mimeType,
         metadata: {
-          originalName: originalName,
+          originalName: fileName,
           uploadedAt: new Date().toISOString(),
         },
       },
@@ -159,8 +197,8 @@ export async function deleteFromGCS(fileUrl) {
 
 /**
  * Check if Cloud Storage is configured
- * @returns {boolean}
+ * @returns {boolean} Always returns true now (supports local fallback)
  */
 export function isStorageConfigured() {
-  return storage !== null && bucket !== null;
+  return true; // Now supports local storage fallback
 }

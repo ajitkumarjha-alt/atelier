@@ -34,11 +34,11 @@ export default function ProjectCard({ project }) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-xl p-6 hover:shadow-2xl transition-shadow duration-200">
+    <div className="bg-white rounded-lg shadow-xl p-6 hover:shadow-2xl transition-shadow duration-200 w-full max-w-full overflow-hidden">
       {/* Header with Status Badge */}
-      <div className="flex justify-between items-start mb-4">
-        <h3 className="text-xl font-serif font-bold text-lodha-deep">{name}</h3>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(status)}`}>
+      <div className="flex justify-between items-start mb-4 gap-2">
+        <h3 className="text-xl font-serif font-bold text-lodha-deep truncate flex-1">{name}</h3>
+        <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize whitespace-nowrap ${getStatusColor(status)}`}>
           {status.replace('_', ' ')}
         </span>
       </div>
@@ -58,7 +58,7 @@ export default function ProjectCard({ project }) {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Floors Metric */}
         <div className="flex flex-col items-center">
           <div className="p-2 rounded-full bg-lodha-sand mb-2">
@@ -73,7 +73,7 @@ export default function ProjectCard({ project }) {
           <div className="p-2 rounded-full bg-lodha-sand mb-2">
             <Gauge className={`w-5 h-5 ${getMEPStatusColor(mep_status)}`} />
           </div>
-          <span className="text-sm font-medium text-gray-900 capitalize">{mep_status.replace('_', ' ')}</span>
+          <span className="text-sm font-medium text-gray-900 capitalize text-center break-words">{mep_status.replace('_', ' ')}</span>
           <span className="text-xs text-gray-500">MEP Status</span>
         </div>
 

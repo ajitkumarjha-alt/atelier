@@ -89,16 +89,16 @@ export default function L1ProjectTable({ userEmail, userLevel }) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
+    <>
+      <table className="w-full table-auto border-collapse" style={{minWidth: '100%'}}>
         <thead>
           <tr className="border-b-2 border-lodha-gold bg-lodha-sand">
-            <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Project Name</th>
-            <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Lifecycle Stage</th>
-            <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Progress</th>
-            <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Assigned Lead</th>
-            <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Action</th>
-            <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Edit</th>
+            <th className="text-left py-2 md:py-3 px-[2%] text-lodha-black font-garamond font-bold text-sm md:text-base whitespace-nowrap" style={{width: '20%'}}>Project Name</th>
+            <th className="text-left py-2 md:py-3 px-[2%] text-lodha-black font-garamond font-bold text-sm md:text-base whitespace-nowrap" style={{width: '15%'}}>Lifecycle Stage</th>
+            <th className="text-left py-2 md:py-3 px-[2%] text-lodha-black font-garamond font-bold text-sm md:text-base whitespace-nowrap" style={{width: '15%'}}>Progress</th>
+            <th className="text-left py-2 md:py-3 px-[2%] text-lodha-black font-garamond font-bold text-sm md:text-base whitespace-nowrap" style={{width: '15%'}}>Assigned Lead</th>
+            <th className="text-left py-2 md:py-3 px-[2%] text-lodha-black font-garamond font-bold text-sm md:text-base whitespace-nowrap" style={{width: '17.5%'}}>Action</th>
+            <th className="text-left py-2 md:py-3 px-[2%] pr-[3%] text-lodha-black font-garamond font-bold text-sm md:text-base whitespace-nowrap" style={{width: '17.5%'}}>Edit</th>
           </tr>
         </thead>
         <tbody>
@@ -108,20 +108,21 @@ export default function L1ProjectTable({ userEmail, userLevel }) {
               className="border-b border-gray-200 hover:bg-lodha-sand/50 transition-colors"
             >
               <td 
-                className="px-6 py-4 text-lodha-black font-jost font-semibold cursor-pointer hover:text-lodha-gold"
+                className="py-2 md:py-3 px-[2%] text-lodha-black font-jost font-semibold cursor-pointer hover:text-lodha-gold text-sm md:text-base"
                 onClick={() => navigate(`/project/${project.id}`)}
+                title={project.name}
               >
-                {project.name}
+                <div className="truncate max-w-full">{project.name}</div>
               </td>
-              <td className="px-6 py-4">
-                <span className="px-3 py-1 bg-lodha-gold/20 text-lodha-black text-sm font-semibold rounded-full">
+              <td className="py-2 md:py-3 px-[2%]">
+                <span className="inline-block px-2 md:px-3 py-1 bg-lodha-gold/20 text-lodha-black text-xs md:text-sm font-semibold rounded-full whitespace-nowrap">
                   {project.lifecycle_stage}
                 </span>
               </td>
-              <td className="px-6 py-4">
-                <div className="w-32">
+              <td className="py-2 md:py-3 px-[2%]">
+                <div className="w-full max-w-[120px]">
                   <div className="flex justify-between mb-1">
-                    <span className="text-sm text-lodha-grey font-jost">{project.completion_percentage}%</span>
+                    <span className="text-xs md:text-sm text-lodha-grey font-jost">{project.completion_percentage}%</span>
                   </div>
                   <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div 
@@ -131,16 +132,16 @@ export default function L1ProjectTable({ userEmail, userLevel }) {
                   </div>
                 </div>
               </td>
-              <td className="px-6 py-4 text-lodha-black font-jost">
-                {project.assigned_lead_name || '—'}
+              <td className="py-2 md:py-3 px-[2%] text-lodha-black font-jost text-sm md:text-base">
+                <div className="truncate">{project.assigned_lead_name || '—'}</div>
               </td>
-              <td className="px-6 py-4">
-                <div className="relative inline-block">
+              <td className="py-2 md:py-3 px-[2%]">
+                <div className="relative inline-block w-full max-w-[140px]">
                   <select
                     defaultValue={project.assigned_lead_id || ''}
                     onChange={(e) => handleAssignLead(project.id, parseInt(e.target.value))}
                     disabled={assigningProjectId === project.id}
-                    className="appearance-none px-4 py-2 bg-lodha-gold text-white rounded-lg cursor-pointer hover:bg-lodha-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-jost font-semibold text-sm pr-8"
+                    className="w-full appearance-none px-2 md:px-3 py-1.5 md:py-2 bg-lodha-gold text-white rounded-lg cursor-pointer hover:bg-lodha-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-jost font-semibold text-xs md:text-sm pr-6 md:pr-7 whitespace-nowrap"
                   >
                     <option value="">Assign Lead</option>
                     {users.map(user => (
@@ -149,13 +150,13 @@ export default function L1ProjectTable({ userEmail, userLevel }) {
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white pointer-events-none" />
+                  <ChevronDown className="absolute right-1 md:right-2 top-1/2 transform -translate-y-1/2 w-3 md:w-4 h-3 md:h-4 text-white pointer-events-none" />
                 </div>
               </td>
-              <td className="px-6 py-4">
+              <td className="py-2 md:py-3 px-[2%] pr-[3%]">
                 <button
                   onClick={() => navigate(`/project-input/${project.id}`)}
-                  className="flex items-center gap-2 px-4 py-2 bg-lodha-black text-white rounded-lg hover:bg-lodha-gold transition-colors font-jost text-sm"
+                  className="flex items-center justify-center gap-1 md:gap-2 w-full max-w-[100px] px-2 md:px-3 py-1.5 md:py-2 bg-lodha-black text-white rounded-lg hover:bg-lodha-gold transition-colors font-jost text-xs md:text-sm whitespace-nowrap"
                   title="Edit project"
                 >
                   <Edit className="w-4 h-4" />
@@ -172,6 +173,6 @@ export default function L1ProjectTable({ userEmail, userLevel }) {
           No active projects found
         </div>
       )}
-    </div>
+    </>
   );
 }

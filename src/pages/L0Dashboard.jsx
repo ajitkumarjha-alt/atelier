@@ -87,10 +87,10 @@ export default function L0Dashboard() {
       </div>
 
       {/* Create Project Button */}
-      <div className="mb-6 flex justify-end">
+      <div className="mb-6 flex flex-col sm:flex-row justify-end">
         <button
           onClick={() => navigate('/project-input')}
-          className="bg-lodha-gold text-white px-6 py-3 rounded-lg hover:bg-lodha-gold/90 transition-colors flex items-center gap-2 font-jost font-semibold shadow-lg"
+          className="bg-lodha-gold text-white px-6 py-3 rounded-lg hover:bg-lodha-gold/90 transition-colors flex items-center justify-center gap-2 font-jost font-semibold shadow-lg w-full sm:w-auto"
         >
           <FolderKanban className="w-5 h-5" />
           Create New Project

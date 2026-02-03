@@ -136,6 +136,34 @@ export default function ProjectDetail() {
         </div>
       </div>
 
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <button
+          onClick={() => navigate(`/design-calculations/${id}`)}
+          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
+        >
+          Design Calculations
+        </button>
+        <button
+          onClick={() => navigate(`/drawing-schedule/${id}`)}
+          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
+        >
+          Drawing Schedule
+        </button>
+        <button
+          onClick={() => navigate(`/change-requests/${id}`)}
+          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
+        >
+          Change Requests
+        </button>
+        <button
+          onClick={() => navigate(`/mas-list?project=${id}`)}
+          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
+        >
+          MAS Management
+        </button>
+      </div>
+
       {/* Project Details Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Project Info Card */}
@@ -364,7 +392,7 @@ export default function ProjectDetail() {
       {/* Lifecycle Stage Update */}
       <div className="card">
         <h3 className="heading-tertiary mb-6">Update Lifecycle Stage</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {['Concept', 'DD', 'Tender', 'VFC'].map(stage => (
             <button
               key={stage}

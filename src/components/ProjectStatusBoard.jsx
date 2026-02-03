@@ -108,13 +108,6 @@ export default function ProjectStatusBoard({ userEmail }) {
 
         <div className="space-y-2">
           <button
-            onClick={() => navigate(`/design-calculations/${project.id}`)}
-            className="w-full px-3 py-2 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
-          >
-            Design Calculations
-          </button>
-
-          <button
             onClick={() => navigate(`/drawing-schedule/${project.id}`)}
             className="w-full px-3 py-2 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
           >

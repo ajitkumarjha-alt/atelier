@@ -1,14 +1,20 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { Eye, MapPin, Clock } from 'lucide-react';
+import AIChat from '../components/AIChat';
+import { Eye, MapPin, Clock, MessageCircle } from 'lucide-react';
 import { apiFetchJson } from '../lib/api';
+import { auth } from '../lib/firebase';
 
 export default function L4Dashboard() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [user, setUser] = useState(null);
   const userEmail = localStorage.getItem('userEmail');
 
   useEffect(() => {
+    setUser(auth.currentUser);
+    
     const fetchProjects = async () => {
       try {
         const data = await apiFetchJson(`/api/projects?userEmail=${userEmail}`);
@@ -22,6 +28,8 @@ export default function L4Dashboard() {
 
     if (userEmail) {
       fetchProjects();
+    } else {
+      setLoading(false);
     }
   }, [userEmail]);
 
@@ -159,6 +167,25 @@ export default function L4Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* AI Help Button */}
+      <button
+        onClick={() => setIsChatOpen(true)}
+        className="fixed bottom-6 right-6 bg-gradient-to-r from-lodha-gold to-yellow-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 z-40"
+        title="AI Assistant"
+      >
+        <MessageCircle className="w-6 h-6" />
+        <span className="font-medium">AI Help</span>
+      </button>
+
+      {/* AI Chat Widget */}
+      <AIChat
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        userLevel="L4"
+        projectId={null}
+        user={user}
+      />
     </Layout>
   );
 }

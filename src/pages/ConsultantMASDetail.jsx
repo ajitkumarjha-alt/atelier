@@ -144,7 +144,7 @@ export default function ConsultantMASDetail() {
 
         {/* MAS Details */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <p className="text-sm text-gray-500">Project</p>
               <p className="font-medium text-gray-900">{mas.project_name}</p>

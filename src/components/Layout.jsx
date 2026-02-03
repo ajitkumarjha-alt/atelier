@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { createOrUpdateUser } from '../services/userService';
+import Breadcrumbs from './Breadcrumbs';
 
 export default function Layout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -101,8 +102,10 @@ export default function Layout({ children }) {
             ? 'bg-gradient-to-r from-lodha-gold to-lodha-gold/90 text-white shadow-md transform scale-105'
             : 'text-white/80 hover:bg-white/10 hover:text-white hover:translate-x-1'
         }`}
+        aria-current={isActive ? 'page' : undefined}
+        aria-label={item.name}
       >
-        <Icon className="w-5 h-5" />
+        <Icon className="w-5 h-5" aria-hidden="true" />
         <span className="font-medium">{item.name}</span>
       </button>
     );
@@ -116,6 +119,8 @@ export default function Layout({ children }) {
                    ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
                    lg:translate-x-0 transition-transform duration-200 ease-in-out
                    flex flex-col shadow-xl`}
+        role="navigation"
+        aria-label="Main navigation"
       >
         {/* Sidebar Header */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-lodha-gold/30 bg-gradient-to-r from-transparent to-lodha-gold/10">
@@ -130,8 +135,9 @@ export default function Layout({ children }) {
           <button 
             onClick={() => setIsSidebarOpen(false)}
             className="lg:hidden p-1 rounded-md text-white/70 hover:text-white"
+            aria-label="Close navigation menu"
           >
-            <X className="w-6 h-6" />
+            <X className="w-6 h-6" aria-hidden="true" />
           </button>
         </div>
 
@@ -168,8 +174,10 @@ export default function Layout({ children }) {
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="lg:hidden p-1 rounded-md hover:bg-lodha-sand"
+              aria-label="Open navigation menu"
+              aria-expanded={isSidebarOpen}
             >
-              <Menu className="w-6 h-6 text-lodha-grey" />
+              <Menu className="w-6 h-6 text-lodha-grey" aria-hidden="true" />
             </button>
             <h2 className="text-lg md:text-xl font-garamond font-bold text-lodha-grey truncate">
               {navItems.find(item => item.path === location.pathname)?.name || 'Dashboard'}
@@ -180,15 +188,17 @@ export default function Layout({ children }) {
             className="flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 rounded-lg hover:bg-lodha-sand
                      text-lodha-grey text-xs md:text-sm font-jost font-semibold transition-colors duration-200
                      border border-lodha-gold hover:border-lodha-grey flex-shrink-0"
+            aria-label="Sign out"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-4 h-4" aria-hidden="true" />
             <span className="hidden sm:inline">Sign Out</span>
           </button>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 bg-lodha-sand p-4 md:p-6 overflow-y-auto overflow-x-hidden w-full">
-          <div className="max-w-7xl mx-auto w-full px-2 md:px-0">
+        <main className="flex-1 bg-lodha-sand p-4 md:p-6 overflow-auto w-full max-w-full" role="main">
+          <div className="max-w-7xl mx-auto w-full">
+            <Breadcrumbs />
             {children}
           </div>
         </main>
@@ -199,6 +209,10 @@ export default function Layout({ children }) {
         <div 
           className="fixed inset-0 bg-lodha-grey bg-opacity-30 lg:hidden z-40"
           onClick={() => setIsSidebarOpen(false)}
+          role="button"
+          aria-label="Close navigation menu"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Escape' && setIsSidebarOpen(false)}
         />
       )}
     </div>

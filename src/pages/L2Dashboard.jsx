@@ -43,6 +43,8 @@ export default function L2Dashboard() {
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
         userLevel="L2"
+        projectId={null}
+        user={user}
       />
     </Layout>
   );

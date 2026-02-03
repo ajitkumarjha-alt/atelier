@@ -75,12 +75,12 @@ export default function MASPage() {
 
   return (
     <Layout>
-      <div className="mb-8 flex items-center justify-between">
-        <div>
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex-1 min-w-0">
           <h1 className="heading-primary mb-2">Material Approval Sheets</h1>
           <p className="text-body">Track pending material approvals across projects</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={() => navigate('/mas-form')}
             className="btn-secondary flex items-center gap-2"
@@ -136,18 +136,18 @@ export default function MASPage() {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full min-w-max">
               <thead>
                 <tr className="border-b-2 border-lodha-gold bg-lodha-sand">
-                  <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">MAS Ref</th>
-                  <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Material</th>
-                  <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Manufacturer</th>
-                  <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Quantity</th>
-                  <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">L2 Status</th>
-                  <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">L1 Status</th>
-                  <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Final Status</th>
-                  <th className="text-left px-6 py-4 text-lodha-black font-garamond font-bold">Date</th>
+                  <th className="text-left py-2 md:py-4 px-[2%] text-lodha-black font-garamond font-bold text-sm md:text-base whitespace-nowrap">MAS Ref</th>
+                  <th className="text-left py-2 md:py-4 px-[2%] text-lodha-black font-garamond font-bold text-sm md:text-base whitespace-nowrap">Material</th>
+                  <th className="text-left py-2 md:py-4 px-[2%] text-lodha-black font-garamond font-bold text-sm md:text-base whitespace-nowrap">Manufacturer</th>
+                  <th className="text-left py-2 md:py-4 px-[2%] text-lodha-black font-garamond font-bold text-sm md:text-base whitespace-nowrap">Quantity</th>
+                  <th className="text-left py-2 md:py-4 px-[2%] text-lodha-black font-garamond font-bold text-sm md:text-base whitespace-nowrap">L2 Status</th>
+                  <th className="text-left py-2 md:py-4 px-[2%] text-lodha-black font-garamond font-bold text-sm md:text-base whitespace-nowrap">L1 Status</th>
+                  <th className="text-left py-2 md:py-4 px-[2%] text-lodha-black font-garamond font-bold text-sm md:text-base whitespace-nowrap">Final Status</th>
+                  <th className="text-left py-2 md:py-4 px-[2%] pr-[3%] text-lodha-black font-garamond font-bold text-sm md:text-base whitespace-nowrap">Date</th>
                 </tr>
               </thead>
               <tbody>

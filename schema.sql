@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     full_name VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL DEFAULT 'user',
     user_level VARCHAR(20) NOT NULL DEFAULT 'L4',
+    organization VARCHAR(255) DEFAULT 'lodhagroup',
     last_login TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -287,6 +288,69 @@ CREATE INDEX IF NOT EXISTS idx_vendors_email ON vendors(email);
 CREATE INDEX IF NOT EXISTS idx_project_vendors_project ON project_vendors(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_vendors_vendor ON project_vendors(vendor_id);
 CREATE INDEX IF NOT EXISTS idx_vendor_otp_email ON vendor_otp(email);
+
+-- Create user_documents table for uploaded knowledge base
+CREATE TABLE IF NOT EXISTS user_documents (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+    document_name VARCHAR(255) NOT NULL,
+    document_type VARCHAR(100),
+    file_url TEXT NOT NULL,
+    file_size INTEGER,
+    content_text TEXT,
+    metadata JSONB,
+    is_indexed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create ai_chat_history table for conversation tracking
+CREATE TABLE IF NOT EXISTS ai_chat_history (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+    session_id VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant')),
+    message TEXT NOT NULL,
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create design_sheets table for AI-generated design sheets
+CREATE TABLE IF NOT EXISTS design_sheets (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    created_by_id INTEGER NOT NULL REFERENCES users(id),
+    sheet_name VARCHAR(255) NOT NULL,
+    sheet_type VARCHAR(100),
+    content JSONB NOT NULL,
+    pdf_url TEXT,
+    status VARCHAR(50) DEFAULT 'draft',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create user_preferences table for personalized AI settings
+CREATE TABLE IF NOT EXISTS user_preferences (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    ai_enabled BOOLEAN DEFAULT TRUE,
+    preferred_response_style VARCHAR(50) DEFAULT 'professional',
+    notification_preferences JSONB,
+    dashboard_layout JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for new tables
+CREATE INDEX IF NOT EXISTS idx_user_documents_user ON user_documents(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_documents_project ON user_documents(project_id);
+CREATE INDEX IF NOT EXISTS idx_ai_chat_history_user ON ai_chat_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_chat_history_session ON ai_chat_history(session_id);
+CREATE INDEX IF NOT EXISTS idx_design_sheets_project ON design_sheets(project_id);
+CREATE INDEX IF NOT EXISTS idx_design_sheets_created_by ON design_sheets(created_by_id);
+CREATE INDEX IF NOT EXISTS idx_users_organization ON users(organization);
 
 -- Create triggers for vendors table
 DROP TRIGGER IF EXISTS update_vendors_updated_at ON vendors;

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Loader } from 'lucide-react';
 import Layout from '../components/Layout';
 import ProjectCard from '../components/ProjectCard';
+import { CardGridSkeleton } from '../components/SkeletonLoader';
 import { apiFetchJson } from '../lib/api';
 
 export default function Dashboard() {
@@ -28,12 +29,13 @@ export default function Dashboard() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="flex flex-col items-center gap-4">
-            <Loader className="w-8 h-8 text-lodha-gold animate-spin" />
-            <p className="text-lodha-bronze font-medium">Loading projects...</p>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-serif font-bold text-lodha-deep mb-2">
+            Project Overview
+          </h1>
+          <p className="text-gray-600">Loading projects...</p>
         </div>
+        <CardGridSkeleton count={6} columns={3} />
       </Layout>
     );
   }

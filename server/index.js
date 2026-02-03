@@ -10,7 +10,11 @@ import {
   executeNaturalLanguageQuery, 
   suggestVisualization,
   generateProjectStory,
-  chatWithDatabase 
+  chatWithDatabase,
+  createDesignSheet,
+  trackScheduleAndDelivery,
+  saveChatMessage,
+  getChatHistory
 } from './llm.js';
 import {
   rateLimiter,
@@ -88,6 +92,9 @@ app.use(rateLimiter);
 
 // Serve static files (frontend)
 app.use(express.static(path.join(__dirname, '../public')));
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ============================================================================
 // Authentication Middleware
@@ -237,6 +244,52 @@ const requireRole = (...allowedRoles) => {
 
     next();
   };
+};
+
+/**
+ * Check if user is a team member of the project or has higher access
+ * Usage: app.get('/api/projects/:projectId/data', verifyToken, checkProjectAccess, handler)
+ */
+const checkProjectAccess = async (req, res, next) => {
+  try {
+    const projectId = req.params.projectId || req.params.id;
+    const userId = req.user.id;
+    const userLevel = req.user.userLevel;
+
+    // SUPER_ADMIN and L1 have access to all projects
+    if (userLevel === 'SUPER_ADMIN' || userLevel === 'L1') {
+      return next();
+    }
+
+    // L2 users have access if they are the assigned lead
+    if (userLevel === 'L2') {
+      const projectCheck = await query(
+        'SELECT assigned_lead_id FROM projects WHERE id = $1',
+        [projectId]
+      );
+      if (projectCheck.rows.length > 0 && projectCheck.rows[0].assigned_lead_id === userId) {
+        return next();
+      }
+    }
+
+    // Check if user is a team member
+    const teamCheck = await query(
+      'SELECT id FROM project_team WHERE project_id = $1 AND user_id = $2',
+      [projectId, userId]
+    );
+
+    if (teamCheck.rows.length > 0) {
+      return next();
+    }
+
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'You do not have access to this project'
+    });
+  } catch (error) {
+    logger.error('Error checking project access:', error);
+    return res.status(500).json({ error: 'Failed to verify project access' });
+  }
 };
 
 // ============================================================================
@@ -407,7 +460,7 @@ app.post('/api/llm/query', verifyToken, async (req, res) => {
   }
 });
 
-// Chat with database
+// Chat with database - Enhanced with personalization
 app.post('/api/llm/chat', verifyToken, async (req, res) => {
   try {
     if (!isLLMConfigured()) {
@@ -416,13 +469,28 @@ app.post('/api/llm/chat', verifyToken, async (req, res) => {
       });
     }
 
-    const { message, history, projectId } = req.body;
+    const { message, history, projectId, sessionId } = req.body;
+    const userId = req.user.id;
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    const result = await chatWithDatabase(message, history || [], projectId);
+    // Save user message
+    if (sessionId) {
+      await saveChatMessage(userId, projectId, sessionId, 'user', message);
+    }
+
+    const result = await chatWithDatabase(message, history || [], userId, projectId);
+    
+    if (!result.success) {
+      return res.status(403).json({ error: result.error });
+    }
+
+    // Save assistant response
+    if (sessionId) {
+      await saveChatMessage(userId, projectId, sessionId, 'assistant', result.answer);
+    }
     
     res.json({
       success: true,
@@ -432,6 +500,207 @@ app.post('/api/llm/chat', verifyToken, async (req, res) => {
     console.error('Chat error:', error);
     res.status(500).json({ 
       error: 'Failed to process chat',
+      message: error.message 
+    });
+  }
+});
+
+// Get chat history
+app.get('/api/llm/chat-history/:sessionId', verifyToken, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const userId = req.user.id;
+
+    const history = await getChatHistory(userId, sessionId);
+    
+    res.json({
+      success: true,
+      history
+    });
+  } catch (error) {
+    console.error('Error fetching chat history:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch chat history',
+      message: error.message 
+    });
+  }
+});
+
+// Create design sheet
+app.post('/api/llm/design-sheet', verifyToken, async (req, res) => {
+  try {
+    if (!isLLMConfigured()) {
+      return res.status(503).json({ 
+        error: 'LLM service not configured'
+      });
+    }
+
+    const { projectId, requirements, sheetType } = req.body;
+    const userId = req.user.id;
+
+    if (!projectId || !requirements) {
+      return res.status(400).json({ error: 'Project ID and requirements are required' });
+    }
+
+    const result = await createDesignSheet(userId, projectId, requirements, sheetType);
+    
+    if (!result.success) {
+      return res.status(403).json({ error: result.error });
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Design sheet creation error:', error);
+    res.status(500).json({ 
+      error: 'Failed to create design sheet',
+      message: error.message 
+    });
+  }
+});
+
+// Track schedule and delivery
+app.get('/api/llm/track-schedule/:projectId?', verifyToken, async (req, res) => {
+  try {
+    if (!isLLMConfigured()) {
+      return res.status(503).json({ 
+        error: 'LLM service not configured'
+      });
+    }
+
+    const { projectId } = req.params;
+    const userId = req.user.id;
+
+    const result = await trackScheduleAndDelivery(userId, projectId || null);
+    
+    if (!result.success) {
+      return res.status(403).json({ error: result.error });
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Schedule tracking error:', error);
+    res.status(500).json({ 
+      error: 'Failed to track schedule',
+      message: error.message 
+    });
+  }
+});
+
+// Upload user document
+app.post('/api/user-documents', verifyToken, upload.single('document'), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { projectId, documentType, documentName } = req.body;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    let fileUrl = '';
+    let contentText = '';
+
+    // Upload to storage (GCS or local)
+    fileUrl = await uploadToGCS(file);
+
+    // For text files, extract content
+    if (file.mimetype.includes('text') || file.mimetype.includes('pdf')) {
+      const fs = await import('fs');
+      if (file.mimetype.includes('text') && file.path) {
+        try {
+          contentText = fs.readFileSync(file.path, 'utf-8');
+        } catch (err) {
+          console.warn('Could not extract text content:', err.message);
+        }
+      }
+    }
+
+    const result = await query(
+      `INSERT INTO user_documents 
+       (user_id, project_id, document_name, document_type, file_url, file_size, content_text, is_indexed)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id`,
+      [userId, projectId || null, documentName || file.originalname, documentType, fileUrl, file.size, contentText, true]
+    );
+
+    res.json({
+      success: true,
+      documentId: result.rows[0].id,
+      fileUrl: fileUrl,
+      message: 'Document uploaded successfully'
+    });
+  } catch (error) {
+    console.error('Document upload error:', error);
+    res.status(500).json({ 
+      error: 'Failed to upload document',
+      message: error.message 
+    });
+  }
+});
+
+// Get user documents
+app.get('/api/user-documents', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { projectId } = req.query;
+
+    let queryText = 'SELECT * FROM user_documents WHERE user_id = $1';
+    const params = [userId];
+
+    if (projectId) {
+      params.push(projectId);
+      queryText += ' AND project_id = $2';
+    }
+
+    queryText += ' ORDER BY created_at DESC';
+
+    const result = await query(queryText, params);
+
+    res.json({
+      success: true,
+      documents: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching documents:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch documents',
+      message: error.message 
+    });
+  }
+});
+
+// Get design sheets
+app.get('/api/design-sheets', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { projectId } = req.query;
+
+    let queryText = `
+      SELECT ds.*, p.name as project_name, u.full_name as created_by_name
+      FROM design_sheets ds
+      JOIN projects p ON ds.project_id = p.id
+      JOIN users u ON ds.created_by_id = u.id
+      WHERE ds.created_by_id = $1
+    `;
+    const params = [userId];
+
+    if (projectId) {
+      params.push(projectId);
+      queryText += ' AND ds.project_id = $2';
+    }
+
+    queryText += ' ORDER BY ds.created_at DESC';
+
+    const result = await query(queryText, params);
+
+    res.json({
+      success: true,
+      sheets: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching design sheets:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch design sheets',
       message: error.message 
     });
   }
@@ -499,6 +768,11 @@ async function initializeDatabase() {
     // Add user_level column if it doesn't exist (migration for existing tables)
     await query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS user_level VARCHAR(50) NOT NULL DEFAULT 'L4'
+    `);
+    
+    // Add organization column for lodhagroup restriction
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS organization VARCHAR(255) DEFAULT 'lodhagroup'
     `);
     
     console.log('✓ users table initialized');
@@ -1103,6 +1377,32 @@ app.get('/api/users/level/:level', async (req, res) => {
   }
 });
 
+// Get users that can be added to a project by the current user
+app.get('/api/users/addable', verifyToken, async (req, res) => {
+  try {
+    const currentUserLevel = req.user.userLevel;
+    let allowedLevels = [];
+
+    // Define which levels each user can add
+    if (currentUserLevel === 'SUPER_ADMIN') {
+      allowedLevels = ['L1', 'L2', 'L3', 'L4'];
+    } else if (currentUserLevel === 'L1') {
+      allowedLevels = ['L2', 'L3', 'L4'];
+    } else if (currentUserLevel === 'L2') {
+      allowedLevels = ['L3', 'L4'];
+    } else {
+      return res.json([]); // L3 and L4 cannot add users
+    }
+
+    const text = 'SELECT id, email, full_name, user_level FROM users WHERE user_level = ANY($1) ORDER BY user_level, full_name ASC';
+    const result = await query(text, [allowedLevels]);
+    res.json(result.rows);
+  } catch (error) {
+    logger.error('Error fetching addable users:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
 // Get project team members
 app.get('/api/projects/:id/team', async (req, res) => {
   try {
@@ -1133,14 +1433,48 @@ app.get('/api/projects/:id/team', async (req, res) => {
   }
 });
 
-// Add team member to project
-app.post('/api/projects/:id/team', async (req, res) => {
+// Add team member to project (L2 can add L3/L4, L1 can add L2/L3/L4)
+app.post('/api/projects/:id/team', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { userId, role, assignedBy } = req.body;
+    const currentUserLevel = req.user.userLevel;
     
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    // Get the user level of the person being added
+    const userToAdd = await query('SELECT user_level FROM users WHERE id = $1', [userId]);
+    if (userToAdd.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const targetUserLevel = userToAdd.rows[0].user_level;
+
+    // Check permissions: L2 can add L3 and L4 only
+    if (currentUserLevel === 'L2') {
+      if (!['L3', 'L4'].includes(targetUserLevel)) {
+        return res.status(403).json({ 
+          error: 'Forbidden', 
+          message: 'L2 users can only add L3 and L4 team members' 
+        });
+      }
+    }
+    // L1 can add L2, L3, L4
+    else if (currentUserLevel === 'L1') {
+      if (!['L2', 'L3', 'L4'].includes(targetUserLevel)) {
+        return res.status(403).json({ 
+          error: 'Forbidden', 
+          message: 'L1 users can add L2, L3, and L4 team members' 
+        });
+      }
+    }
+    // SUPER_ADMIN can add anyone
+    else if (currentUserLevel !== 'SUPER_ADMIN') {
+      return res.status(403).json({ 
+        error: 'Forbidden', 
+        message: 'You do not have permission to add team members' 
+      });
     }
     
     const text = `
@@ -1151,10 +1485,11 @@ app.post('/api/projects/:id/team', async (req, res) => {
       RETURNING *
     `;
     
-    const result = await query(text, [id, userId, role || null, assignedBy || null]);
+    const result = await query(text, [id, userId, role || targetUserLevel, assignedBy || req.user.id]);
+    logger.info(`Team member added to project ${id} by ${currentUserLevel}`);
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error adding team member:', error);
+    logger.error('Error adding team member:', error);
     res.status(500).json({ error: 'Failed to add team member' });
   }
 });
@@ -2618,7 +2953,7 @@ app.post('/api/drawing-schedules', verifyToken, async (req, res) => {
   }
 });
 
-// Get all drawing schedules with optional filters
+// Get all drawing schedules with optional filters (accessible by team members)
 app.get('/api/drawing-schedules', verifyToken, async (req, res) => {
   try {
     const { projectId, discipline, status, priority } = req.query;
@@ -2668,7 +3003,7 @@ app.get('/api/drawing-schedules', verifyToken, async (req, res) => {
   }
 });
 
-// Get single drawing schedule by ID
+// Get single drawing schedule by ID (accessible by team members)
 app.get('/api/drawing-schedules/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -2877,7 +3212,7 @@ app.post('/api/design-calculations', verifyToken, upload.single('calculationFile
   }
 });
 
-// Get all design calculations for a project
+// Get all design calculations for a project (accessible by team members)
 app.get('/api/design-calculations', verifyToken, async (req, res) => {
   try {
     const { projectId } = req.query;
@@ -2906,7 +3241,7 @@ app.get('/api/design-calculations', verifyToken, async (req, res) => {
   }
 });
 
-// Get single design calculation by ID
+// Get single design calculation by ID (accessible by team members)
 app.get('/api/design-calculations/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;

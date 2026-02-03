@@ -709,9 +709,9 @@ export default function ProjectInput() {
 
   return (
     <Layout>
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Form Section - 2/3 width */}
-        <div className="col-span-2">
+        <div className="lg:col-span-2">
           <h1 className="heading-primary mb-6">
             {isEditing ? 'Edit Project' : 'Create New Project'}
           </h1>
@@ -789,7 +789,7 @@ export default function ProjectInput() {
                 <p className="text-xs text-gray-600 mt-1">Assign an L1 manager who will be responsible for this project</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">
                     Latitude
@@ -937,8 +937,8 @@ export default function ProjectInput() {
         </div>
 
         {/* Live Preview Section - 1/3 width */}
-        <div className="col-span-1">
-          <div className="bg-white rounded-lg shadow-md p-6 sticky top-6">
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-lg shadow-md p-6 lg:sticky lg:top-6">
             <h2 className="heading-secondary mb-4">Project Preview</h2>
             <ProjectPreview data={projectData} />
           </div>
@@ -1009,7 +1009,7 @@ function BuildingSection({
       </div>
 
       {/* Building Name */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <div>
           <label className="block text-sm font-jost font-semibold mb-2">Building Name</label>
           <input
@@ -1078,7 +1078,7 @@ function BuildingSection({
 
       {/* Villa Section */}
       {isVilla && (
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-sm font-jost font-semibold mb-2">Villa Type</label>
             <input
@@ -1106,7 +1106,7 @@ function BuildingSection({
       {building.buildingType === 'Villa' && (
         <div className="border border-lodha-gold/30 rounded-lg p-4 mb-4 bg-yellow-50/30">
           <h4 className="text-sm font-jost font-semibold mb-3 text-lodha-gold">Villa Specifications</h4>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-jost font-semibold mb-2">Pool Volume (m³)</label>
               <input
@@ -1161,7 +1161,7 @@ function BuildingSection({
       {building.buildingType === 'MLCP/Parking' && (
         <div className="border border-lodha-gold/30 rounded-lg p-4 mb-4 bg-yellow-50/30">
           <h4 className="text-sm font-jost font-semibold mb-3 text-lodha-gold">Parking Specifications</h4>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-jost font-semibold mb-2">Car Parking Count (per floor)</label>
               <input
@@ -1244,7 +1244,7 @@ function BuildingSection({
       {building.buildingType === 'Commercial' && (
         <div className="border border-lodha-gold/30 rounded-lg p-4 mb-4 bg-yellow-50/30">
           <h4 className="text-sm font-jost font-semibold mb-3 text-lodha-gold">Commercial Specifications</h4>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-jost font-semibold mb-2">Office Count</label>
               <input

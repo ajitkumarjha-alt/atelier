@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Save, ArrowLeft } from 'lucide-react';
 import Layout from '../components/Layout';
 import FileUpload from '../components/FileUpload';
+import { showSuccess, showError, showLoading, dismissToast } from '../utils/toast';
 
 export default function MASForm() {
   const navigate = useNavigate();
@@ -44,9 +45,11 @@ export default function MASForm() {
     
     // Validate required fields
     if (!formData.projectName || !formData.materialCategory || !formData.manufacturer) {
-      alert('Please fill in all required fields (Project Name, Material Category, Manufacturer)');
+      showError('Please fill in all required fields (Project Name, Material Category, Manufacturer)');
       return;
     }
+
+    const loadingToast = showLoading('Creating MAS...');
 
     try {
       const response = await fetch('/api/mas', {
@@ -69,17 +72,20 @@ export default function MASForm() {
         }),
       });
 
+      dismissToast(loadingToast);
+
       if (response.ok) {
         const data = await response.json();
-        alert(`MAS created successfully! MAS Ref: ${data.mas_ref_no}`);
-        navigate('/mas-list');
+        showSuccess(`MAS created successfully! Ref: ${data.mas_ref_no}`);
+        setTimeout(() => navigate('/mas-list'), 1500);
       } else {
         const error = await response.json();
-        alert(`Failed to create MAS: ${error.error}`);
+        showError(`Failed to create MAS: ${error.error}`);
       }
     } catch (err) {
+      dismissToast(loadingToast);
       console.error('Error saving MAS:', err);
-      alert('Failed to save MAS. Please try again.');
+      showError('Failed to save MAS. Please try again.');
     }
   };
 

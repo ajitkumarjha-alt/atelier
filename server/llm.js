@@ -300,6 +300,101 @@ Format in clear sections with headers.`;
 }
 
 /**
+ * Get user documents context for personalized RAG
+ */
+async function getUserDocumentsContext(userId, projectId = null) {
+  try {
+    let queryText = `
+      SELECT document_name, document_type, content_text, metadata, created_at 
+      FROM user_documents 
+      WHERE user_id = $1 AND is_indexed = true
+    `;
+    const params = [userId];
+    
+    if (projectId) {
+      params.push(projectId);
+      queryText += ` AND (project_id = $2 OR project_id IS NULL)`;
+    }
+    
+    queryText += ' ORDER BY created_at DESC LIMIT 50';
+    
+    const result = await query(queryText, params);
+    
+    if (result.rows.length === 0) {
+      return '';
+    }
+    
+    let context = '\n\nUSER UPLOADED DOCUMENTS:\n';
+    context += 'The following documents have been uploaded by the user:\n\n';
+    
+    result.rows.forEach((doc, idx) => {
+      context += `Document ${idx + 1}: ${doc.document_name}\n`;
+      if (doc.document_type) {
+        context += `  Type: ${doc.document_type}\n`;
+      }
+      if (doc.content_text) {
+        // Include first 500 chars of content
+        const excerpt = doc.content_text.substring(0, 500);
+        context += `  Content excerpt: ${excerpt}...\n`;
+      }
+      context += '\n';
+    });
+    
+    return context;
+  } catch (error) {
+    console.error('Error fetching user documents context:', error);
+    return '';
+  }
+}
+
+/**
+ * Get user profile and preferences for personalization
+ */
+async function getUserContext(userId) {
+  try {
+    const userResult = await query(
+      `SELECT u.full_name, u.email, u.role, u.user_level, u.organization,
+              up.preferred_response_style, up.ai_enabled
+       FROM users u
+       LEFT JOIN user_preferences up ON u.id = up.user_id
+       WHERE u.id = $1`,
+      [userId]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return null;
+    }
+    
+    const user = userResult.rows[0];
+    
+    // Get user's projects
+    const projectsResult = await query(
+      `SELECT p.id, p.name, p.status, p.completion_percentage
+       FROM projects p
+       LEFT JOIN project_team_members ptm ON p.id = ptm.project_id
+       WHERE ptm.user_id = $1 OR p.assigned_lead_id = $1
+       ORDER BY p.created_at DESC
+       LIMIT 10`,
+      [userId]
+    );
+    
+    return {
+      name: user.full_name,
+      email: user.email,
+      role: user.role,
+      level: user.user_level,
+      organization: user.organization,
+      responseStyle: user.preferred_response_style || 'professional',
+      aiEnabled: user.ai_enabled !== false,
+      projects: projectsResult.rows
+    };
+  } catch (error) {
+    console.error('Error fetching user context:', error);
+    return null;
+  }
+}
+
+/**
  * Get standards documents context for LLM
  */
 async function getStandardsDocumentsContext(projectId = null) {
@@ -361,37 +456,76 @@ async function getStandardsDocumentsContext(projectId = null) {
 }
 
 /**
- * Chat with database context
+ * Chat with database context - Personalized RAG Assistant
  */
-export async function chatWithDatabase(userMessage, conversationHistory = [], projectId = null) {
+export async function chatWithDatabase(userMessage, conversationHistory = [], userId, projectId = null) {
   if (!model) {
     throw new Error('Gemini AI is not configured');
   }
 
+  const userContext = await getUserContext(userId);
+  
+  // Check if user has AI access and is from lodhagroup
+  if (!userContext || userContext.organization !== 'lodhagroup') {
+    return {
+      success: false,
+      error: 'AI assistant is only available for lodhagroup users'
+    };
+  }
+  
+  if (!userContext.aiEnabled) {
+    return {
+      success: false,
+      error: 'AI assistant is not enabled for your account. Please contact your administrator.'
+    };
+  }
+
   const schema = await getDatabaseSchema();
   const standardsContext = await getStandardsDocumentsContext(projectId);
+  const userDocsContext = await getUserDocumentsContext(userId, projectId);
 
-  const systemContext = `You are an AI assistant for the Atelier MEP Project Management System.
-You help users with project details, scheduling, design calculations, MAS/RFI analysis, and trends.
+  const systemContext = `You are ${userContext.name}'s personal AI assistant for the Atelier MEP Project Management System.
+
+USER PROFILE:
+- Name: ${userContext.name}
+- Role: ${userContext.role}
+- Level: ${userContext.level}
+- Organization: ${userContext.organization}
+- Response Style: ${userContext.responseStyle}
+
+You help with:
+• Project details and scheduling
+• Design sheet creation and calculations
+• MAS/RFI tracking and analysis
+• Delivery and schedule tracking
+• Custom reports and insights
+• Document analysis and queries
 
 IMPORTANT RULES:
-1. You can ONLY answer questions using data from the database and uploaded reference documents
-2. Do NOT use external knowledge or make assumptions
-3. If data is not in the database, say "I don't have that information in the database"
-4. Be professional and concise
-5. When discussing numbers, be specific (e.g., "5 pending MAS" not "several")
-6. When asked about standards, codes, or regulations, refer to the uploaded reference documents
-7. For design calculations, ensure compliance with uploaded standards documents
+1. Personalize responses based on user's role and level
+2. ONLY use data from: database, uploaded company documents, user's uploaded documents
+3. Do NOT use external knowledge or assumptions
+4. If data is missing, say "I don't have that information in your documents or database"
+5. Be professional and match the user's preferred response style
+6. When discussing design calculations, reference uploaded standards (IS codes, NBC, company policies)
+7. For schedule tracking, use data from drawing_schedules and project milestones
+8. For delivery tracking, use material_approval_sheets and project status data
 
 ${schema}
 ${standardsContext}
+${userDocsContext}
+
+${userContext.projects.length > 0 ? `
+YOUR ACTIVE PROJECTS:
+${userContext.projects.map(p => `- ${p.name} (${p.status}, ${p.completion_percentage}% complete)`).join('\n')}
+` : ''}
 
 Previous conversation:
 ${conversationHistory.map(msg => `${msg.role}: ${msg.content}`).join('\n')}
 
 User: ${userMessage}
 
-Answer the user's question professionally and accurately based on the database schema, uploaded standards documents, and context above.`;
+As ${userContext.name}'s personal assistant, provide a helpful, accurate response based on available data.`;
 
   try {
     const result = await model.generateContent(systemContext);
@@ -405,5 +539,233 @@ Answer the user's question professionally and accurately based on the database s
   } catch (error) {
     console.error('Error in chat:', error);
     throw error;
+  }
+}
+
+/**
+ * Create design sheet based on user requirements
+ */
+export async function createDesignSheet(userId, projectId, requirements, sheetType = 'general') {
+  if (!model) {
+    throw new Error('Gemini AI is not configured');
+  }
+
+  try {
+    const userContext = await getUserContext(userId);
+    
+    if (!userContext || userContext.organization !== 'lodhagroup') {
+      return {
+        success: false,
+        error: 'Design sheet creation is only available for lodhagroup users'
+      };
+    }
+
+    // Get project details
+    const projectResult = await query(
+      'SELECT * FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      throw new Error('Project not found');
+    }
+    
+    const project = projectResult.rows[0];
+    const standardsContext = await getStandardsDocumentsContext(projectId);
+    const userDocsContext = await getUserDocumentsContext(userId, projectId);
+
+    const prompt = `You are creating a design sheet for ${userContext.name}.
+
+PROJECT: ${project.name}
+Sheet Type: ${sheetType}
+Requirements: ${requirements}
+
+${standardsContext}
+${userDocsContext}
+
+Create a comprehensive design sheet in JSON format with the following structure:
+{
+  "title": "Design Sheet Title",
+  "project": "${project.name}",
+  "date": "${new Date().toISOString()}",
+  "preparedBy": "${userContext.name}",
+  "sections": [
+    {
+      "heading": "Section Name",
+      "content": "Section content with calculations, specifications, or details",
+      "items": ["Item 1", "Item 2"]
+    }
+  ],
+  "calculations": [
+    {
+      "description": "What is being calculated",
+      "formula": "Formula used",
+      "values": {"param": "value"},
+      "result": "Calculated result with units"
+    }
+  ],
+  "references": ["Standard or document referenced"],
+  "notes": ["Important notes or assumptions"]
+}
+
+Include relevant design calculations, specifications, and reference applicable standards from uploaded documents.
+Return ONLY valid JSON.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let sheetContent = response.text().trim();
+    
+    // Clean up JSON
+    sheetContent = sheetContent.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    const parsedContent = JSON.parse(sheetContent);
+    
+    // Save to database
+    const insertResult = await query(
+      `INSERT INTO design_sheets (project_id, created_by_id, sheet_name, sheet_type, content, status)
+       VALUES ($1, $2, $3, $4, $5, 'draft')
+       RETURNING id`,
+      [projectId, userId, parsedContent.title, sheetType, sheetContent]
+    );
+    
+    return {
+      success: true,
+      sheetId: insertResult.rows[0].id,
+      content: parsedContent,
+      message: 'Design sheet created successfully'
+    };
+  } catch (error) {
+    console.error('Error creating design sheet:', error);
+    throw error;
+  }
+}
+
+/**
+ * Track schedule and deliveries for user
+ */
+export async function trackScheduleAndDelivery(userId, projectId = null) {
+  if (!model) {
+    throw new Error('Gemini AI is not configured');
+  }
+
+  try {
+    const userContext = await getUserContext(userId);
+    
+    if (!userContext || userContext.organization !== 'lodhagroup') {
+      return {
+        success: false,
+        error: 'Schedule tracking is only available for lodhagroup users'
+      };
+    }
+
+    // Get drawing schedules
+    let drawingQuery = `
+      SELECT ds.*, p.name as project_name
+      FROM drawing_schedules ds
+      JOIN projects p ON ds.project_id = p.id
+      LEFT JOIN project_team_members ptm ON p.id = ptm.project_id
+      WHERE (ptm.user_id = $1 OR p.assigned_lead_id = $1)
+    `;
+    const params = [userId];
+    
+    if (projectId) {
+      params.push(projectId);
+      drawingQuery += ` AND ds.project_id = $2`;
+    }
+    
+    drawingQuery += ' ORDER BY ds.planned_submission_date ASC LIMIT 50';
+    
+    const drawingSchedules = await query(drawingQuery, params);
+    
+    // Get material deliveries
+    let masQuery = `
+      SELECT mas.*, p.name as project_name
+      FROM material_approval_sheets mas
+      JOIN projects p ON mas.project_id = p.id
+      LEFT JOIN project_team_members ptm ON p.id = ptm.project_id
+      WHERE (ptm.user_id = $1 OR p.assigned_lead_id = $1)
+      AND mas.final_status IN ('approved', 'pending')
+    `;
+    const masParams = [userId];
+    
+    if (projectId) {
+      masParams.push(projectId);
+      masQuery += ` AND mas.project_id = $2`;
+    }
+    
+    masQuery += ' ORDER BY mas.created_at DESC LIMIT 50';
+    
+    const materialSchedules = await query(masQuery, masParams);
+
+    const prompt = `Analyze the schedule and delivery status for ${userContext.name}.
+
+DRAWING SCHEDULES (${drawingSchedules.rowCount} items):
+${JSON.stringify(drawingSchedules.rows, null, 2)}
+
+MATERIAL DELIVERIES (${materialSchedules.rowCount} items):
+${JSON.stringify(materialSchedules.rows, null, 2)}
+
+Provide a comprehensive summary including:
+1. Overdue items (compare planned vs actual dates)
+2. Upcoming deadlines (next 7 days, next 30 days)
+3. On-track items
+4. Material approval status and pending deliveries
+5. Recommendations for immediate action
+
+Format as a clear, actionable report.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const summary = response.text();
+
+    return {
+      success: true,
+      summary: summary,
+      drawingCount: drawingSchedules.rowCount,
+      materialCount: materialSchedules.rowCount
+    };
+  } catch (error) {
+    console.error('Error tracking schedule:', error);
+    throw error;
+  }
+}
+
+/**
+ * Save chat history
+ */
+export async function saveChatMessage(userId, projectId, sessionId, role, message, metadata = null) {
+  try {
+    await query(
+      `INSERT INTO ai_chat_history (user_id, project_id, session_id, role, message, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [userId, projectId, sessionId, role, message, metadata ? JSON.stringify(metadata) : null]
+    );
+  } catch (error) {
+    console.error('Error saving chat message:', error);
+  }
+}
+
+/**
+ * Get chat history for session
+ */
+export async function getChatHistory(userId, sessionId, limit = 50) {
+  try {
+    const result = await query(
+      `SELECT role, message, created_at 
+       FROM ai_chat_history 
+       WHERE user_id = $1 AND session_id = $2
+       ORDER BY created_at ASC
+       LIMIT $3`,
+      [userId, sessionId, limit]
+    );
+    
+    return result.rows.map(row => ({
+      role: row.role,
+      content: row.message,
+      timestamp: row.created_at
+    }));
+  } catch (error) {
+    console.error('Error fetching chat history:', error);
+    return [];
   }
 }
