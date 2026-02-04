@@ -17,6 +17,7 @@ export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userLevel, setUserLevel] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isActive, setIsActive] = useState(null);
 
   useEffect(() => {
     console.log('Setting up auth state listener');
@@ -28,13 +29,23 @@ export const UserProvider = ({ children }) => {
         try {
           const userData = await createOrUpdateUser(user.email, user.displayName);
           console.log('User data from backend:', userData);
-          setUserLevel(userData.user_level || 'L2');
+          
+          // Check if user is not registered
+          if (userData.error === 'Not registered' || userData.user_level === null) {
+            setUserLevel(null);
+            setIsActive(false);
+          } else {
+            setUserLevel(userData.user_level || 'L4');
+            setIsActive(userData.is_active !== undefined ? userData.is_active : true);
+          }
         } catch (error) {
           console.error('Error fetching user level:', error);
-          setUserLevel('L2');
+          setUserLevel(null);
+          setIsActive(false);
         }
       } else {
         setUserLevel(null);
+        setIsActive(null);
       }
       
       setLoading(false);
@@ -44,7 +55,7 @@ export const UserProvider = ({ children }) => {
   }, []);
 
   return (
-    <UserContext.Provider value={{ user, userLevel, loading }}>
+    <UserContext.Provider value={{ user, userLevel, loading, isActive }}>
       {children}
     </UserContext.Provider>
   );

@@ -327,6 +327,32 @@ app.get('/api/alive', (req, res) => {
   res.status(200).json({ alive: true });
 });
 
+// Cleanup endpoint - TEMPORARY for user cleanup
+app.post('/api/admin/cleanup-users', async (req, res) => {
+  try {
+    // Check current users
+    const current = await query('SELECT email, user_level FROM users');
+    console.log('Current users:', current.rows);
+    
+    // Delete all except ajit.kumarjha@lodhagroup.com
+    const deleteResult = await query(
+      "DELETE FROM users WHERE email != 'ajit.kumarjha@lodhagroup.com' RETURNING email"
+    );
+    
+    // Check remaining users
+    const remaining = await query('SELECT email, user_level FROM users');
+    
+    res.json({
+      deleted: deleteResult.rowCount,
+      deletedUsers: deleteResult.rows,
+      remaining: remaining.rows
+    });
+  } catch (error) {
+    console.error('Cleanup error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============================================================================
 // File Upload Endpoints
 // ============================================================================
@@ -746,7 +772,7 @@ app.get('/api/llm/status', (req, res) => {
 // Super Admin Emails - load from environment or use defaults
 const SUPER_ADMIN_EMAILS = process.env.SUPER_ADMIN_EMAILS 
   ? process.env.SUPER_ADMIN_EMAILS.split(',').map(email => email.trim())
-  : ['lodhaatelier@gmail.com', 'ajit.kumarjha@lodhagroup.com'];
+  : ['ajit.kumarjha@lodhagroup.com'];
 
 // Initialize database tables on server start
 async function initializeDatabase() {
@@ -773,6 +799,11 @@ async function initializeDatabase() {
     // Add organization column for lodhagroup restriction
     await query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS organization VARCHAR(255) DEFAULT 'lodhagroup'
+    `);
+    
+    // Add is_active column for user activation workflow
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE
     `);
     
     console.log('✓ users table initialized');
@@ -1178,6 +1209,27 @@ async function initializeDatabase() {
     `);
     console.log('✓ design_calculations table initialized');
 
+    // Water Demand Calculations table
+    await query(`
+      CREATE TABLE IF NOT EXISTS water_demand_calculations (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+        calculation_name VARCHAR(500) NOT NULL,
+        selected_buildings JSONB NOT NULL,
+        calculation_details JSONB NOT NULL,
+        total_water_demand DECIMAL(12, 2),
+        status VARCHAR(50) DEFAULT 'Draft',
+        calculated_by VARCHAR(255) NOT NULL,
+        verified_by VARCHAR(255),
+        remarks TEXT,
+        created_by VARCHAR(255),
+        updated_by VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ water_demand_calculations table initialized');
+
     // Project Change Requests table
     await query(`
       CREATE TABLE IF NOT EXISTS project_change_requests (
@@ -1214,6 +1266,79 @@ async function initializeDatabase() {
       )
     `);
     console.log('✓ project_change_requests table initialized');
+
+    // Project team table
+    await query(`
+      CREATE TABLE IF NOT EXISTS project_team (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role VARCHAR(100),
+        assigned_by INTEGER REFERENCES users(id),
+        assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(project_id, user_id)
+      )
+    `);
+    console.log('✓ project_team table initialized');
+
+    // Consultants table
+    await query(`
+      CREATE TABLE IF NOT EXISTS consultants (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        full_name VARCHAR(255),
+        company_name VARCHAR(255),
+        phone VARCHAR(50),
+        specialty VARCHAR(100),
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ consultants table initialized');
+
+    // Consultant OTP table
+    await query(`
+      CREATE TABLE IF NOT EXISTS consultant_otp (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) NOT NULL,
+        otp VARCHAR(6) NOT NULL,
+        expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        is_used BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ consultant_otp table initialized');
+
+    // Vendors table
+    await query(`
+      CREATE TABLE IF NOT EXISTS vendors (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        full_name VARCHAR(255),
+        company_name VARCHAR(255),
+        phone VARCHAR(50),
+        vendor_type VARCHAR(100),
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ vendors table initialized');
+
+    // Vendor OTP table
+    await query(`
+      CREATE TABLE IF NOT EXISTS vendor_otp (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) NOT NULL,
+        otp VARCHAR(6) NOT NULL,
+        expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        is_used BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ vendor_otp table initialized');
 
     console.log('✅ All database tables initialized');
   } catch (error) {
@@ -1712,30 +1837,94 @@ app.post('/api/auth/sync', async (req, res) => {
   const { email, fullName } = req.body;
   
   try {
-    // Determine user level
-    let userLevel = 'L4'; // Default
+    // Check if user already exists
+    const existingUser = await query('SELECT id, email, user_level, is_active FROM users WHERE email = $1', [email]);
     
-    // Super admin check - also insert into DB so other endpoints can access it
-    if (SUPER_ADMIN_EMAILS.includes(email)) {
-      userLevel = 'SUPER_ADMIN';
+    // If user exists, update last_login and return
+    if (existingUser.rows.length > 0) {
+      const updateText = `
+        UPDATE users 
+        SET last_login = CURRENT_TIMESTAMP,
+            full_name = $1
+        WHERE email = $2
+        RETURNING id, email, full_name, user_level, role, is_active;
+      `;
+      const result = await query(updateText, [fullName, email]);
+      return res.json(result.rows[0]);
     }
-
-    const text = `
-      INSERT INTO users (email, full_name, user_level, last_login)
-      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-      ON CONFLICT (email) 
-      DO UPDATE SET 
-        last_login = CURRENT_TIMESTAMP,
-        full_name = EXCLUDED.full_name,
-        user_level = EXCLUDED.user_level
-      RETURNING id, email, full_name, user_level, role;
-    `;
     
-    const result = await query(text, [email, fullName, userLevel]);
-    res.json(result.rows[0]);
+    // New user - check if they are super admin
+    if (SUPER_ADMIN_EMAILS.includes(email)) {
+      // Auto-create super admin accounts
+      const text = `
+        INSERT INTO users (email, full_name, user_level, is_active, last_login)
+        VALUES ($1, $2, 'SUPER_ADMIN', true, CURRENT_TIMESTAMP)
+        RETURNING id, email, full_name, user_level, role, is_active;
+      `;
+      const result = await query(text, [email, fullName]);
+      console.log(`✅ Super admin auto-created: ${email}`);
+      return res.json(result.rows[0]);
+    }
+    
+    // Non-registered user - return null to indicate no access
+    console.log(`⚠️ Login attempt by non-registered user: ${email} (${fullName})`);
+    res.status(403).json({ 
+      error: 'Not registered', 
+      message: 'Your account is not registered in the system. Please contact your administrator for access.',
+      email: email
+    });
   } catch (error) {
     console.error('Error syncing user:', error);
     res.status(500).json({ error: 'Failed to sync user data' });
+  }
+});
+
+// Get pending users (inactive users awaiting approval)
+app.get('/api/users/pending', verifyToken, async (req, res) => {
+  try {
+    const text = `
+      SELECT id, email, full_name, user_level, created_at
+      FROM users
+      WHERE is_active = false
+      ORDER BY created_at DESC
+    `;
+    const result = await query(text);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching pending users:', error);
+    res.status(500).json({ error: 'Failed to fetch pending users' });
+  }
+});
+
+// Activate a user (approve registration)
+app.post('/api/users/:id/activate', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    // Check if requesting user has permission (L1 or SUPER_ADMIN)
+    const requester = await query('SELECT user_level FROM users WHERE email = $1', [req.user.email]);
+    if (requester.rows.length === 0 || !['L1', 'SUPER_ADMIN'].includes(requester.rows[0].user_level)) {
+      return res.status(403).json({ error: 'Unauthorized: Only L1 and Super Admins can activate users' });
+    }
+    
+    const text = `
+      UPDATE users
+      SET is_active = true,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING id, email, full_name, user_level, is_active
+    `;
+    const result = await query(text, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    console.log(`✅ User activated: ${result.rows[0].email} by ${req.user.email}`);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error activating user:', error);
+    res.status(500).json({ error: 'Failed to activate user' });
   }
 });
 
@@ -3429,6 +3618,225 @@ app.get('/api/projects/:projectId/buildings', verifyToken, async (req, res) => {
 });
 
 // ============= END DESIGN CALCULATIONS ENDPOINTS =============
+
+// ============= WATER DEMAND CALCULATIONS ENDPOINTS =============
+
+// Create a new water demand calculation
+app.post('/api/water-demand-calculations', verifyToken, async (req, res) => {
+  try {
+    const {
+      projectId,
+      calculationName,
+      selectedBuildings,
+      calculationDetails,
+      totalWaterDemand,
+      status,
+      verifiedBy,
+      remarks
+    } = req.body;
+
+    const userEmail = req.user?.email;
+
+    // Validation
+    if (!projectId || !calculationName || !selectedBuildings || !calculationDetails) {
+      return res.status(400).json({ 
+        error: 'Project ID, calculation name, selected buildings, and calculation details are required' 
+      });
+    }
+
+    const result = await query(
+      `INSERT INTO water_demand_calculations (
+        project_id, calculation_name, selected_buildings, calculation_details,
+        total_water_demand, status, calculated_by, verified_by, remarks, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *`,
+      [
+        projectId,
+        calculationName,
+        JSON.stringify(selectedBuildings),
+        JSON.stringify(calculationDetails),
+        totalWaterDemand || 0,
+        status || 'Draft',
+        userEmail,
+        verifiedBy || null,
+        remarks || null,
+        userEmail
+      ]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating water demand calculation:', error);
+    res.status(500).json({ error: 'Failed to create water demand calculation', message: error.message });
+  }
+});
+
+// Get all water demand calculations for a project
+app.get('/api/water-demand-calculations', verifyToken, async (req, res) => {
+  try {
+    const { projectId } = req.query;
+
+    if (!projectId) {
+      return res.status(400).json({ error: 'Project ID is required' });
+    }
+
+    const result = await query(
+      `SELECT wdc.*, p.name as project_name
+       FROM water_demand_calculations wdc
+       LEFT JOIN projects p ON wdc.project_id = p.id
+       WHERE wdc.project_id = $1
+       ORDER BY wdc.created_at DESC`,
+      [projectId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching water demand calculations:', error);
+    res.status(500).json({ error: 'Failed to fetch water demand calculations' });
+  }
+});
+
+// Get a specific water demand calculation by ID
+app.get('/api/water-demand-calculations/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await query(
+      `SELECT wdc.*, p.name as project_name
+       FROM water_demand_calculations wdc
+       LEFT JOIN projects p ON wdc.project_id = p.id
+       WHERE wdc.id = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Water demand calculation not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching water demand calculation:', error);
+    res.status(500).json({ error: 'Failed to fetch water demand calculation' });
+  }
+});
+
+// Update a water demand calculation
+app.put('/api/water-demand-calculations/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      calculationName,
+      selectedBuildings,
+      calculationDetails,
+      totalWaterDemand,
+      status,
+      verifiedBy,
+      remarks
+    } = req.body;
+
+    const userEmail = req.user?.email;
+
+    const result = await query(
+      `UPDATE water_demand_calculations SET
+        calculation_name = COALESCE($1, calculation_name),
+        selected_buildings = COALESCE($2, selected_buildings),
+        calculation_details = COALESCE($3, calculation_details),
+        total_water_demand = COALESCE($4, total_water_demand),
+        status = COALESCE($5, status),
+        verified_by = COALESCE($6, verified_by),
+        remarks = COALESCE($7, remarks),
+        updated_by = $8,
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = $9
+       RETURNING *`,
+      [
+        calculationName,
+        selectedBuildings ? JSON.stringify(selectedBuildings) : null,
+        calculationDetails ? JSON.stringify(calculationDetails) : null,
+        totalWaterDemand,
+        status,
+        verifiedBy,
+        remarks,
+        userEmail,
+        id
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Water demand calculation not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating water demand calculation:', error);
+    res.status(500).json({ error: 'Failed to update water demand calculation' });
+  }
+});
+
+// Delete a water demand calculation
+app.delete('/api/water-demand-calculations/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const calc = await query('SELECT * FROM water_demand_calculations WHERE id = $1', [id]);
+    
+    if (calc.rows.length === 0) {
+      return res.status(404).json({ error: 'Water demand calculation not found' });
+    }
+
+    await query('DELETE FROM water_demand_calculations WHERE id = $1', [id]);
+
+    res.json({ message: 'Water demand calculation deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting water demand calculation:', error);
+    res.status(500).json({ error: 'Failed to delete water demand calculation' });
+  }
+});
+
+// Get buildings with detailed information for water demand calculation
+app.get('/api/projects/:projectId/buildings-detailed', verifyToken, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const result = await query(
+      `SELECT 
+        b.*,
+        json_agg(
+          json_build_object(
+            'id', f.id,
+            'floor_number', f.floor_number,
+            'floor_name', f.floor_name,
+            'flats', (
+              SELECT json_agg(
+                json_build_object(
+                  'id', fl.id,
+                  'flat_type', fl.flat_type,
+                  'area_sqft', fl.area_sqft,
+                  'number_of_flats', fl.number_of_flats
+                )
+              )
+              FROM flats fl
+              WHERE fl.floor_id = f.id
+            )
+          )
+          ORDER BY f.floor_number
+        ) FILTER (WHERE f.id IS NOT NULL) as floors
+       FROM buildings b
+       LEFT JOIN floors f ON b.id = f.building_id
+       WHERE b.project_id = $1
+       GROUP BY b.id
+       ORDER BY b.name`,
+      [projectId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching buildings detailed:', error);
+    res.status(500).json({ error: 'Failed to fetch buildings with details' });
+  }
+});
+
+// ============= END WATER DEMAND CALCULATIONS ENDPOINTS =============
 
 // ============= PROJECT CHANGE REQUEST ENDPOINTS =============
 

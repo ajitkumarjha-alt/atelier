@@ -18,6 +18,16 @@ export default function VendorLogin() {
     setMessage(null);
 
     try {
+      // Check if email is from Lodha domain
+      if (email.toLowerCase().endsWith('@lodhagroup.com')) {
+        setError('Lodha employees should use Employee Login');
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
+        setIsLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/vendors/send-otp', {
         method: 'POST',
         headers: {
@@ -29,6 +39,12 @@ export default function VendorLogin() {
       const data = await response.json();
 
       if (!response.ok) {
+        // Check if vendor is not registered
+        if (response.status === 404 || data.error?.includes('not found') || data.error?.includes('not registered')) {
+          setError('Your vendor account is not registered. Please contact the project administrator for access.');
+          setIsLoading(false);
+          return;
+        }
         throw new Error(data.error || 'Failed to send OTP');
       }
 
@@ -90,7 +106,7 @@ export default function VendorLogin() {
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: 'url("https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2940&auto=format&fit=crop")',
+            backgroundImage: 'url("https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=2940&auto=format&fit=crop")',
             backgroundBlendMode: 'overlay'
           }}
         />

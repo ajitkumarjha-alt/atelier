@@ -18,6 +18,16 @@ export default function ConsultantLogin() {
     setMessage(null);
 
     try {
+      // Check if email is from Lodha domain
+      if (email.toLowerCase().endsWith('@lodhagroup.com')) {
+        setError('Lodha employees should use Employee Login');
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
+        setIsLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/consultants/send-otp', {
         method: 'POST',
         headers: {
@@ -29,6 +39,12 @@ export default function ConsultantLogin() {
       const data = await response.json();
 
       if (!response.ok) {
+        // Check if consultant is not registered
+        if (response.status === 404 || data.error?.includes('not found') || data.error?.includes('not registered')) {
+          setError('Your consultant account is not registered. Please contact the project administrator for access.');
+          setIsLoading(false);
+          return;
+        }
         throw new Error(data.error || 'Failed to send OTP');
       }
 
@@ -90,7 +106,7 @@ export default function ConsultantLogin() {
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: 'url("https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=2940&auto=format&fit=crop")',
+            backgroundImage: 'url("https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=2831&auto=format&fit=crop")',
             backgroundBlendMode: 'overlay'
           }}
         />

@@ -1,13 +1,11 @@
 /**
- * API fetch wrapper that adds dev authentication headers
- * In development mode (when NODE_ENV is not set to production),
- * it can use the x-dev-user-email header for testing protected endpoints
+ * API fetch wrapper that adds authentication headers
+ * Uses Firebase auth token when available, falls back to dev email header
  */
-
-const DEV_USER_EMAIL = 'lodhaatelier@gmail.com'; // Super admin for testing
+import { auth } from './firebase';
 
 /**
- * Fetch wrapper that automatically adds dev auth headers if needed
+ * Fetch wrapper that automatically adds auth headers
  * @param {string} url - API endpoint URL
  * @param {object} options - Fetch options
  * @returns {Promise<Response>} Fetch response
@@ -22,10 +20,13 @@ export const apiFetch = async (url, options = {}) => {
     headers['Content-Type'] = 'application/json';
   }
 
-  // In development, add x-dev-user-email header for protected endpoints
-  // This allows testing protected APIs without Firebase auth configured
+  // In development mode, add x-dev-user-email header for protected endpoints
+  // Use the current Firebase user's email if authenticated
   if (import.meta.env.DEV && url.includes('/api/')) {
-    headers['x-dev-user-email'] = DEV_USER_EMAIL;
+    const currentUser = auth.currentUser;
+    if (currentUser && currentUser.email) {
+      headers['x-dev-user-email'] = currentUser.email;
+    }
   }
 
   const response = await fetch(url, {

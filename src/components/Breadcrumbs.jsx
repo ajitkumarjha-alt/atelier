@@ -97,7 +97,16 @@ const Breadcrumbs = ({ customCrumbs = null }) => {
           </Link>
         </li>
         {pathnames.map((segment, index) => {
-          const path = `/${pathnames.slice(0, index + 1).join('/')}`;
+          let path = `/${pathnames.slice(0, index + 1).join('/')}`;
+          
+          // Special handling for calculations breadcrumb
+          if (segment === 'calculations' && index > 0) {
+            const projectId = pathnames[index - 1];
+            if (!isNaN(projectId)) {
+              path = `/design-calculations/${projectId}`;
+            }
+          }
+          
           const isLast = index === pathnames.length - 1;
           const label = routeNameMap[segment] || segment.replace(/-/g, ' ');
 

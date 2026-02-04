@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, Calculator, Download, Upload, FileText, AlertCircle, Filter, Droplet } from 'lucide-react';
+import { ArrowLeft, Plus, Calculator, Download, Upload, FileText, AlertCircle, Filter, Droplet, Trash2 } from 'lucide-react';
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
 import { useUser } from '../lib/UserContext';
@@ -97,11 +97,39 @@ export default function DesignCalculations() {
   const fetchCalculations = async () => {
     try {
       setLoading(true);
-      const response = await apiFetch(`/api/design-calculations?projectId=${projectId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setCalculations(data);
+      
+      // Fetch both design calculations and water demand calculations
+      const [designCalcsResponse, waterDemandResponse] = await Promise.all([
+        apiFetch(`/api/design-calculations?projectId=${projectId}`),
+        apiFetch(`/api/water-demand-calculations?projectId=${projectId}`)
+      ]);
+      
+      let allCalculations = [];
+      
+      // Add design calculations
+      if (designCalcsResponse.ok) {
+        const designCalcs = await designCalcsResponse.json();
+        allCalculations = [...designCalcs];
       }
+      
+      // Add water demand calculations with normalized structure
+      if (waterDemandResponse.ok) {
+        const waterDemandCalcs = await waterDemandResponse.json();
+        const normalizedWaterCalcs = waterDemandCalcs.map(calc => ({
+          ...calc,
+          calculation_type: 'Water Demand Calculation',
+          title: calc.calculation_name,
+          created_at: calc.created_at,
+          building_name: null, // Water demand calcs can span multiple buildings
+          floor_name: null
+        }));
+        allCalculations = [...allCalculations, ...normalizedWaterCalcs];
+      }
+      
+      // Sort by created_at descending
+      allCalculations.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      
+      setCalculations(allCalculations);
     } catch (error) {
       console.error('Error fetching calculations:', error);
     } finally {
@@ -262,6 +290,40 @@ export default function DesignCalculations() {
     navigate(`/projects/${projectId}/calculations/${slug}/${calculation.id}`);
   };
 
+  const handleDelete = async (calculation, e) => {
+    e.stopPropagation();
+    
+    // Check permissions - only L0, L1, L2, SUPER_ADMIN
+    if (!['SUPER_ADMIN', 'L0', 'L1', 'L2'].includes(userLevel)) {
+      alert('You do not have permission to delete calculations');
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete "${calculation.title}"? This action cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const response = await apiFetch(`/api/design-calculations/${calculation.id}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete calculation');
+      }
+
+      alert('Calculation deleted successfully');
+      
+      // Refresh the calculations list
+      fetchCalculations();
+    } catch (error) {
+      console.error('Error deleting calculation:', error);
+      alert('Failed to delete calculation: ' + error.message);
+    }
+  };
+
   const canCreateEdit = () => {
     if (!userLevel) {
       console.log('canCreateEdit: No userLevel yet');
@@ -290,25 +352,25 @@ export default function DesignCalculations() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-4 sm:mb-6 lg:mb-8">
           <button
-            onClick={() => navigate(`/project-detail/${projectId}`)}
+            onClick={() => navigate(`/project/${projectId}`)}
             className="flex items-center gap-2 text-lodha-gold hover:text-lodha-deep mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to Project</span>
+            <span className="text-sm sm:text-base">Back to Project</span>
           </button>
           
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-garamond font-bold text-lodha-black mb-2">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+            <div className="w-full sm:w-auto">
+              <h1 className="text-2xl sm:text-3xl font-garamond font-bold text-lodha-black mb-2">
                 Design Calculations
               </h1>
-              <p className="text-lodha-grey">{project?.name}</p>
+              <p className="text-sm sm:text-base text-lodha-grey">{project?.name}</p>
               {userLevel === 'SUPER_ADMIN' && getEffectiveLevel() !== 'SUPER_ADMIN' && (
-                <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 text-xs sm:text-sm rounded-full">
                   <AlertCircle className="w-4 h-4" />
                   Testing as {getEffectiveLevel()} user
                 </div>
@@ -321,9 +383,9 @@ export default function DesignCalculations() {
                   resetForm();
                   setShowCreateModal(true);
                 }}
-                className="flex items-center gap-2 bg-lodha-gold text-white px-6 py-2 rounded hover:bg-lodha-deep transition"
+                className="flex items-center gap-2 bg-lodha-gold text-white px-4 sm:px-6 py-2 rounded hover:bg-lodha-deep transition text-sm sm:text-base whitespace-nowrap"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                 Add Calculation
               </button>
             )}
@@ -332,66 +394,66 @@ export default function DesignCalculations() {
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white p-4 rounded-lg shadow border border-lodha-sand">
-              <div className="text-sm text-lodha-grey mb-1">Total Calculations</div>
-              <div className="text-2xl font-bold text-lodha-black">{stats.total || 0}</div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6 lg:mb-8">
+            <div className="bg-white p-3 sm:p-4 rounded-lg shadow border border-lodha-sand">
+              <div className="text-xs sm:text-sm text-lodha-grey mb-1">Total Calculations</div>
+              <div className="text-xl sm:text-2xl font-bold text-lodha-black">{stats.total || 0}</div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow border border-lodha-sand">
-              <div className="text-sm text-lodha-grey mb-1">Approved</div>
-              <div className="text-2xl font-bold text-green-600">{stats.approved || 0}</div>
+            <div className="bg-white p-3 sm:p-4 rounded-lg shadow border border-lodha-sand">
+              <div className="text-xs sm:text-sm text-lodha-grey mb-1">Approved</div>
+              <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.approved || 0}</div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow border border-lodha-sand">
-              <div className="text-sm text-lodha-grey mb-1">Under Review</div>
-              <div className="text-2xl font-bold text-blue-600">{stats.underReview || 0}</div>
+            <div className="bg-white p-3 sm:p-4 rounded-lg shadow border border-lodha-sand">
+              <div className="text-xs sm:text-sm text-lodha-grey mb-1">Under Review</div>
+              <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.underReview || 0}</div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow border border-lodha-sand">
-              <div className="text-sm text-lodha-grey mb-1">Draft</div>
-              <div className="text-2xl font-bold text-gray-600">{stats.draft || 0}</div>
+            <div className="bg-white p-3 sm:p-4 rounded-lg shadow border border-lodha-sand">
+              <div className="text-xs sm:text-sm text-lodha-grey mb-1">Draft</div>
+              <div className="text-xl sm:text-2xl font-bold text-gray-600">{stats.draft || 0}</div>
             </div>
           </div>
         )}
 
         {/* Quick Calculators */}
         {canCreateEdit() && (
-          <div className="bg-gradient-to-r from-lodha-sand to-white p-6 rounded-lg shadow mb-6 border-2 border-lodha-gold">
-            <div className="flex items-center gap-2 mb-4">
-              <Calculator className="w-6 h-6 text-lodha-gold" />
-              <h3 className="font-garamond font-bold text-lodha-black text-lg">Quick Calculators</h3>
-              <span className="text-sm text-lodha-grey ml-2">(Auto-calculate from project data)</span>
+          <div className="bg-gradient-to-r from-lodha-sand to-white p-4 sm:p-6 rounded-lg shadow mb-4 sm:mb-6 border-2 border-lodha-gold">
+            <div className="flex items-center gap-2 mb-3 sm:mb-4">
+              <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-lodha-gold" />
+              <h3 className="font-garamond font-bold text-lodha-black text-base sm:text-lg">Quick Calculators</h3>
+              <span className="text-xs sm:text-sm text-lodha-grey ml-2 hidden sm:inline">(Auto-calculate from project data)</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               <button
-                onClick={() => navigate(`/water-demand-calculation/${projectId}`)}
-                className="flex items-center gap-3 p-4 bg-white border-2 border-lodha-gold rounded-lg hover:bg-lodha-sand transition group"
+                onClick={() => navigate(`/projects/${projectId}/calculations/water-demand/new`)}
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-lodha-gold rounded-lg hover:bg-lodha-sand transition group"
               >
-                <Droplet className="w-8 h-8 text-blue-600 group-hover:scale-110 transition" />
+                <Droplet className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 group-hover:scale-110 transition flex-shrink-0" />
                 <div className="text-left">
-                  <div className="font-semibold text-lodha-black">Water Demand</div>
+                  <div className="font-semibold text-lodha-black text-sm sm:text-base">Water Demand</div>
                   <div className="text-xs text-lodha-grey">Auto-calculate from buildings</div>
                 </div>
               </button>
               
               <button
                 onClick={() => alert('Electrical Load Calculator - Coming Soon!')}
-                className="flex items-center gap-3 p-4 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition group opacity-60 cursor-not-allowed"
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition group opacity-60 cursor-not-allowed"
                 disabled
               >
-                <Calculator className="w-8 h-8 text-yellow-600 group-hover:scale-110 transition" />
+                <Calculator className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600 group-hover:scale-110 transition flex-shrink-0" />
                 <div className="text-left">
-                  <div className="font-semibold text-lodha-black">Electrical Load</div>
+                  <div className="font-semibold text-lodha-black text-sm sm:text-base">Electrical Load</div>
                   <div className="text-xs text-lodha-grey">Coming soon</div>
                 </div>
               </button>
 
               <button
                 onClick={() => alert('HVAC Load Calculator - Coming Soon!')}
-                className="flex items-center gap-3 p-4 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition group opacity-60 cursor-not-allowed"
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition group opacity-60 cursor-not-allowed"
                 disabled
               >
-                <Calculator className="w-8 h-8 text-green-600 group-hover:scale-110 transition" />
+                <Calculator className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 group-hover:scale-110 transition flex-shrink-0" />
                 <div className="text-left">
-                  <div className="font-semibold text-lodha-black">HVAC Load</div>
+                  <div className="font-semibold text-lodha-black text-sm sm:text-base">HVAC Load</div>
                   <div className="text-xs text-lodha-grey">Coming soon</div>
                 </div>
               </button>
@@ -400,12 +462,12 @@ export default function DesignCalculations() {
         )}
 
         {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow mb-6 border border-lodha-sand">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-lodha-gold" />
-            <h3 className="font-garamond font-bold text-lodha-black">Filters</h3>
+        <div className="bg-white p-3 sm:p-4 rounded-lg shadow mb-4 sm:mb-6 border border-lodha-sand">
+          <div className="flex items-center gap-2 mb-3 sm:mb-4">
+            <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-lodha-gold" />
+            <h3 className="font-garamond font-bold text-lodha-black text-sm sm:text-base">Filters</h3>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium text-lodha-grey mb-1">Calculation Type</label>
               <select
@@ -449,27 +511,27 @@ export default function DesignCalculations() {
         </div>
 
         {/* Calculations List */}
-        <div className="bg-white rounded-lg shadow border border-lodha-sand overflow-hidden">
+        <div className="bg-white rounded-lg shadow border border-lodha-sand overflow-hidden -mx-2 sm:mx-0">
           {loading ? (
             <div className="p-8 text-center text-lodha-grey">Loading calculations...</div>
           ) : filteredCalculations.length === 0 ? (
             <div className="p-8 text-center">
               <Calculator className="w-16 h-16 text-lodha-sand mx-auto mb-4" />
-              <p className="text-lodha-grey">No calculations found. Click "Add Calculation" to create one.</p>
+              <p className="text-lodha-grey text-sm sm:text-base">No calculations found. Click "Add Calculation" to create one.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-lodha-sand">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-garamond font-bold text-lodha-black">Type</th>
-                    <th className="px-4 py-3 text-left text-sm font-garamond font-bold text-lodha-black">Title</th>
-                    <th className="px-4 py-3 text-left text-sm font-garamond font-bold text-lodha-black">Building/Floor</th>
-                    <th className="px-4 py-3 text-left text-sm font-garamond font-bold text-lodha-black">Calculated By</th>
-                    <th className="px-4 py-3 text-left text-sm font-garamond font-bold text-lodha-black">Verified By</th>
-                    <th className="px-4 py-3 text-left text-sm font-garamond font-bold text-lodha-black">Status</th>
-                    <th className="px-4 py-3 text-left text-sm font-garamond font-bold text-lodha-black">File</th>
-                    <th className="px-4 py-3 text-left text-sm font-garamond font-bold text-lodha-black">Actions</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap">Type</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap">Title</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap hidden lg:table-cell">Building/Floor</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap hidden md:table-cell">Calculated By</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap hidden xl:table-cell">Verified By</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap">Status</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap hidden sm:table-cell">File</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -479,46 +541,57 @@ export default function DesignCalculations() {
                       className="hover:bg-lodha-sand transition cursor-pointer"
                       onClick={() => handleViewCalculation(calc)}
                     >
-                      <td className="px-4 py-3 text-sm text-lodha-black">{calc.calculation_type}</td>
-                      <td className="px-4 py-3 text-sm text-lodha-black font-medium">{calc.title}</td>
-                      <td className="px-4 py-3 text-sm text-lodha-grey">
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-lodha-black">{calc.calculation_type}</td>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-lodha-black font-medium">{calc.title}</td>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-lodha-grey hidden lg:table-cell">
                         {calc.building_name || '-'} {calc.floor_name ? `/ ${calc.floor_name}` : ''}
                       </td>
-                      <td className="px-4 py-3 text-sm text-lodha-grey">{calc.calculated_by}</td>
-                      <td className="px-4 py-3 text-sm text-lodha-grey">{calc.verified_by || '-'}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(calc.status)}`}>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-lodha-grey hidden md:table-cell">{calc.calculated_by}</td>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-lodha-grey hidden xl:table-cell">{calc.verified_by || '-'}</td>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3">
+                        <span className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${getStatusColor(calc.status)}`}>
                           {calc.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 hidden sm:table-cell" onClick={(e) => e.stopPropagation()}>
                         {calc.file_url ? (
                           <button
                             onClick={() => handleDownload(calc.file_url, calc.file_name)}
                             className="text-lodha-gold hover:text-lodha-deep flex items-center gap-1"
                           >
                             <Download className="w-4 h-4" />
-                            <span className="text-sm">Download</span>
+                            <span className="text-xs sm:text-sm">Download</span>
                           </button>
                         ) : (
-                          <span className="text-sm text-lodha-grey">No file</span>
+                          <span className="text-xs sm:text-sm text-lodha-grey">No file</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => handleViewCalculation(calc)}
-                          className="text-blue-600 hover:text-blue-800 text-sm"
-                        >
-                          View
-                        </button>
-                        {canCreateEdit() && (
+                      <td className="px-2 sm:px-4 py-2 sm:py-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex gap-1 sm:gap-2">
                           <button
-                            onClick={() => handleEdit(calc)}
-                            className="text-lodha-gold hover:text-lodha-deep text-sm"
+                            onClick={() => handleViewCalculation(calc)}
+                            className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm"
                           >
-                            Edit
+                            View
                           </button>
-                        )}
+                          {canCreateEdit() && (
+                            <button
+                              onClick={() => handleEdit(calc)}
+                              className="text-lodha-gold hover:text-lodha-deep text-xs sm:text-sm"
+                            >
+                              Edit
+                            </button>
+                          )}
+                          {['SUPER_ADMIN', 'L0', 'L1', 'L2'].includes(userLevel) && (
+                            <button
+                              onClick={(e) => handleDelete(calc, e)}
+                              className="text-red-600 hover:text-red-800 text-xs sm:text-sm flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Delete
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

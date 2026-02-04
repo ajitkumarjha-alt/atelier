@@ -4,6 +4,7 @@ import { UserProvider, useUser } from './lib/UserContext';
 import WelcomePage from './pages/WelcomePage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import PendingApproval from './pages/PendingApproval';
 import L0Dashboard from './pages/L0Dashboard';
 import L1Dashboard from './pages/L1Dashboard';
 import L2Dashboard from './pages/L2Dashboard';
@@ -37,7 +38,7 @@ import { Loader } from 'lucide-react';
 
 // Calculation Pages
 import ElectricalLoadCalculation from './pages/calculations/ElectricalLoadCalculation';
-import WaterDemandCalculation from './pages/WaterDemandCalculation';
+import WaterDemandCalculation from './pages/calculations/WaterDemandCalculation';
 import CableSelectionSheet from './pages/calculations/CableSelectionSheet';
 import RisingMainDesign from './pages/calculations/RisingMainDesign';
 import DownTakeDesign from './pages/calculations/DownTakeDesign';
@@ -50,7 +51,7 @@ import EarthingLightningCalculation from './pages/calculations/EarthingLightning
 import PanelSchedule from './pages/calculations/PanelSchedule';
 
 function AppRoutes() {
-  const { user, userLevel, loading } = useUser();
+  const { user, userLevel, loading, isActive } = useUser();
 
   if (loading) {
     return (
@@ -74,16 +75,28 @@ function AppRoutes() {
         {/* Legacy Login Route (redirects to welcome) */}
         <Route path="/login" element={<Navigate to="/" replace />} />
 
+        {/* Pending Approval Page - for non-registered users */}
+        <Route
+          path="/pending-approval"
+          element={
+            user && userLevel === null ? (
+              <PendingApproval />
+            ) : user && userLevel !== null ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
         {/* Default Dashboard - shows based on user level */}
         <Route
           path="/dashboard"
           element={
             user ? (
-              // Wait for userLevel to be determined to avoid redirect loops
+              // Check if user is registered (userLevel exists)
               userLevel === null ? (
-                <div className="min-h-screen flex items-center justify-center bg-lodha-sand">
-                  <div className="text-lodha-black text-xl font-garamond font-bold">Loading...</div>
-                </div>
+                <Navigate to="/pending-approval" replace />
               ) : userLevel === 'SUPER_ADMIN' ? (
                 <Navigate to="/super-admin-dashboard" replace />
               ) : userLevel === 'L0' ? (

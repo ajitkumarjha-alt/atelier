@@ -14,6 +14,11 @@ export const createOrUpdateUser = async (email, fullName) => {
       body: JSON.stringify({ email, fullName }),
     });
 
+    if (response.status === 403) {
+      // Non-registered user
+      return { error: 'Not registered', user_level: null, is_active: false };
+    }
+
     if (!response.ok) {
       throw new Error('Failed to sync user data');
     }
