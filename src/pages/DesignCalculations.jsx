@@ -306,7 +306,12 @@ export default function DesignCalculations() {
     if (!confirmDelete) return;
 
     try {
-      const response = await apiFetch(`/api/design-calculations/${calculation.id}`, {
+      // Use the appropriate endpoint based on calculation type
+      const endpoint = calculation.calculation_type === 'Water Demand Calculation'
+        ? `/api/water-demand-calculations/${calculation.id}`
+        : `/api/design-calculations/${calculation.id}`;
+      
+      const response = await apiFetch(endpoint, {
         method: 'DELETE'
       });
 

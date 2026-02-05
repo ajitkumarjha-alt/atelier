@@ -371,14 +371,16 @@ INSERT INTO project_standards (category, value, description) VALUES
 ('application_type', 'Hospital', 'Hospital facilities'),
 ('application_type', 'Hospitality', 'Hotels and hospitality'),
 ('application_type', 'Data center', 'Data center facilities'),
--- Residential Types
-('residential_type', 'Aspi', 'Aspire series'),
-('residential_type', 'Casa', 'Casa series'),
-('residential_type', 'Premium', 'Premium series'),
-('residential_type', 'Villa', 'Villa series'),
--- Flat Types
+-- Residential Types (aligned with Policy 25 Occupancy Norms)
+('residential_type', 'Luxury', 'Luxury residential category'),
+('residential_type', 'Hi-end', 'Hi-end residential category'),
+('residential_type', 'Aspirational', 'Aspirational residential category'),
+('residential_type', 'Casa', 'Casa residential category'),
+-- Flat Types (aligned with Policy 25)
 ('flat_type', '1BHK', 'One Bedroom Hall Kitchen'),
+('flat_type', '1.5BHK', 'One and Half Bedroom Hall Kitchen'),
 ('flat_type', '2BHK', 'Two Bedroom Hall Kitchen'),
+('flat_type', '2.5BHK', 'Two and Half Bedroom Hall Kitchen'),
 ('flat_type', '3BHK', 'Three Bedroom Hall Kitchen'),
 ('flat_type', '4BHK', 'Four Bedroom Hall Kitchen'),
 ('flat_type', 'Studio', 'Studio apartment')

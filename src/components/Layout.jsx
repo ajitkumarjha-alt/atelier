@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Menu, X, LogOut, LayoutDashboard, 
-  Building2, FileText, AlertCircle, Settings, User, Users, FolderKanban
+  Building2, FileText, AlertCircle, Settings, User, Users, FolderKanban, Database
 } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { createOrUpdateUser } from '../services/userService';
@@ -39,18 +39,25 @@ export default function Layout({ children }) {
     // L0 specific
     if (userLevel === 'L0') {
       items.push({ name: 'All Projects', path: '/l0-dashboard', icon: FolderKanban });
+      items.push({ name: 'Policy Management', path: '/policy-management', icon: Database });
     }
 
     // L1 specific
     if (userLevel === 'L1') {
       items.push({ name: 'Project Management', path: '/l1-dashboard', icon: Building2 });
       items.push({ name: 'Create Project', path: '/project-input', icon: FolderKanban });
+      items.push({ name: 'Policy Management', path: '/policy-management', icon: Database });
     }
 
     // L2, L3, L4 - Execution users
     if (['L2', 'L3', 'L4'].includes(userLevel)) {
       items.push({ name: 'MAS Management', path: '/mas-list', icon: FileText });
       items.push({ name: 'RFI Management', path: '/cm-dashboard', icon: AlertCircle });
+    }
+
+    // L2 gets Policy Management (can create/test but not activate)
+    if (userLevel === 'L2') {
+      items.push({ name: 'Policy Management', path: '/policy-management', icon: Database });
     }
 
     // CM specific
@@ -69,6 +76,7 @@ export default function Layout({ children }) {
         { name: 'L0 Dashboard', path: '/l0-dashboard', icon: FolderKanban },
         { name: 'L1 Dashboard', path: '/l1-dashboard', icon: Building2 },
         { name: 'L2 Dashboard', path: '/l2-dashboard', icon: LayoutDashboard },
+        { name: 'Policy Management', path: '/policy-management', icon: Database },
         { name: 'Project Standards', path: '/project-standards', icon: Settings },
         { name: 'User Management', path: '/super-admin-dashboard', icon: Users }
       );

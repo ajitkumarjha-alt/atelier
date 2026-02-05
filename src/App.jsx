@@ -33,6 +33,7 @@ import DesignCalculations from './pages/DesignCalculations';
 import ChangeRequestsPage from './pages/ChangeRequestsPage';
 import ChangeRequestDetail from './pages/ChangeRequestDetail';
 import ProjectStandardsManagement from './pages/ProjectStandardsManagement';
+import PolicyManagement from './pages/PolicyManagement';
 import { createOrUpdateUser } from './services/userService';
 import { Loader } from 'lucide-react';
 
@@ -194,6 +195,18 @@ function AppRoutes() {
           element={
             user && userLevel === 'SUPER_ADMIN' ? (
               <ProjectStandardsManagement />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        {/* Policy Management - For L0, L1, L2, SUPER_ADMIN */}
+        <Route 
+          path="/policy-management" 
+          element={
+            user && ['SUPER_ADMIN', 'L0', 'L1', 'L2'].includes(userLevel) ? (
+              <PolicyManagement />
             ) : (
               <Navigate to="/" replace />
             )

@@ -2,46 +2,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
-import { ArrowLeft, Save, Calculator, Droplet, Users, Building2, Info } from 'lucide-react';
+import { ArrowLeft, Save, Calculator, Droplet, Users, Building2, Info, FileText } from 'lucide-react';
 import { showSuccess, showError, showLoading, dismissToast } from '../utils/toast';
-
-// Water consumption rates from MEP-21 Policy
-const WATER_RATES = {
-  residential: {
-    luxury: { drinking: 165, flushing: 75, flushingValve: 45 },
-    aspirational: { drinking: 110, flushing: 60 },
-  },
-  office: {
-    excelus: { drinking: 20, flushing: 25 },
-    supremus: { drinking: 20, flushing: 25 },
-    iThink: { drinking: 20, flushing: 25 },
-  },
-  retail: {
-    experia: { drinking: 25, visitor: 5, flushing: 20, visitorFlushing: 10 },
-    boulevard: { drinking: 25, visitor: 5, flushing: 20, visitorFlushing: 10 },
-  },
-  multiplex: { perSeat: 5, flushing: 10 },
-  school: { perHead: 25, flushing: 20 },
-};
-
-// Occupancy factors from Policy 25
-const OCCUPANCY_FACTORS = {
-  residential: {
-    '1BHK': { luxury: 0, hiEnd: 0, aspirational: 4, casa: 4 },
-    '2BHK': { luxury: 5, hiEnd: 5, aspirational: 4, casa: 4 },
-    '3BHK': { luxury: 5, hiEnd: 5, aspirational: 5, casa: 5 },
-    '4BHK': { luxury: 7, hiEnd: 7, aspirational: 6, casa: 0 },
-  },
-  office: {
-    excelus: 7.0, // sqm per person
-    supremus: 6.5,
-    iThink: 5.5,
-  },
-  retail: {
-    boulevard: { fullTime: 10, visitor: 7 }, // per sqm
-    experia: { fullTime: 10, visitor: 5 },
-  },
-};
+import { 
+  getPolicyDataLegacyFormat, 
+  getDefaultPolicy,
+  clearPolicyCache 
+} from '../services/policyService';
 
 export default function WaterDemandCalculation() {
   const { projectId } = useParams();
@@ -50,9 +17,19 @@ export default function WaterDemandCalculation() {
   const [saving, setSaving] = useState(false);
   const [project, setProject] = useState(null);
 
+  // Policy data state
+  const [policyData, setPolicyData] = useState(null);
+  const [selectedPolicyId, setSelectedPolicyId] = useState(null);
+  const [policyLoading, setPolicyLoading] = useState(true);
+  const [availablePolicies, setAvailablePolicies] = useState([]);
+  const [WATER_RATES, setWATER_RATES] = useState({});
+  const [OCCUPANCY_FACTORS, setOCCUPANCY_FACTORS] = useState({});
+  const [CALC_PARAMS, setCALC_PARAMS] = useState({});
+
   // Form state
   const [projectType, setProjectType] = useState('residential');
   const [subType, setSubType] = useState('luxury');
+  const [flushSystemType, setFlushSystemType] = useState('valves'); // 'valves' or 'tanks' for luxury residential
   const [units, setUnits] = useState([]);
   const [totalArea, setTotalArea] = useState(0);
   const [hasPool, setHasPool] = useState(false);
@@ -67,7 +44,15 @@ export default function WaterDemandCalculation() {
 
   useEffect(() => {
     fetchProjectData();
+    fetchPolicyData();
+    fetchAvailablePolicies();
   }, [projectId]);
+
+  useEffect(() => {
+    if (selectedPolicyId) {
+      fetchPolicyData(selectedPolicyId);
+    }
+  }, [selectedPolicyId]);
 
   const fetchProjectData = async () => {
     try {
@@ -84,6 +69,71 @@ export default function WaterDemandCalculation() {
     }
   };
 
+  const fetchPolicyData = async (policyId = null) => {
+    try {
+      setPolicyLoading(true);
+      
+      // Get policy data in the legacy format for backward compatibility
+      const data = await getPolicyDataLegacyFormat(policyId);
+      
+      setWATER_RATES(data.WATER_RATES);
+      setOCCUPANCY_FACTORS(data.OCCUPANCY_FACTORS);
+      setCALC_PARAMS(data.CALC_PARAMS);
+      
+      // Get the policy info
+      if (policyId) {
+        const userEmail = localStorage.getItem('userEmail');
+        const response = await apiFetch(`/api/policy-versions/${policyId}`, {
+          headers: { 'x-dev-user-email': userEmail }
+        });
+        const policyInfo = await response.json();
+        setSelectedPolicyId(policyId);
+        setPolicyData(policyInfo);
+      } else {
+        const defaultPolicy = await getDefaultPolicy();
+        setSelectedPolicyId(defaultPolicy.id);
+        setPolicyData(defaultPolicy);
+      }
+    } catch (error) {
+      console.error('Error loading policy data:', error);
+      showError('Failed to load policy data. Using fallback values.');
+      // Set empty objects to prevent crashes
+      setWATER_RATES({});
+      setOCCUPANCY_FACTORS({});
+      setCALC_PARAMS({});
+    } finally {
+      setPolicyLoading(false);
+    }
+  };
+
+  const fetchAvailablePolicies = async () => {
+    try {
+      const userEmail = localStorage.getItem('userEmail');
+      // Fetch both active and draft policies (draft for testing, active for saving)
+      const response = await apiFetch('/api/policy-versions', {
+        headers: { 'x-dev-user-email': userEmail }
+      });
+      const allPolicies = await response.json();
+      // Filter to show only active and draft policies (not archived)
+      const usablePolicies = allPolicies.filter(p => p.status === 'active' || p.status === 'draft');
+      setAvailablePolicies(usablePolicies);
+    } catch (error) {
+      console.error('Error loading available policies:', error);
+    }
+  };
+
+  const handlePolicyChange = async (policyId) => {
+    if (policyId === selectedPolicyId) return;
+    
+    // Clear cache to force fresh data
+    clearPolicyCache();
+    await fetchPolicyData(parseInt(policyId));
+    
+    // Reset results when policy changes
+    setResults(null);
+    showSuccess('Policy changed. Please recalculate to see updated results.');
+  };
+
   const calculateOccupancy = () => {
     let totalOccupancy = 0;
 
@@ -94,7 +144,8 @@ export default function WaterDemandCalculation() {
       });
     } else if (projectType === 'office') {
       const sqmPerPerson = OCCUPANCY_FACTORS.office[subType] || 6.5;
-      totalOccupancy = totalArea / sqmPerPerson;
+      // Apply 90% peak occupancy factor per Policy 25
+      totalOccupancy = (totalArea / sqmPerPerson) * 0.9;
     } else if (projectType === 'retail') {
       const factors = OCCUPANCY_FACTORS.retail[subType];
       totalOccupancy = totalArea / factors.fullTime;
@@ -114,41 +165,53 @@ export default function WaterDemandCalculation() {
     if (projectType === 'residential') {
       const rates = WATER_RATES.residential[subType];
       drinking = occupancy * rates.drinking;
-      flushing = occupancy * (rates.flushingValve || rates.flushing);
+      
+      // For luxury/hiEnd: choose between flush valves (75L) or flush tanks (45L)
+      // For aspirational/casa: only flush valves available (60L)
+      if (subType === 'luxury' || subType === 'hiEnd') {
+        flushing = occupancy * (flushSystemType === 'tanks' ? rates.flushTanks : rates.flushValves);
+      } else {
+        flushing = occupancy * rates.flushing;
+      }
     } else if (projectType === 'office') {
       const rates = WATER_RATES.office[subType];
       drinking = occupancy * rates.drinking;
       flushing = occupancy * rates.flushing;
     } else if (projectType === 'retail') {
       const rates = WATER_RATES.retail[subType];
-      const visitors = totalArea * (OCCUPANCY_FACTORS.retail[subType].visitor || 5);
+      // CRITICAL FIX: Divide by visitor factor, not multiply (visitors per sqm, not sqm per visitor)
+      const visitors = totalArea / (OCCUPANCY_FACTORS.retail[subType].visitor || 5);
       drinking = occupancy * rates.drinking + visitors * rates.visitor;
       flushing = occupancy * rates.flushing + visitors * rates.visitorFlushing;
     } else if (projectType === 'multiplex') {
       const seats = occupancy; // For multiplex, occupancy = seats
-      drinking = 0; // Usually no drinking water in multiplex halls
-      flushing = seats * WATER_RATES.multiplex.perSeat;
+      drinking = seats * WATER_RATES.multiplex.perSeat; // 5 ltrs/seat for drinking
+      flushing = seats * WATER_RATES.multiplex.flushing; // 10 ltrs/seat for flushing
     } else if (projectType === 'school') {
       drinking = occupancy * WATER_RATES.school.perHead;
       flushing = occupancy * WATER_RATES.school.flushing;
     }
 
     // Pool water calculation (limited human touch)
+    // As per MEP-21: evaporation rate from policy (default 8mm/day for pool surface area)
     if (hasPool && poolArea > 0) {
-      // Evaporation rate: 8mm/day, plus 5 ltrs per sqm of landscape
-      const evaporation = poolArea * 8; // liters
-      const makeupWater = poolArea * 5; // liters for pool maintenance
-      limitedHumanTouch += evaporation + makeupWater;
+      const poolEvaporationRate = CALC_PARAMS.pool_evaporation_rate || 8;
+      const evaporation = poolArea * poolEvaporationRate; // mm depth = liters per sqm per day
+      limitedHumanTouch += evaporation;
     }
 
     // Landscape water calculation (limited human touch)
+    // As per MEP-21: landscape water rate from policy (default 5 ltrs per sqm)
     if (hasLandscape && landscapeArea > 0) {
-      limitedHumanTouch += landscapeArea * 5; // 5 ltrs per sqm
+      const landscapeRate = CALC_PARAMS.landscape_water_rate || 5;
+      limitedHumanTouch += landscapeArea * landscapeRate;
     }
 
     // Cooling tower water (mechanical cooling)
+    // As per MEP-21: For central airconditioning system make up water from policy (default 10 ltr/hr/Tr)
     if (hasCoolingTower && coolingCapacity > 0) {
-      mechanical = coolingCapacity * 10; // 10 ltr/hr/TR
+      const coolingRate = CALC_PARAMS.cooling_tower_makeup_rate || 10;
+      mechanical = coolingCapacity * coolingRate * 24; // ltr/hr/TR × 24 hours
     }
 
     const total = drinking + flushing + limitedHumanTouch + mechanical;
@@ -235,6 +298,12 @@ export default function WaterDemandCalculation() {
       return;
     }
 
+    // Prevent saving calculations with draft policies
+    if (policyData && policyData.status === 'draft') {
+      showError('Cannot save calculations using draft policies. Please switch to an active policy or ask L0/L1 to activate this policy first.');
+      return;
+    }
+
     const toastId = showLoading('Saving calculation...');
     setSaving(true);
 
@@ -248,6 +317,7 @@ export default function WaterDemandCalculation() {
         input_data: {
           projectType,
           subType,
+          flushSystemType,
           units,
           totalArea,
           hasPool,
@@ -256,6 +326,10 @@ export default function WaterDemandCalculation() {
           landscapeArea,
           hasCoolingTower,
           coolingCapacity,
+          policy_version_id: selectedPolicyId,
+          policy_name: policyData?.name,
+          policy_number: policyData?.policy_number,
+          policy_revision: policyData?.revision_number,
         },
         results: results,
         status: 'completed',
@@ -352,6 +426,81 @@ export default function WaterDemandCalculation() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Input Form */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Policy Information Banner */}
+            {policyLoading ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-sm text-blue-800">Loading policy data...</span>
+                </div>
+              </div>
+            ) : policyData ? (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-sm font-semibold text-blue-900">
+                        {policyData.name}
+                      </h3>
+                      <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                        {policyData.policy_number} Rev {policyData.revision_number}
+                      </span>
+                      {policyData.is_default && (
+                        <span className="px-2 py-0.5 bg-green-600 text-white text-xs rounded-full">
+                          Default
+                        </span>
+                      )}
+                      {!policyData.is_default && (
+                        <span className="px-2 py-0.5 bg-orange-600 text-white text-xs rounded-full">
+                          Testing
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-blue-700 mb-2">
+                      {policyData.description || 'Official water demand calculation standards'}
+                    </p>
+                    
+                    {/* Draft Policy Warning */}
+                    {policyData.status === 'draft' && (
+                      <div className="bg-orange-50 border border-orange-300 rounded px-3 py-2 mb-2">
+                        <p className="text-xs text-orange-800 font-medium">
+                          ⚠️ Testing Draft Policy - You can calculate but cannot save. Switch to an active policy to save calculations.
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-4 text-xs text-blue-600">
+                      <span>Policy: {policyData.policy_number}</span>
+                      <span>Effective: {policyData.effective_date ? new Date(policyData.effective_date).toLocaleDateString() : 'N/A'}</span>
+                      
+                      {/* Policy Selector */}
+                      {availablePolicies.length > 1 && (
+                        <div className="ml-auto">
+                          <label className="flex items-center gap-2">
+                            <span className="text-gray-700 font-medium">Switch Policy:</span>
+                            <select
+                              value={selectedPolicyId || ''}
+                              onChange={(e) => handlePolicyChange(e.target.value)}
+                              className="px-2 py-1 border border-blue-300 rounded text-sm bg-white text-gray-900"
+                            >
+                              {availablePolicies.map(policy => (
+                                <option key={policy.id} value={policy.id}>
+                                  {policy.policy_number} Rev {policy.revision_number}
+                                  {policy.is_default ? ' (Default)' : ''}
+                                  {policy.status === 'draft' ? ' [DRAFT - Testing Only]' : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             {/* Project Type */}
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
@@ -392,7 +541,9 @@ export default function WaterDemandCalculation() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                     >
                       <option value="luxury">Luxury</option>
+                      <option value="hiEnd">Hi-end</option>
                       <option value="aspirational">Aspirational</option>
+                      <option value="casa">Casa</option>
                     </select>
                   )}
                   {projectType === 'office' && (
@@ -425,6 +576,26 @@ export default function WaterDemandCalculation() {
                     />
                   )}
                 </div>
+
+                {/* Flush System Type - Only for Luxury/Hi-end Residential */}
+                {projectType === 'residential' && (subType === 'luxury' || subType === 'hiEnd') && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Flush System Type
+                    </label>
+                    <select
+                      value={flushSystemType}
+                      onChange={(e) => setFlushSystemType(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                    >
+                      <option value="valves">Flush Valves (75 L/occupant/day)</option>
+                      <option value="tanks">Flush Tanks (45 L/occupant/day - 3-6L capacity)</option>
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      As per MEP-21 Policy: Flush valves are standard, flush tanks reduce water consumption by 40%
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -449,7 +620,9 @@ export default function WaterDemandCalculation() {
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                         >
                           <option value="1BHK">1 BHK</option>
+                          <option value="1.5BHK">1.5 BHK</option>
                           <option value="2BHK">2 BHK</option>
+                          <option value="2.5BHK">2.5 BHK</option>
                           <option value="3BHK">3 BHK</option>
                           <option value="4BHK">4 BHK</option>
                         </select>
@@ -615,7 +788,14 @@ export default function WaterDemandCalculation() {
                       <span className="font-semibold">{results.drinking.toLocaleString()} L/day</span>
                     </div>
                     <div className="flex justify-between items-center pb-2 border-b">
-                      <span className="text-gray-600">Flushing</span>
+                      <div className="flex flex-col">
+                        <span className="text-gray-600">Flushing</span>
+                        {projectType === 'residential' && (subType === 'luxury' || subType === 'hiEnd') && (
+                          <span className="text-xs text-gray-500">
+                            ({flushSystemType === 'tanks' ? 'Flush Tanks: 45 L/occupant/day' : 'Flush Valves: 75 L/occupant/day'})
+                          </span>
+                        )}
+                      </div>
                       <span className="font-semibold">{results.flushing.toLocaleString()} L/day</span>
                     </div>
                     {results.limitedHumanTouch > 0 && (

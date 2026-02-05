@@ -28,6 +28,7 @@ import {
 } from './middleware/index.js';
 import logger from './utils/logger.js';
 import { performHealthCheck } from './utils/health.js';
+import policyRoutes from './routes/policy.js';
 
 const app = express();
 const port = process.env.PORT || 5175;
@@ -326,6 +327,11 @@ app.get('/api/ready', asyncHandler(async (req, res) => {
 app.get('/api/alive', (req, res) => {
   res.status(200).json({ alive: true });
 });
+
+// ============================================================================
+// Policy Management Routes
+// ============================================================================
+app.use('/api', policyRoutes);
 
 // Cleanup endpoint - TEMPORARY for user cleanup
 app.post('/api/admin/cleanup-users', async (req, res) => {
