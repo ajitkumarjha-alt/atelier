@@ -126,6 +126,53 @@ CREATE TABLE IF NOT EXISTS flats (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create site_areas table for landscape and external infrastructure
+CREATE TABLE IF NOT EXISTS site_areas (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    area_type VARCHAR(100) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    area_sqm DECIMAL(10, 2),
+    water_volume_cum DECIMAL(10, 2),
+    softscape_area_sqm DECIMAL(10, 2),
+    requires_water BOOLEAN DEFAULT FALSE,
+    water_connection_points INTEGER DEFAULT 0,
+    estimated_water_demand DECIMAL(10, 2),
+    requires_electrical BOOLEAN DEFAULT FALSE,
+    electrical_load_kw DECIMAL(10, 2),
+    lighting_points INTEGER DEFAULT 0,
+    power_points INTEGER DEFAULT 0,
+    has_ev_charging BOOLEAN DEFAULT FALSE,
+    ev_charging_points INTEGER DEFAULT 0,
+    requires_drainage BOOLEAN DEFAULT FALSE,
+    drainage_type VARCHAR(50),
+    requires_hvac BOOLEAN DEFAULT FALSE,
+    hvac_capacity_tr DECIMAL(10, 2),
+    requires_fire_fighting BOOLEAN DEFAULT FALSE,
+    fire_hydrant_points INTEGER DEFAULT 0,
+    sprinkler_required BOOLEAN DEFAULT FALSE,
+    irrigation_type VARCHAR(50),
+    landscape_category VARCHAR(50),
+    amenity_type VARCHAR(100),
+    capacity_persons INTEGER,
+    operational_hours VARCHAR(50),
+    parking_type VARCHAR(50),
+    car_spaces INTEGER DEFAULT 0,
+    bike_spaces INTEGER DEFAULT 0,
+    infrastructure_type VARCHAR(100),
+    equipment_details TEXT,
+    capacity_rating VARCHAR(100),
+    location_description TEXT,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for site_areas
+CREATE INDEX IF NOT EXISTS idx_site_areas_project_id ON site_areas(project_id);
+CREATE INDEX IF NOT EXISTS idx_site_areas_area_type ON site_areas(area_type);
+
 -- Create function to update updated_at column
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $update_timestamp$
@@ -163,6 +210,12 @@ CREATE TRIGGER update_floors_updated_at
 DROP TRIGGER IF EXISTS update_flats_updated_at ON flats;
 CREATE TRIGGER update_flats_updated_at
     BEFORE UPDATE ON flats
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_site_areas_updated_at ON site_areas;
+CREATE TRIGGER update_site_areas_updated_at
+    BEFORE UPDATE ON site_areas
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 

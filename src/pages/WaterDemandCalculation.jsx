@@ -41,11 +41,15 @@ export default function WaterDemandCalculation() {
 
   // Calculated results
   const [results, setResults] = useState(null);
+  
+  // Tank dimensions
+  const [tankDepth, setTankDepth] = useState(2.5); // Default depth in meters
 
   useEffect(() => {
     fetchProjectData();
     fetchPolicyData();
     fetchAvailablePolicies();
+    fetchSiteAreasSummary();
   }, [projectId]);
 
   useEffect(() => {
@@ -66,6 +70,24 @@ export default function WaterDemandCalculation() {
       showError('Failed to load project');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSiteAreasSummary = async () => {
+    try {
+      const response = await apiFetch(`/api/projects/${projectId}/site-areas/summary`);
+      if (!response.ok) {
+        return;
+      }
+      const data = await response.json();
+      const landscape = data.find(area => area.area_type === 'landscape');
+      const softscapeArea = landscape?.total_softscape_area_sqm ?? landscape?.total_area_sqm;
+      if (softscapeArea && Number(softscapeArea) > 0) {
+        setHasLandscape(true);
+        setLandscapeArea(Number(softscapeArea));
+      }
+    } catch (error) {
+      console.error('Failed to load site areas summary:', error);
     }
   };
 
@@ -815,9 +837,41 @@ export default function WaterDemandCalculation() {
 
                 {/* Storage */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold mb-2 text-blue-900">Required Storage</h3>
-                  <div className="text-3xl font-bold text-blue-700">{results.storageCapacity.toLocaleString()} L</div>
-                  <p className="text-sm text-blue-600 mt-2">1 day supply + 20% buffer</p>
+                  <h3 className="text-lg font-semibold mb-4 text-blue-900">Required Storage</h3>
+                  <div className="text-3xl font-bold text-blue-700 mb-2">{results.storageCapacity.toLocaleString()} L</div>
+                  <p className="text-sm text-blue-600 mb-4">1 day supply + 20% buffer</p>
+                  
+                  {/* Tank Dimension Calculator */}
+                  <div className="pt-4 border-t border-blue-300">
+                    <label className="block text-sm font-medium text-blue-900 mb-2">
+                      Tank Depth (meters)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0.5"
+                      max="10"
+                      value={tankDepth}
+                      onChange={(e) => setTankDepth(parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      placeholder="Enter tank depth"
+                    />
+                    
+                    {tankDepth > 0 && (
+                      <div className="mt-4 p-4 bg-white rounded-lg border border-blue-300">
+                        <div className="text-sm text-blue-800 mb-1">Required Tank Area</div>
+                        <div className="text-2xl font-bold text-blue-900">
+                          {((results.storageCapacity / 1000) / tankDepth).toFixed(2)} m²
+                        </div>
+                        <div className="text-xs text-blue-600 mt-2">
+                          Volume: {(results.storageCapacity / 1000).toFixed(2)} m³ ÷ Depth: {tankDepth} m
+                        </div>
+                        <div className="text-xs text-blue-600 mt-1">
+                          Approximate dimensions: {Math.sqrt((results.storageCapacity / 1000) / tankDepth).toFixed(2)} m × {Math.sqrt((results.storageCapacity / 1000) / tankDepth).toFixed(2)} m
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Treatment Recommendations */}

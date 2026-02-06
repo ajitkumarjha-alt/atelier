@@ -38,7 +38,7 @@ export default function Layout({ children }) {
 
     // L0 specific
     if (userLevel === 'L0') {
-      items.push({ name: 'All Projects', path: '/l0-dashboard', icon: FolderKanban });
+      items.push({ name: 'L0 Dashboard', path: '/l0-dashboard', icon: FolderKanban });
       items.push({ name: 'Policy Management', path: '/policy-management', icon: Database });
     }
 

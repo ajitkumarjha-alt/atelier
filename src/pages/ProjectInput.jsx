@@ -18,6 +18,10 @@ export default function ProjectInput() {
     buildings: [],
   });
 
+  const [siteAreas, setSiteAreas] = useState([]);
+  const [initialSiteAreas, setInitialSiteAreas] = useState([]);
+  const [selectedSiteArea, setSelectedSiteArea] = useState(null);
+
   const [standards, setStandards] = useState({
     applicationTypes: [],
     residentialTypes: [],
@@ -89,10 +93,20 @@ export default function ProjectInput() {
 
   const fetchProjectData = async () => {
     try {
-      const response = await fetch(`/api/projects/${projectId}/full`);
-      if (response.ok) {
-        const data = await response.json();
+      const [projectResponse, siteAreasResponse] = await Promise.all([
+        fetch(`/api/projects/${projectId}/full`),
+        fetch(`/api/projects/${projectId}/site-areas`)
+      ]);
+
+      if (projectResponse.ok) {
+        const data = await projectResponse.json();
         setProjectData(data);
+      }
+
+      if (siteAreasResponse.ok) {
+        const siteAreasData = await siteAreasResponse.json();
+        setSiteAreas(siteAreasData);
+        setInitialSiteAreas(siteAreasData);
       }
     } catch (err) {
       setError('Failed to fetch project data');
@@ -316,6 +330,68 @@ export default function ProjectInput() {
         b.id !== buildingId && b.twinOfBuildingName !== building.name
       ),
     }));
+  };
+
+  const createEmptySiteArea = () => ({
+    id: `temp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    area_type: 'landscape',
+    name: '',
+    description: '',
+    area_sqm: '',
+    water_volume_cum: '',
+    softscape_area_sqm: '',
+    requires_water: false,
+    water_connection_points: '',
+    estimated_water_demand: '',
+    requires_electrical: false,
+    electrical_load_kw: '',
+    lighting_points: '',
+    power_points: '',
+    has_ev_charging: false,
+    ev_charging_points: '',
+    requires_drainage: false,
+    drainage_type: '',
+    requires_hvac: false,
+    hvac_capacity_tr: '',
+    requires_fire_fighting: false,
+    fire_hydrant_points: '',
+    sprinkler_required: false,
+    irrigation_type: '',
+    landscape_category: '',
+    amenity_type: '',
+    capacity_persons: '',
+    operational_hours: '',
+    parking_type: '',
+    car_spaces: '',
+    bike_spaces: '',
+    infrastructure_type: '',
+    equipment_details: '',
+    capacity_rating: '',
+    location_description: '',
+    notes: ''
+  });
+
+  const addSiteArea = () => {
+    const newArea = createEmptySiteArea();
+    setSiteAreas(prev => [...prev, newArea]);
+    setSelectedSiteArea(newArea.id);
+  };
+
+  const updateSiteArea = (areaId, updates) => {
+    setSiteAreas(prev => prev.map(area => (
+      area.id === areaId ? { ...area, ...updates } : area
+    )));
+  };
+
+  const deleteSiteArea = (areaId) => {
+    setSiteAreas(prev => prev.filter(area => area.id !== areaId));
+    if (selectedSiteArea === areaId) {
+      setSelectedSiteArea(null);
+    }
+  };
+
+  const toggleSiteAreaDetails = (areaId) => {
+    setSelectedSiteArea(prev => (prev === areaId ? null : areaId));
   };
 
   const addFloor = (buildingId) => {
@@ -650,11 +726,99 @@ export default function ProjectInput() {
     }));
   };
 
+  const normalizeNumber = (value, isInt = false) => {
+    if (value === '' || value === null || value === undefined) {
+      return null;
+    }
+    const parsed = isInt ? parseInt(value, 10) : parseFloat(value);
+    return Number.isNaN(parsed) ? null : parsed;
+  };
+
+  const buildSiteAreaPayload = (area) => ({
+    area_type: area.area_type,
+    name: area.name,
+    description: area.description || null,
+    area_sqm: normalizeNumber(area.area_sqm),
+    water_volume_cum: normalizeNumber(area.water_volume_cum),
+    softscape_area_sqm: normalizeNumber(area.softscape_area_sqm),
+    requires_water: !!area.requires_water,
+    water_connection_points: normalizeNumber(area.water_connection_points, true),
+    estimated_water_demand: normalizeNumber(area.estimated_water_demand),
+    requires_electrical: !!area.requires_electrical,
+    electrical_load_kw: normalizeNumber(area.electrical_load_kw),
+    lighting_points: normalizeNumber(area.lighting_points, true),
+    power_points: normalizeNumber(area.power_points, true),
+    has_ev_charging: !!area.has_ev_charging,
+    ev_charging_points: normalizeNumber(area.ev_charging_points, true),
+    requires_drainage: !!area.requires_drainage,
+    drainage_type: area.drainage_type || null,
+    requires_hvac: !!area.requires_hvac,
+    hvac_capacity_tr: normalizeNumber(area.hvac_capacity_tr),
+    requires_fire_fighting: !!area.requires_fire_fighting,
+    fire_hydrant_points: normalizeNumber(area.fire_hydrant_points, true),
+    sprinkler_required: !!area.sprinkler_required,
+    irrigation_type: area.irrigation_type || null,
+    landscape_category: area.landscape_category || null,
+    amenity_type: area.amenity_type || null,
+    capacity_persons: normalizeNumber(area.capacity_persons, true),
+    operational_hours: area.operational_hours || null,
+    parking_type: area.parking_type || null,
+    car_spaces: normalizeNumber(area.car_spaces, true),
+    bike_spaces: normalizeNumber(area.bike_spaces, true),
+    infrastructure_type: area.infrastructure_type || null,
+    equipment_details: area.equipment_details || null,
+    capacity_rating: area.capacity_rating || null,
+    location_description: area.location_description || null,
+    notes: area.notes || null
+  });
+
+  const syncSiteAreas = async (projectIdToSync) => {
+    const originalIds = initialSiteAreas
+      .filter(area => typeof area.id === 'number')
+      .map(area => area.id);
+    const currentIds = siteAreas
+      .filter(area => typeof area.id === 'number')
+      .map(area => area.id);
+    const deletedIds = originalIds.filter(id => !currentIds.includes(id));
+
+    await Promise.all(deletedIds.map(id =>
+      fetch(`/api/site-areas/${id}`, { method: 'DELETE' })
+    ));
+
+    await Promise.all(siteAreas.map(area => {
+      const payload = buildSiteAreaPayload(area);
+      if (typeof area.id === 'number') {
+        return fetch(`/api/site-areas/${area.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
+      return fetch(`/api/projects/${projectIdToSync}/site-areas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }));
+  };
+
   const handleSubmit = async () => {
     try {
       // Validate that project has a name
-      if (!projectData.name.trim()) {
+      if (!String(projectData.name || '').trim()) {
         setError('Project name is required');
+        return;
+      }
+
+      const invalidSoftscape = siteAreas.find(area => (
+        area.area_type === 'landscape' &&
+        area.area_sqm !== '' &&
+        area.softscape_area_sqm !== '' &&
+        Number(area.softscape_area_sqm) > Number(area.area_sqm)
+      ));
+
+      if (invalidSoftscape) {
+        setError('Softscape area cannot exceed total landscape area.');
         return;
       }
 
@@ -686,6 +850,11 @@ export default function ProjectInput() {
       }
 
       const result = await response.json();
+      const savedProjectId = result.id || projectId;
+
+      await syncSiteAreas(savedProjectId);
+      setInitialSiteAreas(siteAreas);
+
       alert(`Project ${isEditing ? 'updated' : 'created'} successfully!`);
       
       // Redirect to L1 dashboard after successful creation
@@ -706,6 +875,9 @@ export default function ProjectInput() {
       </Layout>
     );
   }
+
+  const trimmedProjectName = String(projectData.name || '').trim();
+  const trimmedProjectLocation = String(projectData.location || '').trim();
 
   return (
     <Layout>
@@ -847,19 +1019,312 @@ export default function ProjectInput() {
           {/* Buildings Section */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="heading-secondary">Site Areas</h2>
+                <p className="text-xs text-lodha-grey mt-1">
+                  Landscape, amenities, parking, and external infrastructure with MEP details.
+                </p>
+              </div>
+              <button
+                onClick={addSiteArea}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-lodha-gold text-white hover:bg-lodha-gold/90"
+              >
+                <Plus className="w-4 h-4" />
+                Add Site Area
+              </button>
+            </div>
+
+            {siteAreas.length === 0 ? (
+              <div className="p-4 rounded-lg border border-dashed border-gray-300 text-gray-500 text-sm">
+                No site areas added yet. Add landscape zones, amenities, parking, or infrastructure here.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {siteAreas.map((area, index) => (
+                  <div key={area.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex flex-col md:flex-row md:items-end gap-4">
+                      <div className="flex-1">
+                        <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Area Name</label>
+                        <input
+                          type="text"
+                          value={area.name}
+                          onChange={e => updateSiteArea(area.id, { name: e.target.value })}
+                          placeholder={`Site area ${index + 1}`}
+                          className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                        />
+                      </div>
+                      <div className="w-full md:w-48">
+                        <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Area Type</label>
+                        <select
+                          value={area.area_type}
+                          onChange={e => {
+                            const nextType = e.target.value;
+                            const nextUpdates = { area_type: nextType };
+
+                            if (nextType !== 'parking') {
+                              nextUpdates.has_ev_charging = false;
+                              nextUpdates.ev_charging_points = '';
+                              nextUpdates.parking_type = '';
+                              nextUpdates.car_spaces = '';
+                              nextUpdates.bike_spaces = '';
+                            } else {
+                              nextUpdates.parking_type = 'surface';
+                            }
+
+                            if (nextType !== 'amenity') {
+                              nextUpdates.amenity_type = '';
+                              nextUpdates.capacity_persons = '';
+                              nextUpdates.operational_hours = '';
+                            }
+
+                            if (nextType !== 'infrastructure') {
+                              nextUpdates.infrastructure_type = '';
+                              nextUpdates.equipment_details = '';
+                              nextUpdates.capacity_rating = '';
+                            }
+
+                            if (nextType !== 'landscape') {
+                              nextUpdates.landscape_category = '';
+                              nextUpdates.softscape_area_sqm = '';
+                            } else {
+                              nextUpdates.landscape_category = 'mixed';
+                            }
+
+                            if (nextType !== 'swimming_pool' && nextType !== 'water_body') {
+                              nextUpdates.water_volume_cum = '';
+                            }
+
+                            updateSiteArea(area.id, nextUpdates);
+                            setSelectedSiteArea(area.id);
+                          }}
+                          className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                        >
+                          <option value="landscape">Landscape</option>
+                          <option value="amenity">Amenity</option>
+                          <option value="swimming_pool">Swimming Pool</option>
+                          <option value="water_body">Water Body</option>
+                          <option value="parking">Parking</option>
+                          <option value="infrastructure">Infrastructure</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                      <div className="w-full md:w-32">
+                        <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Area (sqm)</label>
+                        <input
+                          type="number"
+                          value={area.area_sqm}
+                          onChange={e => updateSiteArea(area.id, { area_sqm: e.target.value })}
+                          placeholder="0"
+                          className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => toggleSiteAreaDetails(area.id)}
+                          className="px-3 py-2 text-lodha-gold hover:bg-lodha-sand rounded-lg"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteSiteArea(area.id)}
+                          className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {selectedSiteArea === area.id && (
+                      <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
+                        <div>
+                          <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Description</label>
+                          <textarea
+                            value={area.description}
+                            onChange={e => updateSiteArea(area.id, { description: e.target.value })}
+                            placeholder="Brief description of the area"
+                            rows={2}
+                            className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                          />
+                        </div>
+
+                        {(area.area_type === 'swimming_pool' || area.area_type === 'water_body') && (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Water Volume (m³)</label>
+                              <input
+                                type="number"
+                                value={area.water_volume_cum}
+                                onChange={e => updateSiteArea(area.id, { water_volume_cum: e.target.value })}
+                                className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {area.area_type === 'landscape' && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Softscape Area (sqm)</label>
+                              <input
+                                type="number"
+                                value={area.softscape_area_sqm}
+                                onChange={e => updateSiteArea(area.id, { softscape_area_sqm: e.target.value })}
+                                placeholder="Portion of landscape that is green"
+                                className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                              />
+                              {area.area_sqm && area.softscape_area_sqm && Number(area.softscape_area_sqm) > Number(area.area_sqm) && (
+                                <p className="text-xs text-red-600 mt-1">Softscape area cannot exceed total landscape area.</p>
+                              )}
+                              {area.area_sqm && area.softscape_area_sqm && Number(area.softscape_area_sqm) <= Number(area.area_sqm) && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Hardscape area: {Math.max(Number(area.area_sqm) - Number(area.softscape_area_sqm), 0)} sqm
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {area.area_type === 'amenity' && (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Amenity Type</label>
+                              <input
+                                type="text"
+                                value={area.amenity_type}
+                                onChange={e => updateSiteArea(area.id, { amenity_type: e.target.value })}
+                                placeholder="Swimming pool, clubhouse, gym..."
+                                className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Capacity (persons)</label>
+                              <input
+                                type="number"
+                                value={area.capacity_persons}
+                                onChange={e => updateSiteArea(area.id, { capacity_persons: e.target.value })}
+                                className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Operational Hours</label>
+                              <input
+                                type="text"
+                                value={area.operational_hours}
+                                onChange={e => updateSiteArea(area.id, { operational_hours: e.target.value })}
+                                placeholder="e.g., 6am - 10pm"
+                                className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {area.area_type === 'parking' && (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Car Spaces</label>
+                              <input
+                                type="number"
+                                value={area.car_spaces}
+                                onChange={e => updateSiteArea(area.id, { car_spaces: e.target.value })}
+                                className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Bike Spaces</label>
+                              <input
+                                type="number"
+                                value={area.bike_spaces}
+                                onChange={e => updateSiteArea(area.id, { bike_spaces: e.target.value })}
+                                className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">EV Charging Points</label>
+                              <input
+                                type="number"
+                                value={area.ev_charging_points}
+                                onChange={e => {
+                                  const nextValue = e.target.value;
+                                  updateSiteArea(area.id, {
+                                    ev_charging_points: nextValue,
+                                    has_ev_charging: Number(nextValue) > 0
+                                  });
+                                }}
+                                className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {area.area_type === 'infrastructure' && (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Infrastructure Type</label>
+                              <input
+                                type="text"
+                                value={area.infrastructure_type}
+                                onChange={e => updateSiteArea(area.id, { infrastructure_type: e.target.value })}
+                                placeholder="STP, WTP, Pump Room..."
+                                className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Capacity Rating</label>
+                              <input
+                                type="text"
+                                value={area.capacity_rating}
+                                onChange={e => updateSiteArea(area.id, { capacity_rating: e.target.value })}
+                                placeholder="e.g., 100 KLD, 500 kVA"
+                                className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Equipment Details</label>
+                              <input
+                                type="text"
+                                value={area.equipment_details}
+                                onChange={e => updateSiteArea(area.id, { equipment_details: e.target.value })}
+                                placeholder="Pumps, transformers, etc."
+                                className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Notes</label>
+                          <input
+                            type="text"
+                            value={area.notes}
+                            onChange={e => updateSiteArea(area.id, { notes: e.target.value })}
+                            placeholder="Any additional notes"
+                            className="w-full px-3 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Buildings Section */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="flex justify-between items-center mb-4">
               <h2 className="heading-secondary">Buildings</h2>
               <button
                 onClick={addBuilding}
-                disabled={!projectData.name.trim() || !projectData.location.trim() || warnings.some(w => w.type === 'error')}
+                disabled={!trimmedProjectName || !trimmedProjectLocation || warnings.some(w => w.type === 'error')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                  !projectData.name.trim() || !projectData.location.trim() || warnings.some(w => w.type === 'error')
+                  !trimmedProjectName || !trimmedProjectLocation || warnings.some(w => w.type === 'error')
                     ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                     : 'bg-lodha-gold text-white hover:bg-lodha-gold/90'
                 }`}
                 title={
-                  !projectData.name.trim()
+                  !trimmedProjectName
                     ? 'Please enter project name'
-                    : !projectData.location.trim()
+                    : !trimmedProjectLocation
                     ? 'Please enter project location/address'
                     : warnings.some(w => w.type === 'error')
                     ? 'Please resolve errors with project name'
@@ -873,9 +1338,8 @@ export default function ProjectInput() {
 
             <div className="space-y-6">
               {projectData.buildings.filter(b => !b.twinOfBuildingName).map((building, idx) => {
-                // Find twin buildings for this parent
                 const twinBuildings = projectData.buildings.filter(b => b.twinOfBuildingName === building.name);
-                
+
                 return (
                   <BuildingSection
                     key={building.id}
@@ -904,14 +1368,14 @@ export default function ProjectInput() {
           <div className="flex gap-4">
             <button
               onClick={handleSubmit}
-              disabled={!projectData.name.trim() || warnings.some(w => w.type === 'error') || saving}
+              disabled={!trimmedProjectName || warnings.some(w => w.type === 'error') || saving}
               className={`px-6 py-3 font-jost font-semibold rounded-lg transition-all ${
-                !projectData.name.trim() || warnings.some(w => w.type === 'error') || saving
+                !trimmedProjectName || warnings.some(w => w.type === 'error') || saving
                   ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                   : 'bg-lodha-gold text-white hover:bg-lodha-gold/90'
               }`}
               title={
-                !projectData.name.trim()
+                !trimmedProjectName
                   ? 'Please enter project name'
                   : warnings.some(w => w.type === 'error')
                   ? 'Please resolve errors before submitting'
@@ -940,7 +1404,7 @@ export default function ProjectInput() {
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-md p-6 lg:sticky lg:top-6">
             <h2 className="heading-secondary mb-4">Project Preview</h2>
-            <ProjectPreview data={projectData} />
+            <ProjectPreview data={projectData} siteAreas={siteAreas} />
           </div>
         </div>
       </div>
@@ -1554,7 +2018,7 @@ function FlatRow({
 }
 
 // Project Preview Component
-function ProjectPreview({ data }) {
+function ProjectPreview({ data, siteAreas = [] }) {
   // Calculate flat counts by type
   const flatTypesSummary = {};
   data.buildings.forEach(building => {
@@ -1588,6 +2052,7 @@ function ProjectPreview({ data }) {
           <p>Buildings: {data.buildings.length}</p>
           <p>Total Floors: {data.buildings.reduce((sum, b) => sum + b.floors.length, 0)}</p>
           <p>Total Flats: {totalFlats}</p>
+          <p>Site Areas: {siteAreas.length}</p>
           
           {Object.keys(flatTypesSummary).length > 0 && (
             <div className="mt-2 pt-2 border-t border-lodha-grey/30">
@@ -1618,6 +2083,23 @@ function ProjectPreview({ data }) {
           ))}
         </div>
       </div>
+
+      {siteAreas.length > 0 && (
+        <div className="border-t border-lodha-grey pt-3">
+          <p className="font-jost font-semibold text-lodha-black mb-2">Site Areas:</p>
+          <div className="space-y-2">
+            {siteAreas.map((area, idx) => (
+              <div key={area.id} className="bg-lodha-sand p-2 rounded text-xs">
+                <p className="font-semibold">{area.name || `Site Area ${idx + 1}`}</p>
+                <p className="text-lodha-grey capitalize">{area.area_type}</p>
+                {area.area_sqm && (
+                  <p className="text-lodha-grey">Area: {area.area_sqm} sqm</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

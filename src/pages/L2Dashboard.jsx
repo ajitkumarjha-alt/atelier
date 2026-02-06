@@ -19,7 +19,7 @@ export default function L2Dashboard() {
       {/* Dashboard Header */}
       <div className="mb-8">
         <h1 className="heading-primary mb-2">Execution & Tracking</h1>
-        <p className="text-body">Monitor MEP project progress and pending approvals</p>
+        <p className="text-body">Monitor MEP project progress. Click on a card to view details and access drawing schedules, change requests, and more.</p>
       </div>
 
       {/* Top Stats */}

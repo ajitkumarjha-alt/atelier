@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader, Archive } from 'lucide-react';
+import { Loader, Archive, Building2, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetchJson } from '../lib/api';
 
@@ -63,78 +63,84 @@ export default function ProjectStatusBoard({ userEmail }) {
   };
 
   const StageCard = ({ project }) => {
-    const stageColors = {
-      'Concept': 'from-yellow-100 to-yellow-200',
-      'DD': 'from-gray-100 to-gray-200',
-      'Tender': 'from-yellow-100 to-yellow-200',
-      'VFC': 'from-gray-100 to-gray-200',
+    const getStatusColor = (status) => {
+      switch (status) {
+        case 'on_track':
+          return 'bg-green-100 text-green-800 border-green-200';
+        case 'delayed':
+          return 'bg-red-100 text-red-800 border-red-200';
+        case 'at_risk':
+          return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        default:
+          return 'bg-gray-100 text-gray-800 border-gray-200';
+      }
     };
 
-    const stageColor = stageColors[project.lifecycle_stage] || 'from-yellow-100 to-yellow-200';
-
     return (
-      <div className={`bg-gradient-to-br ${stageColor} rounded-lg p-6 shadow-lg transform hover:scale-105 transition-transform duration-200 border border-gray-200`}>
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <p className="text-gray-600 font-jost text-xs uppercase tracking-wide mb-1">Project</p>
-            <h3 
-              className="text-xl font-garamond font-bold text-lodha-black cursor-pointer hover:underline"
-              onClick={() => navigate(`/project/${project.id}`)}
-            >
+      <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-200 border border-gray-200 overflow-hidden">
+        {/* Header with Status */}
+        <div 
+          className="p-5 pb-4 border-b border-gray-100 cursor-pointer"
+          onClick={() => navigate(`/project/${project.id}`)}
+        >
+          <div className="flex justify-between items-start mb-3 gap-3">
+            <h3 className="text-xl font-serif font-bold text-lodha-deep flex-1 leading-tight hover:text-lodha-gold transition-colors">
               {project.name}
             </h3>
+            {project.status && ['on_track', 'delayed', 'at_risk'].includes(project.status) && (
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize whitespace-nowrap border ${getStatusColor(project.status)}`}>
+                {project.status.replace('_', ' ')}
+              </span>
+            )}
           </div>
+          
+          {/* Project Summary */}
+          {project.description && (
+            <p className="text-sm text-gray-600 line-clamp-2 mb-3">{project.description}</p>
+          )}
+
+          {/* Lifecycle Stage */}
+          {project.lifecycle_stage && (
+            <div className="text-xs text-gray-500">
+              <span className="font-medium">Stage:</span> {project.lifecycle_stage}
+            </div>
+          )}
         </div>
 
-        <div className="space-y-3 mb-4">
-          <div>
-            <div className="flex justify-between mb-1">
-              <span className="text-gray-600 font-jost text-sm">Progress</span>
-              <span className="text-lodha-black font-jost font-semibold text-sm">{project.completion_percentage}%</span>
+        {/* Key Metrics */}
+        <div className="p-5 pt-4">
+          {/* Progress Bar */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-700">Overall Progress</span>
+              <span className="text-sm font-bold text-lodha-gold">{project.completion_percentage}%</span>
             </div>
-            <div className="h-2 bg-gray-300 rounded-full overflow-hidden">
+            <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-lodha-gold transition-all duration-300"
+                className="h-full bg-gradient-to-r from-lodha-gold to-yellow-500 transition-all duration-500 ease-out"
                 style={{ width: `${project.completion_percentage}%` }}
               />
             </div>
           </div>
 
-          <div className="flex justify-between text-sm font-jost">
-            <span className="text-gray-600">Floors: {project.floors_completed}/{project.total_floors}</span>
-            <span className="text-gray-600">Materials: {project.material_stock_percentage}%</span>
+          {/* Floor Progress */}
+          <div className="flex items-center gap-2 text-sm">
+            <Building2 className="w-4 h-4 text-lodha-deep" />
+            <span className="text-gray-600">Floors:</span>
+            <span className="font-semibold text-gray-900">{project.floors_completed}/{project.total_floors} completed</span>
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <button
-            onClick={() => navigate(`/drawing-schedule/${project.id}`)}
-            className="w-full px-3 py-2 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
-          >
-            Drawing Schedule
-          </button>
-
-          <button
-            onClick={() => navigate(`/change-requests/${project.id}`)}
-            className="w-full px-3 py-2 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
-          >
-            Change Requests
-          </button>
-
-          <button
-            onClick={() => handleArchiveProject(project.id)}
-            disabled={archivingProjectId === project.id}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-lodha-black/10 hover:bg-lodha-black/20 text-lodha-black rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-jost font-semibold text-sm"
-          >
-            {archivingProjectId === project.id ? (
-              <Loader className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <Archive className="w-4 h-4" />
-                Hand Over
-              </>
-            )}
-          </button>
+          {/* Critical Flags Section - Placeholder for future implementation */}
+          {project.critical_flags && project.critical_flags.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-red-600 font-medium">
+                  {project.critical_flags.length} critical {project.critical_flags.length === 1 ? 'point' : 'points'} flagged
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

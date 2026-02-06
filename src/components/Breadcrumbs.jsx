@@ -10,6 +10,7 @@ import { Home, ChevronRight } from 'lucide-react';
 const routeNameMap = {
   '': 'Home',
   'dashboard': 'Dashboard',
+  'l0-dashboard': 'L0 Dashboard',
   'l1-dashboard': 'L1 Dashboard',
   'l2-dashboard': 'L2 Dashboard',
   'l3-dashboard': 'L3 Dashboard',

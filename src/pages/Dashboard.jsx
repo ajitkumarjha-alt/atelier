@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Loader } from 'lucide-react';
 import Layout from '../components/Layout';
 import ProjectCard from '../components/ProjectCard';
@@ -6,6 +7,7 @@ import { CardGridSkeleton } from '../components/SkeletonLoader';
 import { apiFetchJson } from '../lib/api';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -58,17 +60,20 @@ export default function Dashboard() {
           Project Overview
         </h1>
         <p className="text-gray-600">
-          Monitoring {projects.length} active projects
+          Monitoring {projects.length} active {projects.length === 1 ? 'project' : 'projects'}. Click on a card to view details.
         </p>
       </div>
 
       {/* Projects Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {projects.map(project => (
-          <ProjectCard 
-            key={project.id} 
-            project={project}
-          />
+          <div 
+            key={project.id}
+            onClick={() => navigate(`/project/${project.id}`)}
+            className="cursor-pointer"
+          >
+            <ProjectCard project={project} />
+          </div>
         ))}
       </div>
 

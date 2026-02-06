@@ -4,21 +4,17 @@ import { ArrowLeft, Droplets, CheckCircle, AlertCircle, Save, Calculator, Trash2
 import Layout from '../../components/Layout';
 import { apiFetch } from '../../lib/api';
 import { useUser } from '../../lib/UserContext';
+import { getPolicyDataLegacyFormat, getDefaultPolicy } from '../../services/policyService';
 
-// Water demand constants (liters per capita per day - LPCD)
-const WATER_DEMAND_RATES = {
-  // Residential - Total LPCD
-  '1BHK': 135,
-  '2BHK': 135,
-  '3BHK': 135,
-  '4BHK': 135,
-  'Studio': 135,
-  // Residential type multipliers
-  'Aspi': 1.0,
-  'Casa': 1.1,
-  'Premium': 1.2,
-  'Villa': 1.3,
-  // Non-residential (LPCD or per sqft)
+// Legacy to new residential type mapping
+const RESIDENTIAL_TYPE_MAPPING = {
+  'Premium': 'luxury',    // Old Premium → Luxury
+  'Aspi': 'aspirational', // Old Aspi → Aspirational
+  'Villa': 'luxury'       // Old Villa → Luxury
+};
+
+// Fallback rates (used only if policy system is unavailable)
+const FALLBACK_WATER_RATES = {
   'Clubhouse': 70, // per person
   'MLCP': 10, // per parking space
   'Commercial': 45, // per person
@@ -29,18 +25,16 @@ const WATER_DEMAND_RATES = {
   'Data center': 5 // per sqft
 };
 
-// Occupancy rates per flat type
-const OCCUPANCY_RATES = {
+// Fallback occupancy rates
+const FALLBACK_OCCUPANCY_RATES = {
   '1BHK': 2,
+  '1.5BHK': 2,
   '2BHK': 3,
+  '2.5BHK': 4,
   '3BHK': 4,
   '4BHK': 5,
   'Studio': 1
 };
-
-// Water demand breakdown: Domestic and Flushing percentages
-const DOMESTIC_PERCENTAGE = 0.70; // 70% of total water for domestic use
-const FLUSHING_PERCENTAGE = 0.30; // 30% of total water for flushing
 
 export default function WaterDemandCalculation() {
   const { projectId, calculationId } = useParams();
@@ -61,14 +55,24 @@ export default function WaterDemandCalculation() {
   const [error, setError] = useState(null);
   const [showCalculations, setShowCalculations] = useState(false);
   
+  // Policy data
+  const [policyData, setPolicyData] = useState(null);
+  const [WATER_RATES, setWATER_RATES] = useState({});
+  const [OCCUPANCY_FACTORS, setOCCUPANCY_FACTORS] = useState({});
+  
   // Storage tank factors (in days)
   const [ohtDomesticDays, setOhtDomesticDays] = useState(1.0);
   const [ohtFlushingDays, setOhtFlushingDays] = useState(0.5);
   const [ugrDomesticDays, setUgrDomesticDays] = useState(1.5);
   const [ugrFlushingDays, setUgrFlushingDays] = useState(0.5);
+  
+  // Tank depths (in meters)
+  const [ohtDepth, setOhtDepth] = useState(2.0); // Default OHT depth
+  const [ugrDepth, setUgrDepth] = useState(3.0); // Default UGR depth
 
   useEffect(() => {
     fetchProjectAndBuildings();
+    fetchPolicyData();
   }, [projectId]);
 
   useEffect(() => {
@@ -76,6 +80,19 @@ export default function WaterDemandCalculation() {
       fetchExistingCalculation();
     }
   }, [calculationId]);
+
+  const fetchPolicyData = async () => {
+    try {
+      const data = await getPolicyDataLegacyFormat();
+      setWATER_RATES(data.WATER_RATES);
+      setOCCUPANCY_FACTORS(data.OCCUPANCY_FACTORS);
+      const policy = await getDefaultPolicy();
+      setPolicyData(policy);
+    } catch (err) {
+      console.error('Error loading policy data:', err);
+      // Continue with fallback values
+    }
+  };
 
   const fetchProjectAndBuildings = async () => {
     try {
@@ -174,10 +191,22 @@ export default function WaterDemandCalculation() {
         building.floors?.forEach(floor => {
           floor.flats?.forEach(flat => {
             if (!flatTypeMap[flat.flat_type]) {
+              // Map legacy residential types
+              let resTypeForLookup = building.residential_type || 'luxury';
+              if (RESIDENTIAL_TYPE_MAPPING[resTypeForLookup]) {
+                resTypeForLookup = RESIDENTIAL_TYPE_MAPPING[resTypeForLookup];
+              }
+              
+              // Get occupancy from policy or fallback
+              const occupancy = OCCUPANCY_FACTORS?.residential?.[flat.flat_type]?.[resTypeForLookup]
+                             || OCCUPANCY_FACTORS?.residential?.[flat.flat_type]?.[building.residential_type]
+                             || FALLBACK_OCCUPANCY_RATES[flat.flat_type] 
+                             || 3;
+              
               flatTypeMap[flat.flat_type] = {
                 flatType: flat.flat_type,
                 totalUnits: 0,
-                unitPopulation: OCCUPANCY_RATES[flat.flat_type] || 3,
+                unitPopulation: occupancy,
                 totalPopulation: 0
               };
             }
@@ -185,28 +214,44 @@ export default function WaterDemandCalculation() {
           });
         });
 
-        // Calculate water demand for each flat type
+        // Calculate water demand for each flat type using policy-specific rates
         let totalOccupancy = 0;
         
-        // Base LPCD rate
-        let baseLPCD = WATER_DEMAND_RATES['1BHK'] || 135;
+        // Get specific drinking and flushing rates from policy
+        // Map legacy types to new types if needed
+        let resType = building.residential_type || 'luxury';
+        if (RESIDENTIAL_TYPE_MAPPING[resType]) {
+          resType = RESIDENTIAL_TYPE_MAPPING[resType];
+        }
         
-        // Apply residential type multiplier
-        const typeMultiplier = WATER_DEMAND_RATES[building.residential_type] || 1.0;
-        const adjustedLPCD = baseLPCD * typeMultiplier;
+        // If still no match, try the original type (might be in policy as legacy type)
+        const rates = WATER_RATES?.residential?.[resType] 
+                   || WATER_RATES?.residential?.[building.residential_type]
+                   || {};
         
-        buildingResult.lpcd = adjustedLPCD;
+        // For drinking water
+        const perPersonDrinking = rates.drinking || 165;
         
-        const perPersonDomestic = adjustedLPCD * DOMESTIC_PERCENTAGE;
-        const perPersonFlushing = adjustedLPCD * FLUSHING_PERCENTAGE;
+        // For flushing - check if building has flush system preference
+        // Default to flush valves for luxury/hiEnd, standard flushing for others
+        let perPersonFlushing;
+        if (resType === 'luxury' || resType === 'hiEnd') {
+          // Prefer flush tanks if available, otherwise valves
+          perPersonFlushing = rates.flushTanks || rates.flushValves || 75;
+        } else {
+          perPersonFlushing = rates.flushing || 60;
+        }
+        
+        const perPersonTotal = perPersonDrinking + perPersonFlushing;
+        buildingResult.lpcd = perPersonTotal;
         
         Object.values(flatTypeMap).forEach(flatData => {
           flatData.totalPopulation = flatData.totalUnits * flatData.unitPopulation;
-          flatData.perPersonWaterDemand = adjustedLPCD;
-          flatData.perPersonDomestic = perPersonDomestic;
+          flatData.perPersonWaterDemand = perPersonTotal;
+          flatData.perPersonDomestic = perPersonDrinking;
           flatData.perPersonFlushing = perPersonFlushing;
-          flatData.totalWaterDemand = Math.ceil(flatData.totalPopulation * adjustedLPCD);
-          flatData.totalDomestic = Math.ceil(flatData.totalPopulation * perPersonDomestic);
+          flatData.totalWaterDemand = Math.ceil(flatData.totalPopulation * perPersonTotal);
+          flatData.totalDomestic = Math.ceil(flatData.totalPopulation * perPersonDrinking);
           flatData.totalFlushing = Math.ceil(flatData.totalPopulation * perPersonFlushing);
           
           totalOccupancy += flatData.totalPopulation;
@@ -221,27 +266,31 @@ export default function WaterDemandCalculation() {
         buildingResult.waterDemandPerDay = buildingResult.totalWaterDemand;
         
       } else if (building.application_type === 'Villa') {
-        // Calculate for villas
+        // Calculate for villas using luxury residential rates
         const villaCount = building.villa_count || 1;
-        const occupancyPerVilla = OCCUPANCY_RATES['3BHK'] || 4;
+        const occupancyPerVilla = OCCUPANCY_FACTORS?.residential?.['3BHK']?.luxury 
+                                || FALLBACK_OCCUPANCY_RATES['3BHK'] 
+                                || 5;
         const totalOccupancy = villaCount * occupancyPerVilla;
         
-        const villaLPCD = WATER_DEMAND_RATES['Villa'] * (WATER_DEMAND_RATES['3BHK'] || 135);
-        const perPersonDomestic = villaLPCD * DOMESTIC_PERCENTAGE;
-        const perPersonFlushing = villaLPCD * FLUSHING_PERCENTAGE;
+        // Use luxury rates for villas
+        const rates = WATER_RATES?.residential?.luxury || {};
+        const perPersonDrinking = rates.drinking || 165;
+        const perPersonFlushing = rates.flushValves || 75;
+        const villaLPCD = perPersonDrinking + perPersonFlushing;
         
         buildingResult.totalOccupancy = totalOccupancy;
         buildingResult.villaCount = villaCount;
         buildingResult.occupancyPerVilla = occupancyPerVilla;
         buildingResult.lpcd = villaLPCD;
         buildingResult.totalWaterDemand = Math.ceil(totalOccupancy * villaLPCD);
-        buildingResult.totalDomestic = Math.ceil(totalOccupancy * perPersonDomestic);
+        buildingResult.totalDomestic = Math.ceil(totalOccupancy * perPersonDrinking);
         buildingResult.totalFlushing = Math.ceil(totalOccupancy * perPersonFlushing);
         buildingResult.waterDemandPerDay = buildingResult.totalWaterDemand;
         
       } else {
-        // Non-residential buildings
-        const rate = WATER_DEMAND_RATES[building.application_type] || 50;
+        // Non-residential buildings - use fallback rates or 70/30 split
+        const rate = FALLBACK_WATER_RATES[building.application_type] || 50;
         let capacity = 100;
         
         if (building.application_type === 'MLCP') {
@@ -255,8 +304,9 @@ export default function WaterDemandCalculation() {
         buildingResult.capacity = capacity;
         buildingResult.ratePerUnit = rate;
         buildingResult.totalWaterDemand = Math.ceil(capacity * rate);
-        buildingResult.totalDomestic = Math.ceil(buildingResult.totalWaterDemand * DOMESTIC_PERCENTAGE);
-        buildingResult.totalFlushing = Math.ceil(buildingResult.totalWaterDemand * FLUSHING_PERCENTAGE);
+        // For non-residential without specific policy rates, use 70/30 approximation
+        buildingResult.totalDomestic = Math.ceil(buildingResult.totalWaterDemand * 0.70);
+        buildingResult.totalFlushing = Math.ceil(buildingResult.totalWaterDemand * 0.30);
         buildingResult.waterDemandPerDay = buildingResult.totalWaterDemand;
       }
 
@@ -600,12 +650,12 @@ export default function WaterDemandCalculation() {
                           <span className="font-semibold ml-2">{result.lpcd.toFixed(1)} L/person/day</span>
                         </div>
                         <div>
-                          <span className="text-gray-600">Domestic (70%):</span>
-                          <span className="font-semibold ml-2">{(result.lpcd * DOMESTIC_PERCENTAGE).toFixed(1)} L/person/day</span>
+                          <span className="text-gray-600">Drinking:</span>
+                          <span className="font-semibold ml-2">{result.flatTypeSummary?.[0]?.perPersonDomestic?.toFixed(1) || 'N/A'} L/person/day</span>
                         </div>
                         <div>
-                          <span className="text-gray-600">Flushing (30%):</span>
-                          <span className="font-semibold ml-2">{(result.lpcd * FLUSHING_PERCENTAGE).toFixed(1)} L/person/day</span>
+                          <span className="text-gray-600">Flushing:</span>
+                          <span className="font-semibold ml-2">{result.flatTypeSummary?.[0]?.perPersonFlushing?.toFixed(1) || 'N/A'} L/person/day</span>
                         </div>
                       </div>
                     </div>
@@ -686,6 +736,38 @@ export default function WaterDemandCalculation() {
             <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Storage Tank Configuration</h2>
               
+              {/* Tank Depth Configuration */}
+              <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    OHT Depth (meters)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.5"
+                    max="5"
+                    value={ohtDepth}
+                    onChange={(e) => setOhtDepth(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    UGR Depth (meters)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.5"
+                    max="10"
+                    value={ugrDepth}
+                    onChange={(e) => setUgrDepth(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -763,6 +845,17 @@ export default function WaterDemandCalculation() {
                             Domestic: {Math.ceil(result.totalDomestic * ohtDomesticDays).toLocaleString()} L<br />
                             Flushing: {Math.ceil(result.totalFlushing * ohtFlushingDays).toLocaleString()} L
                           </div>
+                          {ohtDepth > 0 && (
+                            <div className="mt-3 pt-3 border-t border-orange-200">
+                              <div className="text-xs text-gray-700 font-medium">Required Area</div>
+                              <div className="text-base font-bold text-orange-800">
+                                {((ohtCapacity / 1000) / ohtDepth).toFixed(2)} m²
+                              </div>
+                              <div className="text-xs text-gray-600 mt-1">
+                                ({Math.sqrt((ohtCapacity / 1000) / ohtDepth).toFixed(2)} m × {Math.sqrt((ohtCapacity / 1000) / ohtDepth).toFixed(2)} m)
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div className="bg-blue-50 rounded p-3">
                           <div className="text-xs text-gray-600 mb-1">UGR Capacity</div>
@@ -776,6 +869,17 @@ export default function WaterDemandCalculation() {
                             Domestic: {Math.ceil(result.totalDomestic * ugrDomesticDays).toLocaleString()} L<br />
                             Flushing: {Math.ceil(result.totalFlushing * ugrFlushingDays).toLocaleString()} L
                           </div>
+                          {ugrDepth > 0 && (
+                            <div className="mt-3 pt-3 border-t border-blue-200">
+                              <div className="text-xs text-gray-700 font-medium">Required Area</div>
+                              <div className="text-base font-bold text-blue-800">
+                                {((ugrCapacity / 1000) / ugrDepth).toFixed(2)} m²
+                              </div>
+                              <div className="text-xs text-gray-600 mt-1">
+                                ({Math.sqrt((ugrCapacity / 1000) / ugrDepth).toFixed(2)} m × {Math.sqrt((ugrCapacity / 1000) / ugrDepth).toFixed(2)} m)
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -798,6 +902,23 @@ export default function WaterDemandCalculation() {
                           sum + (r.totalDomestic * ugrDomesticDays) + (r.totalFlushing * ugrFlushingDays), 0
                         )) / 1000).toFixed(2)} KL
                       </div>
+                      {ugrDepth > 0 && (
+                        <div className="mt-4 pt-4 border-t border-blue-300">
+                          <div className="text-xs text-gray-700 font-medium">Combined Tank Area Required</div>
+                          <div className="text-xl font-bold text-blue-900 mt-1">
+                            {((Math.ceil(calculationResults.reduce((sum, r) => 
+                              sum + (r.totalDomestic * ugrDomesticDays) + (r.totalFlushing * ugrFlushingDays), 0
+                            )) / 1000) / ugrDepth).toFixed(2)} m²
+                          </div>
+                          <div className="text-sm text-blue-700 mt-1">
+                            ({Math.sqrt((Math.ceil(calculationResults.reduce((sum, r) => 
+                              sum + (r.totalDomestic * ugrDomesticDays) + (r.totalFlushing * ugrFlushingDays), 0
+                            )) / 1000) / ugrDepth).toFixed(2)} m × {Math.sqrt((Math.ceil(calculationResults.reduce((sum, r) => 
+                              sum + (r.totalDomestic * ugrDomesticDays) + (r.totalFlushing * ugrFlushingDays), 0
+                            )) / 1000) / ugrDepth).toFixed(2)} m)
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
