@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Loader } from 'lucide-react';
+import { Loader, Search, AlertCircle, CheckCircle, Clock, Filter } from 'lucide-react';
 import Layout from '../components/Layout';
 import { auth } from '../lib/firebase';
 import { apiFetchJson } from '../lib/api';
 
 export default function RFIPage() {
   const [items, setItems] = useState([]);
+  const [filteredItems, setFilteredItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+  const [filter, setFilter] = useState('All');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     setUser(auth.currentUser);
@@ -26,12 +29,177 @@ export default function RFIPage() {
       // Fetch all RFI items - in a real app, this would be filtered by user's projects
       const data = await apiFetchJson('/api/rfi/project/1'); // For now, fetch from project 1
       setItems(data);
+      setFilteredItems(data);
     } catch (err) {
       console.error('Error fetching RFI:', err);
       setError('Failed to load Requests for Information');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Apply filters and search
+  useEffect(() => {
+    let result = [...items];
+
+    // Apply status filter
+    if (filter !== 'All') {
+      result = result.filter(item => {
+        if (filter === 'Pending') return item.status === 'pending' || item.status === 'Pending';
+        if (filter === 'Resolved') return item.status === 'resolved' || item.status === 'Resolved';
+  const counts = getStatusCounts();
+
+  return (
+    <Layout>
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="heading-primary mb-2">Requests for Information (RFI)</h1>
+        <p className="text-body">Track and manage information requests across all projects</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-500 rounded-lg p-4 text-red-700 mb-6 flex items-start gap-2">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Filters and Search */}
+      <div className="mb-6 space-y-4">
+        {/* Filter Chips */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-sm font-jost font-semibold text-lodha-grey">
+            <Filter className="w-4 h-4" />
+            <span>Filter:</span>
+          </div>
+          <button
+            onClick={() => setFilter('All')}
+            className={`px-4 py-2 rounded-full text-sm font-jost font-semibold transition-all ${
+              filter === 'All'
+                ? 'bg-lodha-gold text-white shadow-md'
+                : 'bg-white border border-lodha-steel text-lodha-grey hover:bg-lodha-sand'
+            }`}
+          >
+            All <span className="ml-1 opacity-70">({counts.all})</span>
+          </button>
+          <button
+            onClick={() => setFilter('Pending')}
+            className={`px-4 py-2 rounded-full text-sm font-jost font-semibold transition-all ${
+              filter === 'Pending'
+                ? 'bg-red-500 text-white shadow-md'
+                : 'bg-white border border-red-200 text-red-700 hover:bg-red-50'
+            }`}
+          >
+            Pending <span className="ml-1 opacity-70">({counts.pending})</span>
+          </button>
+          <button
+            onClick={() => setFilter('In Progress')}
+            className={`px-4 py-2 rounded-full text-sm font-jost font-semibold transition-all ${
+              filter === 'In Progress'
+                ? 'bg-amber-500 text-white shadow-md'
+                : 'bg-white border border-amber-200 text-amber-700 hover:bg-amber-50'
+            }`}
+          >
+            In Progress <span className="ml-1 opacity-70">({counts.inProgress})</span>
+          </button>
+          <button
+            onClick={() => setFilter('Resolved')}
+            className={`px-4 py-2 rounded-full text-sm font-jost font-semibold transition-all ${
+              filter === 'Resolved'
+                ? 'bg-green-500 text-white shadow-md'
+                : 'bg-white border border-green-200 text-green-700 hover:bg-green-50'
+            }`}
+          >
+            Resolved <span className="ml-1 opacity-70">({counts.resolved})</span>
+          </button>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-lodha-grey/40" />
+          <input
+            type="text"
+            placeholder="Search RFIs by title, description, or requester..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-lodha-gold transition-all font-jost"
+          />
+        </div>
+      </div>
+
+      {/* RFI List */}
+      <div className="space-y-4">
+        {filteredItems.length === 0 ? (
+          <div className="bg-white border border-lodha-steel rounded-lg p-12 text-center">
+            <AlertCircle className="w-16 h-16 text-lodha-muted-gold mx-auto mb-4" />
+            <p className="text-lodha-grey font-garamond text-xl font-semibold mb-2">
+              {searchTerm || filter !== 'All' ? 'No RFIs match your filters' : 'No RFIs found'}
+            </p>
+            <p className="text-lodha-grey/60 font-jost">
+              {searchTerm || filter !== 'All' 
+                ? 'Try adjusting your search or filter criteria' 
+                : 'RFI requests will appear here once created'}
+            </p>
+          </div>
+        ) : (
+          filteredItems.map(item => (
+            <div 
+              key={item.id}
+              className={`group relative rounded-lg p-6 hover:shadow-lg transition-all ${getStatusStyle(item.status)}`}
+            >
+              {/* Header */}
+              <div className="flex justify-between items-start gap-4 mb-4">
+                <h3 className="text-lg font-garamond font-bold text-lodha-grey flex-1">
+                  {item.title || 'Untitled RFI'}
+                </h3>
+                {getStatusBadge(item.status)}
+              </div>
+
+              {/* Description */}
+              {item.description && (
+                <p className="text-lodha-grey/80 font-jost mb-4 leading-relaxed">
+                  {item.description}
+                </p>
+              )}
+
+              {/* Metadata */}
+              <div className="flex flex-wrap items-center gap-4 text-sm text-lodha-grey/60 font-jost">
+                <span className="flex items-center gap-1">
+                  <span className="font-semibold">Raised by:</span> {item.raised_by_name || 'Unknown'}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  {new Date(item.created_at).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })}
+                </span>
+                {item.project_name && (
+                  <span className="flex items-center gap-1">
+                    <span className="font-semibold">Project:</span> {item.project_name}
+                  </span>
+                )}
+              </div>
+
+              {/* Hover Actions */}
+              <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button className="bg-lodha-gold text-white px-4 py-2 rounded-lg hover:bg-lodha-grey transition-colors font-jost font-semibold text-sm shadow-lg">
+                  View Details →
+                </button>
+              </div>
+            </div>
+          ))an className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 flex items-center gap-1">
+        <Clock className="w-3 h-3" />
+        In Progress
+      </span>;
+    } else if (normalizedStatus === 'resolved') {
+      return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 flex items-center gap-1">
+        <CheckCircle className="w-3 h-3" />
+        Resolved
+      </span>;
+    }
+    return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-lodha-sand text-lodha-grey">{status}</span>;
   };
 
   if (loading) {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LogIn, Loader } from 'lucide-react';
+import { LogIn, Loader, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { signInWithPopup, AuthErrorCodes } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { auth, googleProvider } from '../lib/firebase';
@@ -50,37 +50,47 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen w-full flex">
+    <div className="min-h-screen w-full flex bg-lodha-sand lg:bg-transparent">
       {/* Left Side - Image Section */}
       <div className="hidden lg:block w-1/2 relative" role="img" aria-label="Modern MEP engineering workspace">
-        <div className="absolute inset-0 bg-lodha-deep/20" />
+        <div className="absolute inset-0 bg-gradient-to-br from-lodha-grey/80 to-lodha-grey/60" />
         <div 
-          className="absolute inset-0 bg-cover bg-center"
+          className="absolute inset-0 bg-cover bg-center opacity-50"
           style={{
             backgroundImage: 'url("https://images.unsplash.com/photo-1487958449943-2429e8be8625?q=80&w=2940&auto=format&fit=crop")',
-            backgroundBlendMode: 'overlay'
           }}
         />
+        <div className="absolute inset-0 flex items-center justify-center p-12">
+          <div className="text-white max-w-lg">
+            <h2 className="text-4xl font-garamond font-bold mb-4">Welcome to Atelier</h2>
+            <p className="text-lg font-jost opacity-90">
+              Your comprehensive MEP project management platform. Streamline workflows, track progress, and collaborate seamlessly.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Right Side - Login Section */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center bg-lodha-sand p-8">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-lg shadow-2xl p-8 space-y-8">
+          <div className="bg-white rounded-lg shadow-2xl border border-lodha-steel p-8 space-y-8">
             {/* Logo and Title */}
             <div className="text-center">
-              <h1 className="text-5xl font-garamond font-bold text-lodha-gold mb-2">
+              <div className="w-16 h-16 bg-lodha-gold rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <span className="text-white font-garamond font-bold text-3xl">A</span>
+              </div>
+              <h1 className="text-4xl font-garamond font-bold text-lodha-grey mb-2">
                 Atelier
               </h1>
-              <p className="text-lodha-grey text-lg font-jost font-medium">
-                MEP Project Portal
+              <p className="text-lodha-grey/70 text-base font-jost">
+                MEP Project Management Portal
               </p>
             </div>
 
             {/* Sign In Card */}
             <div className="space-y-6">
-              <div className="text-center text-sm text-lodha-grey font-jost">
-                Sign in with your corporate account
+              <div className="text-center text-sm text-lodha-grey/80 font-jost bg-lodha-sand/50 rounded-lg p-3">
+                Sign in with your corporate Google account
               </div>
 
               {/* Google Sign In Button */}
@@ -89,11 +99,11 @@ export default function Login() {
                 disabled={isLoading}
                 aria-label={isLoading ? 'Signing in with Google' : 'Sign in with Google'}
                 aria-busy={isLoading}
-                className="w-full flex items-center justify-center gap-3 px-4 py-3 
-                         border border-transparent text-sm font-medium rounded-md 
-                         text-white bg-lodha-gold hover:bg-lodha-black 
+                className="w-full flex items-center justify-center gap-3 px-6 py-4
+                         text-sm font-medium rounded-lg
+                         text-white bg-lodha-gold hover:bg-lodha-grey 
                          focus:outline-none focus:ring-2 focus:ring-offset-2 
-                         focus:ring-lodha-gold transition-colors duration-200
+                         focus:ring-lodha-gold transition-all duration-200
                          disabled:opacity-50 disabled:cursor-not-allowed
                          shadow-lg hover:shadow-xl font-jost font-semibold"
               >
@@ -115,17 +125,21 @@ export default function Login() {
                 <div 
                   role="alert" 
                   aria-live="polite"
-                  className="text-lodha-black text-sm text-center p-3 bg-lodha-sand rounded-md border border-lodha-gold font-jost"
+                  className="flex items-start gap-2 p-4 bg-red-50 border border-red-200 rounded-lg"
                 >
-                  {error}
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-red-700 text-sm font-jost">{error}</span>
                 </div>
               )}
             </div>
 
             {/* Footer */}
-            <div className="pt-6 text-center">
-              <p className="text-sm text-lodha-grey font-jost">
-                © {new Date().getFullYear()} Atelier. All rights reserved.
+            <div className="pt-6 border-t border-lodha-steel">
+              <p className="text-xs text-center text-lodha-grey/60 font-jost">
+                By signing in, you agree to our Terms of Service and Privacy Policy
+              </p>
+              <p className="text-xs text-center text-lodha-grey/60 font-jost mt-2">
+                © {new Date().getFullYear()} Atelier by Lodha Group. All rights reserved.
               </p>
             </div>
           </div>

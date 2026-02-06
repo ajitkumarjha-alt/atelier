@@ -92,11 +92,11 @@ export default function VendorDashboard() {
 
   return (
     <Layout>
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+        <div className="flex-1">
           <h1 className="heading-primary">Vendor Dashboard</h1>
-          <p className="text-body">
-            {vendor ? `Welcome, ${vendor.name}` : 'Summary of Material Approval Sheets you have sent'}
+          <p className="text-body mt-2">
+            {vendor ? `Welcome back, ${vendor.name}` : 'Summary of Material Approval Sheets you have submitted'}
           </p>
         </div>
         <div className="flex items-center gap-4">
