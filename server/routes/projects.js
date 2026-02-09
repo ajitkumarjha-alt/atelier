@@ -332,12 +332,13 @@ const createProjectsRouter = ({
           `INSERT INTO buildings (
             project_id, name, application_type, location_latitude, location_longitude,
             residential_type, villa_type, villa_count, building_type,
+            gf_entrance_lobby,
             pool_volume, has_lift, lift_name, lift_passenger_capacity,
             car_parking_count_per_floor, car_parking_area, two_wheeler_parking_count,
             two_wheeler_parking_area, ev_parking_percentage, shop_count, shop_area,
             office_count, office_area, common_area, twin_of_building_id
            )
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
            RETURNING id`,
           [
             projectId,
@@ -349,6 +350,7 @@ const createProjectsRouter = ({
             building.villaType || null,
             building.villaCount && building.villaCount !== '' ? building.villaCount : null,
             building.buildingType || null,
+            building.gfEntranceLobby && building.gfEntranceLobby !== '' ? building.gfEntranceLobby : null,
             building.poolVolume && building.poolVolume !== '' ? building.poolVolume : null,
             building.hasLift || false,
             building.liftName || null,
@@ -372,11 +374,20 @@ const createProjectsRouter = ({
 
         const floorIdMap = {};
         for (const floor of building.floors) {
+          const floorHeightValue = floor.floorHeight === '' || floor.floorHeight === undefined
+            ? null
+            : floor.floorHeight ?? floor.floor_height ?? null;
           const floorResult = await query(
-            `INSERT INTO floors (building_id, floor_number, floor_name, twin_of_floor_id)
-             VALUES ($1, $2, $3, $4)
+            `INSERT INTO floors (building_id, floor_number, floor_name, floor_height, twin_of_floor_id)
+             VALUES ($1, $2, $3, $4, $5)
              RETURNING id`,
-            [buildingId, floor.floorNumber, floor.floorName, null]
+            [
+              buildingId,
+              floor.floorNumber,
+              floor.floorName,
+              floorHeightValue,
+              null
+            ]
           );
 
           const floorId = floorResult.rows[0].id;
@@ -451,12 +462,13 @@ const createProjectsRouter = ({
           `INSERT INTO buildings (
             project_id, name, application_type, location_latitude, location_longitude,
             residential_type, villa_type, villa_count, building_type,
+            gf_entrance_lobby,
             pool_volume, has_lift, lift_name, lift_passenger_capacity,
             car_parking_count_per_floor, car_parking_area, two_wheeler_parking_count,
             two_wheeler_parking_area, ev_parking_percentage, shop_count, shop_area,
             office_count, office_area, common_area, twin_of_building_id
            )
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
            RETURNING id`,
           [
             id,
@@ -468,6 +480,7 @@ const createProjectsRouter = ({
             building.villaType || null,
             building.villaCount && building.villaCount !== '' ? parseInt(building.villaCount) : null,
             building.buildingType || null,
+            building.gfEntranceLobby && building.gfEntranceLobby !== '' ? building.gfEntranceLobby : null,
             building.poolVolume && building.poolVolume !== '' ? parseFloat(building.poolVolume) : null,
             building.hasLift || false,
             building.liftName || null,
@@ -491,11 +504,20 @@ const createProjectsRouter = ({
 
         const floorIdMap = {};
         for (const floor of building.floors || []) {
+          const floorHeightValue = floor.floorHeight === '' || floor.floorHeight === undefined
+            ? null
+            : floor.floorHeight ?? floor.floor_height ?? null;
           const floorResult = await query(
-            `INSERT INTO floors (building_id, floor_number, floor_name, twin_of_floor_id)
-             VALUES ($1, $2, $3, $4)
+            `INSERT INTO floors (building_id, floor_number, floor_name, floor_height, twin_of_floor_id)
+             VALUES ($1, $2, $3, $4, $5)
              RETURNING id`,
-            [buildingId, floor.floorNumber, floor.floorName, null]
+            [
+              buildingId,
+              floor.floorNumber,
+              floor.floorName,
+              floorHeightValue,
+              null
+            ]
           );
 
           const floorId = floorResult.rows[0].id;
@@ -576,10 +598,14 @@ const createProjectsRouter = ({
             id: floor.id,
             floorNumber: floor.floor_number,
             floorName: floor.floor_name,
+            floorHeight: floor.floor_height,
+            typicalLobbyArea: floor.typical_lobby_area,
             twinOfFloorId: floor.twin_of_floor_id,
             twinOfFloorName: floor.twin_of_floor_id ? floorIdToNameMap[floor.twin_of_floor_id] : null,
             floor_number: floor.floor_number,
             floor_name: floor.floor_name,
+            floor_height: floor.floor_height,
+            typical_lobby_area: floor.typical_lobby_area,
             twin_of_floor_id: floor.twin_of_floor_id,
             flats: flatsResult.rows.map(f => ({
               id: f.id,
@@ -605,6 +631,8 @@ const createProjectsRouter = ({
           twinOfBuildingId: building.twin_of_building_id,
           twinOfBuildingName: building.twin_of_building_id ? buildingIdToNameMap[building.twin_of_building_id] : null,
           twin_of_building_id: building.twin_of_building_id,
+          gfEntranceLobby: building.gf_entrance_lobby,
+          gf_entrance_lobby: building.gf_entrance_lobby,
           floors
         });
       }

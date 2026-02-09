@@ -1,0 +1,2 @@
+ALTER TABLE floors
+ADD COLUMN IF NOT EXISTS floor_height DECIMAL(6, 2);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderKanban, AlertCircle, FileText } from 'lucide-react';
+import { FolderKanban, AlertCircle, FileText, Trash2 } from 'lucide-react';
 import Layout from '../components/Layout';
 import ProjectCard from '../components/ProjectCard';
 import AIReports from '../components/AIReports';
@@ -67,6 +67,34 @@ export default function L0Dashboard() {
 
     fetchData();
   }, []);
+
+  const handleDeleteProject = async (event, project) => {
+    event.stopPropagation();
+
+    const confirmed = window.confirm(
+      `Delete project "${project.name}"? This will remove all related data.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-dev-user-email': localStorage.getItem('devUserEmail') || 'l0@lodhagroup.com'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete project');
+      }
+
+      setProjects(prev => prev.filter(p => p.id !== project.id));
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert(error.message || 'Failed to delete project');
+    }
+  };
 
   return (
     <Layout>
@@ -233,8 +261,16 @@ export default function L0Dashboard() {
               <div 
                 key={project.id}
                 onClick={() => navigate(`/project/${project.id}`)}
-                className="cursor-pointer transition-transform hover:scale-105"
+                className="relative cursor-pointer transition-transform hover:scale-105"
               >
+                <button
+                  type="button"
+                  onClick={(event) => handleDeleteProject(event, project)}
+                  className="absolute right-3 top-3 z-10 rounded-full bg-white/90 p-2 text-red-600 shadow hover:bg-red-50"
+                  title="Delete project"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
                 <ProjectCard project={project} />
               </div>
             ))}

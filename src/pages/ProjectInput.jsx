@@ -4,6 +4,19 @@ import Layout from '../components/Layout';
 import GoogleMapComponent from '../components/GoogleMapComponent';
 import { Plus, Trash2, Edit2, MapPin, Copy, AlertCircle, CheckCircle } from 'lucide-react';
 
+const stableStringify = (value) => {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(',')}]`;
+  }
+
+  const keys = Object.keys(value).sort();
+  return `{${keys.map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
+};
+
 export default function ProjectInput() {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -14,8 +27,10 @@ export default function ProjectInput() {
     location: '',
     latitude: '',
     longitude: '',
+    projectCategory: 'GOLD 2',
     assignedLeadId: null,
     buildings: [],
+    societies: [],
   });
 
   const [siteAreas, setSiteAreas] = useState([]);
@@ -26,7 +41,6 @@ export default function ProjectInput() {
     applicationTypes: [],
     residentialTypes: [],
     flatTypes: [],
-    buildingTypes: [],
   });
 
   const [selectedBuilding, setSelectedBuilding] = useState(null);
@@ -38,6 +52,8 @@ export default function ProjectInput() {
   const [warnings, setWarnings] = useState([]);
   const [allProjects, setAllProjects] = useState([]);
   const [l1Users, setL1Users] = useState([]);
+  const [initialProjectSnapshot, setInitialProjectSnapshot] = useState('');
+  const [initialSiteAreasSnapshot, setInitialSiteAreasSnapshot] = useState('');
 
   // Fetch standards from database
   useEffect(() => {
@@ -100,13 +116,32 @@ export default function ProjectInput() {
 
       if (projectResponse.ok) {
         const data = await projectResponse.json();
-        setProjectData(data);
+        const normalizedBuildings = (data.buildings || []).map(building => ({
+          ...building,
+          societyId: building.societyId ?? building.society_id ?? null,
+          societyName: building.societyName ?? building.society_name ?? null,
+          gfEntranceLobby: building.gfEntranceLobby ?? building.gf_entrance_lobby ?? '',
+          floors: (building.floors || []).map(floor => ({
+            ...floor,
+            floorHeight: floor.floorHeight ?? floor.floor_height ?? 3.5,
+            typicalLobbyArea: floor.typicalLobbyArea ?? floor.typical_lobby_area ?? '',
+          })),
+        }));
+        const nextProjectData = {
+          ...data,
+          projectCategory: data.projectCategory || data.project_category || 'GOLD 2',
+          buildings: normalizedBuildings,
+          societies: Array.isArray(data.societies) ? data.societies : [],
+        };
+        setProjectData(nextProjectData);
+        setInitialProjectSnapshot(stableStringify(nextProjectData));
       }
 
       if (siteAreasResponse.ok) {
         const siteAreasData = await siteAreasResponse.json();
         setSiteAreas(siteAreasData);
         setInitialSiteAreas(siteAreasData);
+        setInitialSiteAreasSnapshot(stableStringify(siteAreasData));
       }
     } catch (err) {
       setError('Failed to fetch project data');
@@ -209,106 +244,118 @@ export default function ProjectInput() {
       alert('A building with this name already exists!');
       return;
     }
+
+    // Get list of existing non-twin buildings to copy from
+    const nonTwinBuildings = projectData.buildings.filter(b => !b.isTwin);
+    let sourceBuilding = null;
+    let isTwinBuilding = false;
+
+    if (nonTwinBuildings.length > 0) {
+      const options = [
+        'Create new building from scratch',
+        'Copy data from previous building (editable)',
+        'Make twin of previous building (shares data)'
+      ];
+      
+      const choice = prompt(
+        `Choose an option:\n1. ${options[0]}\n2. ${options[1]}\n3. ${options[2]}\n\nEnter 1, 2, or 3:`
+      );
+
+      if (choice === '2' || choice === '3') {
+        // Show available buildings to copy/twin from
+        const buildingList = nonTwinBuildings.map((b, i) => `${i + 1}. ${b.name}`).join('\n');
+        const buildingChoice = prompt(
+          `Select building to ${choice === '2' ? 'copy from' : 'twin with'}:\n${buildingList}\n\nEnter number:`
+        );
+        
+        const buildingIndex = parseInt(buildingChoice) - 1;
+        if (buildingIndex >= 0 && buildingIndex < nonTwinBuildings.length) {
+          sourceBuilding = nonTwinBuildings[buildingIndex];
+          isTwinBuilding = choice === '3';
+        }
+      }
+    }
     
-    const twinBuildingNames = prompt('Enter twin building names (comma-separated, optional):');
     const baseId = Math.floor(Math.random() * 1000000000);
     
-    const newBuilding = {
-      id: baseId,
-      name: trimmedBuildingName,
-      applicationType: '',
-      residentialType: '',
-      buildingType: '',
-      villaType: '',
-      villaCount: '',
-      // Villa-specific fields
-      poolVolume: '',
-      hasLift: false,
-      liftName: '',
-      liftPassengerCapacity: '',
-      // MLCP/Parking fields
-      carParkingCountPerFloor: '',
-      carParkingArea: '',
-      twoWheelerParkingCount: '',
-      twoWheelerParkingArea: '',
-      evParkingPercentage: '',
-      shopCount: '',
-      shopArea: '',
-      // Commercial fields
-      officeCount: '',
-      officeArea: '',
-      commonArea: '',
-      isTwin: false,
-      twinOfBuildingId: null,
-      twinBuildingNames: [], // Store twin names
-      floors: [],
-    };
+    let newBuilding;
     
-    const newBuildings = [newBuilding];
-    
-    // Create twin buildings if specified
-    if (twinBuildingNames && twinBuildingNames.trim()) {
-      const twinNames = twinBuildingNames.split(',').map(n => n.trim()).filter(n => n);
-      
-      // Check for duplicate twin names
-      const twinNamesSet = new Set();
-      for (const name of twinNames) {
-        const lowerName = name.toLowerCase();
-        if (lowerName === trimmedBuildingName.toLowerCase()) {
-          alert(`Twin building name "${name}" cannot be the same as parent building!`);
-          return;
-        }
-        if (twinNamesSet.has(lowerName)) {
-          alert(`Duplicate twin building name: "${name}"`);
-          return;
-        }
-        if (projectData.buildings.find(b => b.name.toLowerCase() === lowerName)) {
-          alert(`Building with name "${name}" already exists!`);
-          return;
-        }
-        twinNamesSet.add(lowerName);
-      }
-      
-      // Store twin names in parent building
-      newBuilding.twinBuildingNames = twinNames;
-      
-      // Create twin building objects
-      twinNames.forEach((twinName, index) => {
-        newBuildings.push({
-          id: baseId + index + 1,
-          name: twinName,
-          applicationType: '',
-          residentialType: '',
-          buildingType: '',
-          villaType: '',
-          villaCount: '',
-          // Villa-specific fields
-          poolVolume: '',
-          hasLift: false,
-          liftName: '',
-          liftPassengerCapacity: '',
-          // MLCP/Parking fields
-          carParkingCountPerFloor: '',
-          carParkingArea: '',
-          twoWheelerParkingCount: '',
-          twoWheelerParkingArea: '',
-          evParkingPercentage: '',
-          shopCount: '',
-          shopArea: '',
-          // Commercial fields
-          officeCount: '',
-          officeArea: '',
-          commonArea: '',
-          isTwin: true,
-          twinOfBuildingName: trimmedBuildingName, // Reference by name
-          floors: [],
-        });
-      });
+    if (isTwinBuilding && sourceBuilding) {
+      // Create twin building - minimal data, just references parent
+      newBuilding = {
+        id: baseId,
+        name: trimmedBuildingName,
+        isTwin: true,
+        twinOfBuildingName: sourceBuilding.name,
+        societyId: null,
+        applicationType: sourceBuilding.applicationType,
+        floors: [],
+      };
+    } else if (sourceBuilding) {
+      // Copy building data - all fields editable
+      newBuilding = {
+        id: baseId,
+        name: trimmedBuildingName,
+        applicationType: sourceBuilding.applicationType,
+        residentialType: sourceBuilding.residentialType,
+        societyId: null,
+        gfEntranceLobby: sourceBuilding.gfEntranceLobby,
+        villaType: sourceBuilding.villaType,
+        villaCount: sourceBuilding.villaCount,
+        poolVolume: sourceBuilding.poolVolume,
+        hasLift: sourceBuilding.hasLift,
+        liftName: sourceBuilding.liftName,
+        liftPassengerCapacity: sourceBuilding.liftPassengerCapacity,
+        carParkingCountPerFloor: sourceBuilding.carParkingCountPerFloor,
+        carParkingArea: sourceBuilding.carParkingArea,
+        twoWheelerParkingCount: sourceBuilding.twoWheelerParkingCount,
+        twoWheelerParkingArea: sourceBuilding.twoWheelerParkingArea,
+        evParkingPercentage: sourceBuilding.evParkingPercentage,
+        shopCount: sourceBuilding.shopCount,
+        shopArea: sourceBuilding.shopArea,
+        officeCount: sourceBuilding.officeCount,
+        officeArea: sourceBuilding.officeArea,
+        commonArea: sourceBuilding.commonArea,
+        isTwin: false,
+        twinOfBuildingId: null,
+        twinBuildingNames: [],
+        floors: JSON.parse(JSON.stringify(sourceBuilding.floors || [])), // Deep copy floors
+      };
+    } else {
+      // Create new building from scratch
+      newBuilding = {
+        id: baseId,
+        name: trimmedBuildingName,
+        applicationType: '',
+        residentialType: '',
+        societyId: null,
+        gfEntranceLobby: '',
+        villaType: '',
+        villaCount: '',
+        poolVolume: '',
+        hasLift: false,
+        liftName: '',
+        liftPassengerCapacity: '',
+        carParkingCountPerFloor: '',
+        carParkingArea: '',
+        twoWheelerParkingCount: '',
+        twoWheelerParkingArea: '',
+        evParkingPercentage: '',
+        shopCount: '',
+        shopArea: '',
+        officeCount: '',
+        officeArea: '',
+        commonArea: '',
+        isTwin: false,
+        twinOfBuildingId: null,
+        twinBuildingNames: [],
+        floors: [],
+      };
     }
     
     setProjectData(prev => ({
       ...prev,
-      buildings: [...prev.buildings, ...newBuildings],
+      buildings: [...prev.buildings, newBuilding],
     }));
   };
 
@@ -318,6 +365,59 @@ export default function ProjectInput() {
       buildings: prev.buildings.map(b =>
         b.id === buildingId ? { ...b, ...updates } : b
       ),
+    }));
+  };
+
+  const addSociety = () => {
+    const societyName = prompt('Enter society name:');
+    if (!societyName || !societyName.trim()) return;
+
+    const trimmedName = societyName.trim();
+    const exists = projectData.societies.find(s => s.name.toLowerCase() === trimmedName.toLowerCase());
+    if (exists) {
+      alert('A society with this name already exists!');
+      return;
+    }
+
+    const newSociety = {
+      id: `soc-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      name: trimmedName,
+      description: ''
+    };
+
+    setProjectData(prev => ({
+      ...prev,
+      societies: [...prev.societies, newSociety]
+    }));
+  };
+
+  const updateSociety = (societyId, updates) => {
+    setProjectData(prev => ({
+      ...prev,
+      societies: prev.societies.map(society =>
+        society.id === societyId ? { ...society, ...updates } : society
+      )
+    }));
+  };
+
+  const deleteSociety = (societyId) => {
+    const society = projectData.societies.find(s => s.id === societyId);
+    if (!society) return;
+
+    const assignedBuildings = projectData.buildings.filter(b => b.societyId === societyId);
+    if (assignedBuildings.length > 0) {
+      const confirmed = window.confirm(
+        `This society has ${assignedBuildings.length} building(s) assigned. Remove the society anyway?`
+      );
+      if (!confirmed) return;
+    }
+
+    setProjectData(prev => ({
+      ...prev,
+      societies: prev.societies.filter(s => s.id !== societyId),
+      buildings: prev.buildings.map(b =>
+        b.societyId === societyId ? { ...b, societyId: null } : b
+      )
     }));
   };
 
@@ -399,6 +499,13 @@ export default function ProjectInput() {
     
     const floorName = prompt('Enter floor name:');
     if (!floorName || !floorName.trim()) return;
+
+    const floorHeightInput = prompt('Enter floor height in meters (e.g., 3.5):', '3.5');
+    const parsedFloorHeight = parseFloat(floorHeightInput);
+    if (!floorHeightInput || Number.isNaN(parsedFloorHeight) || parsedFloorHeight <= 0) {
+      alert('Please enter a valid floor height in meters.');
+      return;
+    }
     
     const trimmedFloorName = floorName.trim();
     
@@ -417,6 +524,7 @@ export default function ProjectInput() {
       id: baseId,
       floorNumber: baseFloorNumber,
       floorName: trimmedFloorName,
+      floorHeight: parsedFloorHeight,
       flats: [],
       twinFloorNames: [], // Store twin names instead of IDs
     };
@@ -455,6 +563,7 @@ export default function ProjectInput() {
           id: baseId + index + 1,
           floorNumber: baseFloorNumber + index + 1,
           floorName: twinName,
+          floorHeight: parsedFloorHeight,
           flats: [],
           twinOfFloorName: trimmedFloorName, // Reference by name instead of ID
         });
@@ -595,9 +704,27 @@ export default function ProjectInput() {
 
   const updateFloor = (buildingId, floorId, updates) => {
     const building = projectData.buildings.find(b => b.id === buildingId);
-    const updatedFloors = building.floors.map(f =>
-      f.id === floorId ? { ...f, ...updates } : f
-    );
+    const targetFloor = building.floors.find(f => f.id === floorId);
+    if (!targetFloor) return;
+
+    const baseFloorName = targetFloor.twinOfFloorName || targetFloor.floorName;
+    const shouldSyncHeight = Object.prototype.hasOwnProperty.call(updates, 'floorHeight');
+    const shouldSyncLobby = Object.prototype.hasOwnProperty.call(updates, 'typicalLobbyArea');
+
+    const updatedFloors = building.floors.map(f => {
+      if (f.id === floorId) {
+        return { ...f, ...updates };
+      }
+      if ((shouldSyncHeight || shouldSyncLobby) && (f.floorName === baseFloorName || f.twinOfFloorName === baseFloorName)) {
+        return {
+          ...f,
+          floorHeight: shouldSyncHeight ? updates.floorHeight : f.floorHeight,
+          typicalLobbyArea: shouldSyncLobby ? updates.typicalLobbyArea : f.typicalLobbyArea
+        };
+      }
+      return f;
+    });
+
     updateBuilding(buildingId, { floors: updatedFloors });
   };
 
@@ -878,6 +1005,11 @@ export default function ProjectInput() {
 
   const trimmedProjectName = String(projectData.name || '').trim();
   const trimmedProjectLocation = String(projectData.location || '').trim();
+  const currentProjectSnapshot = stableStringify(projectData);
+  const currentSiteAreasSnapshot = stableStringify(siteAreas);
+  const hasChanges = !isEditing ||
+    currentProjectSnapshot !== initialProjectSnapshot ||
+    currentSiteAreasSnapshot !== initialSiteAreasSnapshot;
 
   return (
     <Layout>
@@ -927,6 +1059,23 @@ export default function ProjectInput() {
                   className="w-full px-4 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
                   placeholder="Enter project name"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">
+                  Project Category
+                </label>
+                <select
+                  value={projectData.projectCategory || 'GOLD 2'}
+                  onChange={e => handleProjectFieldChange('projectCategory', e.target.value)}
+                  className="w-full px-4 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                >
+                  <option>GOLD 1</option>
+                  <option>GOLD 2</option>
+                  <option>GOLD 3</option>
+                  <option>Platinum</option>
+                  <option>Diamond</option>
+                </select>
               </div>
 
               <div>
@@ -1309,6 +1458,67 @@ export default function ProjectInput() {
             )}
           </div>
 
+          {/* Societies Section */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="heading-secondary">Societies</h2>
+                <p className="text-xs text-lodha-grey mt-1">
+                  Define societies and assign buildings to them.
+                </p>
+              </div>
+              <button
+                onClick={addSociety}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-lodha-gold text-white hover:bg-lodha-gold/90"
+              >
+                <Plus className="w-4 h-4" />
+                Add Society
+              </button>
+            </div>
+
+            {projectData.societies.length === 0 ? (
+              <div className="p-4 rounded-lg border border-dashed border-gray-300 text-gray-500 text-sm">
+                No societies added yet. Add at least one to group buildings.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {projectData.societies.map((society) => (
+                  <div key={society.id} className="border border-lodha-grey/50 rounded p-3 bg-lodha-sand/20">
+                    <div className="flex flex-col md:flex-row md:items-center gap-3">
+                      <div className="flex-1">
+                        <label className="block text-xs font-jost font-semibold text-lodha-black mb-1">Society Name</label>
+                        <input
+                          type="text"
+                          value={society.name}
+                          onChange={e => updateSociety(society.id, { name: e.target.value })}
+                          className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                          placeholder="e.g., Waterfront Society A"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs font-jost font-semibold text-lodha-black mb-1">Description</label>
+                        <input
+                          type="text"
+                          value={society.description || ''}
+                          onChange={e => updateSociety(society.id, { description: e.target.value })}
+                          className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                          placeholder="Optional"
+                        />
+                      </div>
+                      <button
+                        onClick={() => deleteSociety(society.id)}
+                        className="text-lodha-gold hover:text-red-600"
+                        title="Delete society"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Buildings Section */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex justify-between items-center mb-4">
@@ -1347,6 +1557,7 @@ export default function ProjectInput() {
                     buildingIndex={idx}
                     allBuildings={projectData.buildings}
                     twinBuildings={twinBuildings}
+                    societies={projectData.societies}
                     standards={standards}
                     onUpdate={updateBuilding}
                     onDelete={deleteBuilding}
@@ -1368,15 +1579,17 @@ export default function ProjectInput() {
           <div className="flex gap-4">
             <button
               onClick={handleSubmit}
-              disabled={!trimmedProjectName || warnings.some(w => w.type === 'error') || saving}
+              disabled={!trimmedProjectName || warnings.some(w => w.type === 'error') || saving || (isEditing && !hasChanges)}
               className={`px-6 py-3 font-jost font-semibold rounded-lg transition-all ${
-                !trimmedProjectName || warnings.some(w => w.type === 'error') || saving
+                !trimmedProjectName || warnings.some(w => w.type === 'error') || saving || (isEditing && !hasChanges)
                   ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                   : 'bg-lodha-gold text-white hover:bg-lodha-gold/90'
               }`}
               title={
                 !trimmedProjectName
                   ? 'Please enter project name'
+                  : isEditing && !hasChanges
+                  ? 'No changes to update'
                   : warnings.some(w => w.type === 'error')
                   ? 'Please resolve errors before submitting'
                   : saving
@@ -1438,6 +1651,7 @@ function BuildingSection({
   buildingIndex,
   allBuildings,
   twinBuildings,
+  societies,
   standards,
   onUpdate,
   onDelete,
@@ -1452,12 +1666,19 @@ function BuildingSection({
 }) {
   const isResidential = building.applicationType === 'Residential';
   const isVilla = building.applicationType === 'Villa';
+  const parentBuildingOptions = allBuildings.filter(b => !b.twinOfBuildingName);
+  const isTwinBuilding = building.isTwin && building.twinOfBuildingName;
 
   return (
     <div className="border border-lodha-grey rounded-lg p-4 bg-lodha-sand/30">
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="heading-tertiary">Building {buildingIndex + 1}</h3>
+          {isTwinBuilding && (
+            <div className="text-sm text-blue-600 mt-1 font-jost font-semibold">
+              Twin of: {building.twinOfBuildingName}
+            </div>
+          )}
           {twinBuildings && twinBuildings.length > 0 && (
             <div className="text-xs text-lodha-grey mt-1 font-jost">
               Twin buildings: {twinBuildings.map(b => b.name).join(', ')}
@@ -1472,7 +1693,7 @@ function BuildingSection({
         </button>
       </div>
 
-      {/* Building Name */}
+      {/* Building Name - always show */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <div>
           <label className="block text-sm font-jost font-semibold mb-2">Building Name</label>
@@ -1485,42 +1706,92 @@ function BuildingSection({
           />
         </div>
 
-        {/* Application Type */}
         <div>
-          <label className="block text-sm font-jost font-semibold mb-2">Application Type</label>
+          <label className="block text-sm font-jost font-semibold mb-2">Society</label>
           <select
-            value={building.applicationType}
-            onChange={e => onUpdate(building.id, { applicationType: e.target.value })}
+            value={building.societyId || ''}
+            onChange={e => onUpdate(building.id, { societyId: e.target.value || null })}
             className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
           >
-            <option value="">Select type...</option>
-            {standards.applicationTypes?.map(type => (
-              <option key={type} value={type}>
-                {type}
+            <option value="">Unassigned</option>
+            {(societies || []).map(society => (
+              <option key={society.id} value={society.id}>
+                {society.name}
               </option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Building Type Selection - NEW */}
-      <div className="mb-4">
-        <label className="block text-sm font-jost font-semibold mb-2">Building Type</label>
-        <select
-          value={building.buildingType || ''}
-          onChange={e => onUpdate(building.id, { buildingType: e.target.value })}
-          className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
-        >
-          <option value="">Select building type...</option>
-          {standards.buildingTypes?.map(type => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Twin Building Management - allow changing twin status */}
+      {isTwinBuilding && (
+        <div className="mb-4 border border-blue-200 rounded-lg p-4 bg-blue-50">
+          <h4 className="text-sm font-jost font-semibold mb-3 text-blue-700">Twin Building Settings</h4>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-jost font-semibold mb-2">Twin Configuration</label>
+              <select
+                value={building.twinOfBuildingName || 'independent'}
+                onChange={e => {
+                  const nextValue = e.target.value;
+                  if (nextValue === 'independent') {
+                    onUpdate(building.id, { twinOfBuildingName: null, isTwin: false });
+                  } else {
+                    onUpdate(building.id, { twinOfBuildingName: nextValue, isTwin: true });
+                  }
+                }}
+                className="w-full px-3 py-2 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="independent">Convert to Independent Building</option>
+                {parentBuildingOptions.map(option => (
+                  <option key={option.id} value={option.name}>
+                    Twin of {option.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-blue-600 mt-1">
+                Twin buildings share all configurations from their parent building.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Residential Type */}
+      {/* Show full building details only if NOT a twin */}
+      {!isTwinBuilding && (
+        <>
+          {/* GF Entrance Lobby and Application Type */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-jost font-semibold mb-2">GF Entrance Lobby (sq.m)</label>
+              <input
+                type="number"
+                value={building.gfEntranceLobby}
+                onChange={e => onUpdate(building.id, { gfEntranceLobby: e.target.value })}
+                className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                placeholder="e.g., 100"
+              />
+            </div>
+
+            {/* Application Type */}
+            <div>
+              <label className="block text-sm font-jost font-semibold mb-2">Application Type</label>
+              <select
+                value={building.applicationType}
+                onChange={e => onUpdate(building.id, { applicationType: e.target.value })}
+                className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+              >
+                <option value="">Select type...</option>
+                {standards.applicationTypes?.map(type => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Residential Type */}
       {isResidential && (
         <div className="mb-4">
           <label className="block text-sm font-jost font-semibold mb-2">Residential Type</label>
@@ -1567,7 +1838,7 @@ function BuildingSection({
       )}
 
       {/* Villa-Specific Fields - NEW */}
-      {building.buildingType === 'Villa' && (
+      {building.applicationType === 'Villa' && (
         <div className="border border-lodha-gold/30 rounded-lg p-4 mb-4 bg-yellow-50/30">
           <h4 className="text-sm font-jost font-semibold mb-3 text-lodha-gold">Villa Specifications</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1622,7 +1893,7 @@ function BuildingSection({
       )}
 
       {/* MLCP/Parking-Specific Fields - NEW */}
-      {building.buildingType === 'MLCP/Parking' && (
+      {building.applicationType === 'MLCP/Parking' && (
         <div className="border border-lodha-gold/30 rounded-lg p-4 mb-4 bg-yellow-50/30">
           <h4 className="text-sm font-jost font-semibold mb-3 text-lodha-gold">Parking Specifications</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1705,7 +1976,7 @@ function BuildingSection({
       )}
 
       {/* Commercial-Specific Fields - NEW */}
-      {building.buildingType === 'Commercial' && (
+      {building.applicationType === 'Commercial' && (
         <div className="border border-lodha-gold/30 rounded-lg p-4 mb-4 bg-yellow-50/30">
           <h4 className="text-sm font-jost font-semibold mb-3 text-lodha-gold">Commercial Specifications</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1745,95 +2016,67 @@ function BuildingSection({
         </div>
       )}
 
-      {/* Twin Building Option */}
-      {buildingIndex > 0 && (
-        <div className="mb-4 p-3 bg-lodha-sand rounded border border-lodha-gold">
-          <label className="flex items-center gap-2 font-jost">
-            <input
-              type="checkbox"
-              checked={building.isTwin}
-              onChange={e => onUpdate(building.id, { isTwin: e.target.checked })}
-            />
-            <span>Twin of another building</span>
-          </label>
-          {building.isTwin && (
-            <select
-              value={building.twinOfBuildingId || ''}
-              onChange={e => onUpdate(building.id, { twinOfBuildingId: parseInt(e.target.value) })}
-              className="w-full mt-2 px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
-            >
-              <option value="">Select building to copy from...</option>
-              {allBuildings.map((b, i) => (
-                i < buildingIndex && (
-                  <option key={b.id} value={b.id}>
-                    {b.name || `Building ${i + 1}`}
-                  </option>
-                )
-              ))}
-            </select>
-          )}
-          {buildingIndex > 0 && (
-            <button
-              onClick={() => onCopyBuilding(allBuildings[buildingIndex - 1].id, building.id)}
-              className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 bg-lodha-gold text-white rounded hover:bg-lodha-deep"
-            >
-              <Copy className="w-4 h-4" />
-              Copy from previous building
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Floors Section */}
+      {/* Floors Section - show for all buildings including twins */}
       <div className="border-t border-lodha-grey pt-4">
         <div className="flex justify-between items-center mb-3">
           <h4 className="font-jost font-semibold">Floors</h4>
-          <button
-            onClick={() => onAddFloor(building.id)}
-            disabled={!building.name.trim() || !building.applicationType}
-            className={`flex items-center gap-1 px-3 py-1 text-sm rounded transition-all ${
-              !building.name.trim() || !building.applicationType
-                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                : 'bg-lodha-gold/20 text-lodha-gold hover:bg-lodha-gold/30'
-            }`}
-            title={
-              !building.name.trim()
-                ? 'Please enter building name'
-                : !building.applicationType
-                ? 'Please select application type'
-                : ''
-            }
-          >
-            <Plus className="w-3 h-3" />
-            Add Floor
-          </button>
+          {!isTwinBuilding && (
+            <button
+              onClick={() => onAddFloor(building.id)}
+              disabled={!building.name.trim() || !building.applicationType}
+              className={`flex items-center gap-1 px-3 py-1 text-sm rounded transition-all ${
+                !building.name.trim() || !building.applicationType
+                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                  : 'bg-lodha-gold/20 text-lodha-gold hover:bg-lodha-gold/30'
+              }`}
+              title={
+                !building.name.trim()
+                  ? 'Please enter building name'
+                  : !building.applicationType
+                  ? 'Please select application type'
+                  : ''
+              }
+            >
+              <Plus className="w-3 h-3" />
+              Add Floor
+            </button>
+          )}
+          {isTwinBuilding && (
+            <p className="text-sm text-blue-600 italic">
+              Floors inherited from {building.twinOfBuildingName}
+            </p>
+          )}
         </div>
 
-        <div className="space-y-3">
-          {building.floors
-            .filter(floor => !floor.twinOfFloorName)
-            .map((floor, floorIndex) => {
-              return (
-                <FloorSection
-                  key={floor.id}
-                  floor={floor}
-                  floorIndex={floorIndex}
-                  buildingId={building.id}
-                  allFloors={building.floors}
-                  standards={standards}
-                  onAddFlat={onAddFlat}
-                  onUpdateFlat={onUpdateFlat}
-                  onDeleteFlat={onDeleteFlat}
-                  onCopyFloor={onCopyFloor}
-                  onDeleteFloor={onDeleteFloor}
-                  onUpdateFloor={onUpdateFloor}
-                  onUpdate={onUpdate}
-                  twinFloors={building.floors.filter(f => f.twinOfFloorName === floor.floorName)}
-                />
-              );
-            })}
-        </div>
+        {!isTwinBuilding && (
+          <div className="space-y-3">
+            {building.floors
+              .filter(floor => !floor.twinOfFloorName)
+              .map((floor, floorIndex) => {
+                return (
+                  <FloorSection
+                    key={floor.id}
+                    floor={floor}
+                    floorIndex={floorIndex}
+                    buildingId={building.id}
+                    allFloors={building.floors}
+                    standards={standards}
+                    onAddFlat={onAddFlat}
+                    onUpdateFlat={onUpdateFlat}
+                    onDeleteFlat={onDeleteFlat}
+                    onCopyFloor={onCopyFloor}
+                    onDeleteFloor={onDeleteFloor}
+                    onUpdateFloor={onUpdateFloor}
+                    onUpdate={onUpdate}
+                    twinFloors={building.floors.filter(f => f.twinOfFloorName === floor.floorName)}
+                  />
+                );
+              })}
+          </div>
+        )}
       </div>
+      </>
+      )}
     </div>
   );
 }
@@ -1855,6 +2098,8 @@ function FloorSection({
   twinFloors = [],
 }) {
   const [selectedCopySource, setSelectedCopySource] = useState('');
+  const parentFloorOptions = allFloors.filter(f => !f.twinOfFloorName);
+  const availableTwinTargets = parentFloorOptions.filter(option => option.id !== floor.id);
 
   const handleCopyFloor = () => {
     if (selectedCopySource) {
@@ -1867,16 +2112,83 @@ function FloorSection({
     <div className="border border-lodha-grey/50 rounded p-3 bg-white">
       <div className="flex justify-between items-center mb-3">
         <div className="flex-1">
-          <input
-            type="text"
-            value={floor.floorName}
-            onChange={(e) => onUpdateFloor(buildingId, floor.id, { floorName: e.target.value })}
-            placeholder="Floor name"
-            className="px-2 py-1 border border-lodha-gold rounded text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-lodha-gold"
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={floor.floorName}
+              onChange={(e) => onUpdateFloor(buildingId, floor.id, { floorName: e.target.value })}
+              placeholder="Floor name"
+              className="px-2 py-1 border border-lodha-gold rounded text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-lodha-gold"
+            />
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={floor.floorHeight ?? ''}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  onUpdateFloor(buildingId, floor.id, {
+                    floorHeight: nextValue === '' ? '' : parseFloat(nextValue)
+                  });
+                }}
+                placeholder="Height"
+                className="w-24 px-2 py-1 border border-lodha-gold rounded text-sm focus:outline-none focus:ring-1 focus:ring-lodha-gold"
+              />
+              <span className="text-xs text-lodha-grey">m</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={floor.typicalLobbyArea ?? ''}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  onUpdateFloor(buildingId, floor.id, {
+                    typicalLobbyArea: nextValue === '' ? '' : parseFloat(nextValue)
+                  });
+                }}
+                placeholder="Lobby"
+                className="w-24 px-2 py-1 border border-lodha-gold rounded text-sm focus:outline-none focus:ring-1 focus:ring-lodha-gold"
+              />
+              <span className="text-xs text-lodha-grey">sq.m</span>
+            </div>
+          </div>
           {twinFloors.length > 0 && (
             <div className="mt-1 text-xs text-lodha-grey">
               Twin floors: {twinFloors.map(f => f.floorName).join(', ')}
+            </div>
+          )}
+          {!floor.twinOfFloorName && availableTwinTargets.length > 0 && (
+            <div className="mt-2 text-xs text-lodha-grey">
+              <label className="block font-jost font-semibold mb-1 text-lodha-grey">
+                Mark as twin of
+              </label>
+              <select
+                value=""
+                onChange={e => {
+                  const nextValue = e.target.value;
+                  if (!nextValue) return;
+                  const confirmed = window.confirm(
+                    `Make "${floor.floorName}" a twin of "${nextValue}"? Existing floor data will be cleared.`
+                  );
+                  if (!confirmed) return;
+                  onUpdateFloor(buildingId, floor.id, {
+                    twinOfFloorName: nextValue,
+                    flats: [],
+                    typicalLobbyArea: null
+                  });
+                }}
+                className="w-full max-w-xs px-2 py-1 border border-lodha-grey rounded text-xs focus:outline-none focus:ring-1 focus:ring-lodha-gold"
+              >
+                <option value="">Select parent floor...</option>
+                {availableTwinTargets.map(option => (
+                  <option key={option.id} value={option.floorName}>
+                    {option.floorName}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
         </div>
@@ -1923,6 +2235,40 @@ function FloorSection({
           </button>
         </div>
       </div>
+
+      {twinFloors.length > 0 && (
+        <div className="mb-3 border border-lodha-gold/30 rounded-lg p-3 bg-lodha-sand/10">
+          <h5 className="text-xs font-jost font-semibold mb-2 text-lodha-gold">Twin Floor Management</h5>
+          <div className="space-y-2">
+            {twinFloors.map(twin => (
+              <div key={twin.id} className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex-1 text-xs font-jost text-lodha-black">{twin.floorName}</div>
+                <div className="w-full sm:w-56">
+                  <select
+                    value={twin.twinOfFloorName || 'independent'}
+                    onChange={e => {
+                      const nextValue = e.target.value;
+                      if (nextValue === 'independent') {
+                        onUpdateFloor(buildingId, twin.id, { twinOfFloorName: null });
+                      } else {
+                        onUpdateFloor(buildingId, twin.id, { twinOfFloorName: nextValue });
+                      }
+                    }}
+                    className="w-full px-2 py-1 border border-lodha-grey rounded text-xs focus:outline-none focus:ring-1 focus:ring-lodha-gold"
+                  >
+                    <option value="independent">Independent floor</option>
+                    {parentFloorOptions.map(option => (
+                      <option key={option.id} value={option.floorName}>
+                        Twin of {option.floorName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Flats List */}
       <div className="space-y-2 mb-3">
@@ -2019,6 +2365,16 @@ function FlatRow({
 
 // Project Preview Component
 function ProjectPreview({ data, siteAreas = [] }) {
+  const getFloorHeightValue = (floor) => {
+    const rawHeight = floor.floorHeight ?? floor.floor_height;
+    const parsed = parseFloat(rawHeight);
+    return Number.isNaN(parsed) || parsed <= 0 ? 3.5 : parsed;
+  };
+
+  const getBuildingHeight = (building) => (
+    building.floors.reduce((sum, floor) => sum + getFloorHeightValue(floor), 0)
+  );
+
   // Calculate flat counts by type
   const flatTypesSummary = {};
   data.buildings.forEach(building => {
@@ -2078,7 +2434,11 @@ function ProjectPreview({ data, siteAreas = [] }) {
             <div key={b.id} className="bg-lodha-sand p-2 rounded text-xs">
               <p className="font-semibold">{b.name || `Building ${i + 1}`}</p>
               <p className="text-lodha-grey">{b.applicationType}</p>
+              {b.societyName && (
+                <p className="text-lodha-grey">Society: {b.societyName}</p>
+              )}
               <p className="text-lodha-grey">Floors: {b.floors.length}</p>
+              <p className="text-lodha-grey">Height: {getBuildingHeight(b).toFixed(1)} m</p>
             </div>
           ))}
         </div>

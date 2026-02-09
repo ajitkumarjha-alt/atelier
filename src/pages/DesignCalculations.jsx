@@ -440,14 +440,13 @@ export default function DesignCalculations() {
               </button>
               
               <button
-                onClick={() => alert('Electrical Load Calculator - Coming Soon!')}
-                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition group opacity-60 cursor-not-allowed"
-                disabled
+                onClick={() => navigate(`/projects/${projectId}/calculations/electrical-load/new`)}
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-lodha-gold rounded-lg hover:bg-lodha-sand transition group"
               >
                 <Calculator className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600 group-hover:scale-110 transition flex-shrink-0" />
                 <div className="text-left">
                   <div className="font-semibold text-lodha-black text-sm sm:text-base">Electrical Load</div>
-                  <div className="text-xs text-lodha-grey">Coming soon</div>
+                  <div className="text-xs text-lodha-grey">Auto-calculate from parameters</div>
                 </div>
               </button>
 

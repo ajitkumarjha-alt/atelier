@@ -29,10 +29,26 @@ import {
 import logger from './utils/logger.js';
 import { performHealthCheck } from './utils/health.js';
 import policyRoutes from './routes/policy.js';
+import ElectricalLoadCalculator from './services/electricalLoadService.js';
 
 const app = express();
 const port = process.env.PORT || 5175;
 const API_VERSION = 'v1';
+
+const buildBulkInsert = (rows, columnsPerRow, startIndex = 1) => {
+  const placeholders = rows
+    .map((_, rowIndex) => {
+      const offset = rowIndex * columnsPerRow;
+      const rowPlaceholders = Array.from(
+        { length: columnsPerRow },
+        (_, columnIndex) => `$${startIndex + offset + columnIndex}`
+      );
+      return `(${rowPlaceholders.join(', ')})`;
+    })
+    .join(', ');
+
+  return { placeholders, values: rows.flat() };
+};
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -347,7 +363,7 @@ app.post('/api/admin/cleanup-users', async (req, res) => {
     
     // Check remaining users
     const remaining = await query('SELECT email, user_level FROM users');
-    
+
     res.json({
       deleted: deleteResult.rowCount,
       deletedUsers: deleteResult.rows,
@@ -822,6 +838,7 @@ async function initializeDatabase() {
         description TEXT,
         status VARCHAR(50) NOT NULL DEFAULT 'Concept',
         lifecycle_stage VARCHAR(50) NOT NULL DEFAULT 'Concept',
+        project_category VARCHAR(50),
         completion_percentage INTEGER NOT NULL DEFAULT 0,
         floors_completed INTEGER NOT NULL DEFAULT 0,
         total_floors INTEGER NOT NULL DEFAULT 0,
@@ -851,6 +868,10 @@ async function initializeDatabase() {
       ALTER TABLE projects 
       ADD COLUMN IF NOT EXISTS lead_name VARCHAR(255)
     `);
+    await query(`
+      ALTER TABLE projects
+      ADD COLUMN IF NOT EXISTS project_category VARCHAR(50)
+    `);
     console.log('✓ projects table migrated (project_status, site_status, lead_name)');
 
     // Create buildings table if it doesn't exist
@@ -861,6 +882,7 @@ async function initializeDatabase() {
         name VARCHAR(255) NOT NULL,
         building_type VARCHAR(100),
         application_type VARCHAR(100) NOT NULL,
+        gf_entrance_lobby DECIMAL(10, 2),
         location_latitude DECIMAL(10, 8),
         location_longitude DECIMAL(11, 8),
         residential_type VARCHAR(100),
@@ -880,6 +902,10 @@ async function initializeDatabase() {
     `);
     
     // Villa-specific fields
+    await query(`
+      ALTER TABLE buildings 
+      ADD COLUMN IF NOT EXISTS gf_entrance_lobby DECIMAL(10, 2)
+    `);
     await query(`
       ALTER TABLE buildings 
       ADD COLUMN IF NOT EXISTS pool_volume DECIMAL(10, 2)
@@ -943,6 +969,27 @@ async function initializeDatabase() {
     
     console.log('✓ buildings table initialized');
 
+    // Create societies table if it doesn't exist
+    await query(`
+      CREATE TABLE IF NOT EXISTS societies (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(project_id, name)
+      )
+    `);
+    console.log('✓ societies table initialized');
+
+    // Add society_id to buildings table if it doesn't exist
+    await query(`
+      ALTER TABLE buildings
+      ADD COLUMN IF NOT EXISTS society_id INTEGER REFERENCES societies(id) ON DELETE SET NULL
+    `);
+    console.log('✓ buildings table migrated (society_id added)');
+
     // Create floors table if it doesn't exist
     await query(`
       CREATE TABLE IF NOT EXISTS floors (
@@ -950,6 +997,8 @@ async function initializeDatabase() {
         building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
         floor_number INTEGER NOT NULL,
         floor_name VARCHAR(100),
+        floor_height DECIMAL(6, 2),
+        typical_lobby_area DECIMAL(10, 2),
         twin_of_floor_id INTEGER REFERENCES floors(id) ON DELETE SET NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -967,6 +1016,26 @@ async function initializeDatabase() {
     } catch (err) {
       // Column might already exist, ignore error
       console.log('ℹ floors table migration: column may already exist');
+    }
+
+    try {
+      await query(`
+        ALTER TABLE floors
+        ADD COLUMN IF NOT EXISTS floor_height DECIMAL(6, 2)
+      `);
+      console.log('✓ floors table migrated (floor_height added)');
+    } catch (err) {
+      console.log('ℹ floors table migration: floor_height column may already exist');
+    }
+
+    try {
+      await query(`
+        ALTER TABLE floors
+        ADD COLUMN IF NOT EXISTS typical_lobby_area DECIMAL(10, 2)
+      `);
+      console.log('✓ floors table migrated (typical_lobby_area added)');
+    } catch (err) {
+      console.log('ℹ floors table migration: typical_lobby_area column may already exist');
     }
 
 
@@ -1345,6 +1414,18 @@ async function initializeDatabase() {
       )
     `);
     console.log('✓ vendor_otp table initialized');
+
+    // Add flat_loads and building_breakdowns columns to electrical_load_calculations
+    try {
+      await query(`
+        ALTER TABLE electrical_load_calculations 
+        ADD COLUMN IF NOT EXISTS flat_loads JSONB,
+        ADD COLUMN IF NOT EXISTS building_breakdowns JSONB
+      `);
+      console.log('✓ electrical_load_calculations table migrated (flat_loads, building_breakdowns added)');
+    } catch (err) {
+      console.log('ℹ electrical_load_calculations table migration: columns may already exist');
+    }
 
     console.log('✅ All database tables initialized');
   } catch (error) {
@@ -2229,7 +2310,9 @@ app.get('/api/project-standards-documents/categories', async (req, res) => {
 
 // Create new project
 app.post('/api/projects', async (req, res) => {
-  const { name, location, latitude, longitude, buildings, assignedLeadId, userEmail } = req.body;
+  const { name, location, latitude, longitude, buildings, societies, assignedLeadId, projectCategory, userEmail } = req.body;
+  const buildingsList = Array.isArray(buildings) ? buildings : [];
+  const societiesList = Array.isArray(societies) ? societies : [];
 
   try {
     // Validate required fields
@@ -2237,31 +2320,58 @@ app.post('/api/projects', async (req, res) => {
       return res.status(400).json({ error: 'Project name is required' });
     }
 
-    console.log('📝 Creating project:', { name, location, buildingCount: buildings?.length, assignedLeadId });
+    console.log('📝 Creating project:', { name, location, buildingCount: buildingsList.length, assignedLeadId });
 
     // Create project with optional assigned lead
     const projectResult = await query(
-      `INSERT INTO projects (name, description, lifecycle_stage, start_date, target_completion_date, assigned_lead_id)
-       VALUES ($1, $2, 'Concept', CURRENT_DATE, CURRENT_DATE + INTERVAL '12 months', $3)
+      `INSERT INTO projects (name, description, lifecycle_stage, start_date, target_completion_date, assigned_lead_id, project_category)
+       VALUES ($1, $2, 'Concept', CURRENT_DATE, CURRENT_DATE + INTERVAL '12 months', $3, $4)
        RETURNING id`,
-      [name, location, assignedLeadId || null]
+      [name, location, assignedLeadId || null, projectCategory || null]
     );
 
     const projectId = projectResult.rows[0].id;
 
+    // Insert societies
+    const societyIdMap = {};
+    if (societiesList.length > 0) {
+      const societyRows = societiesList.map(society => ([
+        projectId,
+        society.name,
+        society.description || null
+      ]));
+      const societyInsert = buildBulkInsert(societyRows, 3);
+      const societyResult = await query(
+        `INSERT INTO societies (project_id, name, description)
+         VALUES ${societyInsert.placeholders}
+         RETURNING id, name`,
+        societyInsert.values
+      );
+      societyResult.rows.forEach(row => {
+        societyIdMap[row.name] = row.id;
+      });
+      societiesList.forEach(society => {
+        if (society.id !== undefined && societyIdMap[society.name]) {
+          societyIdMap[society.id] = societyIdMap[society.name];
+        }
+      });
+    }
+
     // First pass: Insert all buildings without twin relationships
     const buildingIdMap = {}; // Map building names to their database IDs
-    for (const building of buildings) {
+    for (const building of buildingsList) {
       const buildingResult = await query(
         `INSERT INTO buildings (
           project_id, name, application_type, location_latitude, location_longitude, 
           residential_type, villa_type, villa_count, building_type,
+          society_id,
+          gf_entrance_lobby,
           pool_volume, has_lift, lift_name, lift_passenger_capacity,
           car_parking_count_per_floor, car_parking_area, two_wheeler_parking_count, 
           two_wheeler_parking_area, ev_parking_percentage, shop_count, shop_area,
           office_count, office_area, common_area, twin_of_building_id
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
          RETURNING id`,
         [
           projectId, 
@@ -2273,6 +2383,8 @@ app.post('/api/projects', async (req, res) => {
           building.villaType || null, 
           building.villaCount && building.villaCount !== '' ? building.villaCount : null,
           building.buildingType || null,
+          societyIdMap[building.societyId] || societyIdMap[building.societyName] || null,
+          building.gfEntranceLobby && building.gfEntranceLobby !== '' ? building.gfEntranceLobby : null,
           building.poolVolume && building.poolVolume !== '' ? building.poolVolume : null,
           building.hasLift || false,
           building.liftName || null,
@@ -2295,35 +2407,67 @@ app.post('/api/projects', async (req, res) => {
       buildingIdMap[building.name] = buildingId;
 
       // First pass: Insert all floors without twin relationships
-      const floorIdMap = {}; // Map floor names to their database IDs
-      for (const floor of building.floors) {
+      const floorIdMap = {};
+      const floorsList = Array.isArray(building.floors) ? building.floors : [];
+      const floorRows = floorsList.map(floor => {
+        const floorHeightValue = floor.floorHeight === '' || floor.floorHeight === undefined
+          ? null
+          : floor.floorHeight ?? floor.floor_height ?? null;
+        const typicalLobbyValue = (floor.typicalLobbyArea !== undefined && floor.typicalLobbyArea !== '' && floor.typicalLobbyArea !== null)
+          ? parseFloat(floor.typicalLobbyArea)
+          : (floor.typical_lobby_area !== undefined && floor.typical_lobby_area !== '' && floor.typical_lobby_area !== null)
+            ? parseFloat(floor.typical_lobby_area)
+            : null;
+        return [
+          buildingId,
+          floor.floorNumber,
+          floor.floorName,
+          floorHeightValue,
+          typicalLobbyValue,
+          null
+        ];
+      });
+
+      if (floorRows.length > 0) {
+        const { placeholders, values } = buildBulkInsert(floorRows, 6);
         const floorResult = await query(
-          `INSERT INTO floors (building_id, floor_number, floor_name, twin_of_floor_id)
-           VALUES ($1, $2, $3, $4)
-           RETURNING id`,
-          [buildingId, floor.floorNumber, floor.floorName, null]
+          `INSERT INTO floors (building_id, floor_number, floor_name, floor_height, typical_lobby_area, twin_of_floor_id)
+           VALUES ${placeholders}
+           RETURNING id, floor_name`,
+          values
         );
 
-        const floorId = floorResult.rows[0].id;
-        floorIdMap[floor.floorName] = floorId;
+        floorResult.rows.forEach(row => {
+          floorIdMap[row.floor_name] = row.id;
+        });
 
-        // Insert flats
-        for (const flat of floor.flats) {
+        const flatRows = [];
+        for (const floor of floorsList) {
+          const floorId = floorIdMap[floor.floorName];
+          if (!floorId) continue;
+          const flatsList = Array.isArray(floor.flats) ? floor.flats : [];
+          flatsList.forEach(flat => {
+            flatRows.push([
+              floorId,
+              flat.type || null,
+              flat.area && flat.area !== '' ? parseFloat(flat.area) : null,
+              flat.count && flat.count !== '' ? parseInt(flat.count) : null
+            ]);
+          });
+        }
+
+        if (flatRows.length > 0) {
+          const flatInsert = buildBulkInsert(flatRows, 4);
           await query(
             `INSERT INTO flats (floor_id, flat_type, area_sqft, number_of_flats)
-             VALUES ($1, $2, $3, $4)`,
-            [
-              floorId, 
-              flat.type || null, 
-              flat.area && flat.area !== '' ? parseFloat(flat.area) : null, 
-              flat.count && flat.count !== '' ? parseInt(flat.count) : null
-            ]
+             VALUES ${flatInsert.placeholders}`,
+            flatInsert.values
           );
         }
       }
 
       // Second pass: Update twin relationships
-      for (const floor of building.floors) {
+      for (const floor of floorsList) {
         if (floor.twinOfFloorName && floorIdMap[floor.twinOfFloorName]) {
           await query(
             `UPDATE floors SET twin_of_floor_id = $1 WHERE id = $2`,
@@ -2334,7 +2478,7 @@ app.post('/api/projects', async (req, res) => {
     }
 
     // Second pass: Update building twin relationships
-    for (const building of buildings) {
+    for (const building of buildingsList) {
       if (building.twinOfBuildingName && buildingIdMap[building.twinOfBuildingName]) {
         await query(
           `UPDATE buildings SET twin_of_building_id = $1 WHERE id = $2`,
@@ -2354,9 +2498,11 @@ app.post('/api/projects', async (req, res) => {
 // Update project - PATCH endpoint
 app.patch('/api/projects/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, location, latitude, longitude, buildings, assignedLeadId } = req.body;
+  const { name, location, latitude, longitude, buildings, societies, assignedLeadId, projectCategory } = req.body;
+  const buildingsList = Array.isArray(buildings) ? buildings : [];
+  const societiesList = Array.isArray(societies) ? societies : [];
 
-  console.log('🔄 PATCH /api/projects/:id called', { id, name, buildingCount: buildings?.length, assignedLeadId });
+  console.log('🔄 PATCH /api/projects/:id called', { id, name, buildingCount: buildingsList.length, assignedLeadId });
 
   try {
     // Validate required fields
@@ -2364,32 +2510,59 @@ app.patch('/api/projects/:id', async (req, res) => {
       return res.status(400).json({ error: 'Project name is required' });
     }
 
-    console.log('📝 Updating project:', { id, name, location, buildingCount: buildings?.length, assignedLeadId });
+    console.log('📝 Updating project:', { id, name, location, buildingCount: buildingsList.length, assignedLeadId });
 
     // Update project basic info including assigned lead
     await query(
       `UPDATE projects 
-       SET name = $1, description = $2, assigned_lead_id = $3, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $4`,
-      [name, location, assignedLeadId || null, id]
+       SET name = $1, description = $2, assigned_lead_id = $3, project_category = $4, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5`,
+      [name, location, assignedLeadId || null, projectCategory || null, id]
     );
 
     // Delete existing buildings, floors, and flats (cascade will handle related records)
     await query('DELETE FROM buildings WHERE project_id = $1', [id]);
+    await query('DELETE FROM societies WHERE project_id = $1', [id]);
+
+    const societyIdMap = {};
+    if (societiesList.length > 0) {
+      const societyRows = societiesList.map(society => ([
+        id,
+        society.name,
+        society.description || null
+      ]));
+      const societyInsert = buildBulkInsert(societyRows, 3);
+      const societyResult = await query(
+        `INSERT INTO societies (project_id, name, description)
+         VALUES ${societyInsert.placeholders}
+         RETURNING id, name`,
+        societyInsert.values
+      );
+      societyResult.rows.forEach(row => {
+        societyIdMap[row.name] = row.id;
+      });
+      societiesList.forEach(society => {
+        if (society.id !== undefined && societyIdMap[society.name]) {
+          societyIdMap[society.id] = societyIdMap[society.name];
+        }
+      });
+    }
 
     // First pass: Insert all buildings without twin relationships
     const buildingIdMap = {};
-    for (const building of buildings || []) {
+    for (const building of buildingsList) {
       const buildingResult = await query(
         `INSERT INTO buildings (
           project_id, name, application_type, location_latitude, location_longitude, 
           residential_type, villa_type, villa_count, building_type,
+          society_id,
+          gf_entrance_lobby,
           pool_volume, has_lift, lift_name, lift_passenger_capacity,
           car_parking_count_per_floor, car_parking_area, two_wheeler_parking_count, 
           two_wheeler_parking_area, ev_parking_percentage, shop_count, shop_area,
           office_count, office_area, common_area, twin_of_building_id
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
          RETURNING id`,
         [
           id, 
@@ -2401,6 +2574,8 @@ app.patch('/api/projects/:id', async (req, res) => {
           building.villaType || null, 
           building.villaCount && building.villaCount !== '' ? parseInt(building.villaCount) : null,
           building.buildingType || null,
+          societyIdMap[building.societyId] || societyIdMap[building.societyName] || null,
+          building.gfEntranceLobby && building.gfEntranceLobby !== '' ? building.gfEntranceLobby : null,
           building.poolVolume && building.poolVolume !== '' ? parseFloat(building.poolVolume) : null,
           building.hasLift || false,
           building.liftName || null,
@@ -2424,34 +2599,66 @@ app.patch('/api/projects/:id', async (req, res) => {
 
       // First pass: Insert all floors without twin relationships
       const floorIdMap = {};
-      for (const floor of building.floors || []) {
+      const floorsList = Array.isArray(building.floors) ? building.floors : [];
+      const floorRows = floorsList.map(floor => {
+        const floorHeightValue = floor.floorHeight === '' || floor.floorHeight === undefined
+          ? null
+          : floor.floorHeight ?? floor.floor_height ?? null;
+        const typicalLobbyValue = (floor.typicalLobbyArea !== undefined && floor.typicalLobbyArea !== '' && floor.typicalLobbyArea !== null)
+          ? parseFloat(floor.typicalLobbyArea)
+          : (floor.typical_lobby_area !== undefined && floor.typical_lobby_area !== '' && floor.typical_lobby_area !== null)
+            ? parseFloat(floor.typical_lobby_area)
+            : null;
+        return [
+          buildingId,
+          floor.floorNumber,
+          floor.floorName,
+          floorHeightValue,
+          typicalLobbyValue,
+          null
+        ];
+      });
+
+      if (floorRows.length > 0) {
+        const { placeholders, values } = buildBulkInsert(floorRows, 6);
         const floorResult = await query(
-          `INSERT INTO floors (building_id, floor_number, floor_name, twin_of_floor_id)
-           VALUES ($1, $2, $3, $4)
-           RETURNING id`,
-          [buildingId, floor.floorNumber, floor.floorName, null]
+          `INSERT INTO floors (building_id, floor_number, floor_name, floor_height, typical_lobby_area, twin_of_floor_id)
+           VALUES ${placeholders}
+           RETURNING id, floor_name`,
+          values
         );
 
-        const floorId = floorResult.rows[0].id;
-        floorIdMap[floor.floorName] = floorId;
+        floorResult.rows.forEach(row => {
+          floorIdMap[row.floor_name] = row.id;
+        });
 
-        // Insert flats
-        for (const flat of floor.flats || []) {
+        const flatRows = [];
+        for (const floor of floorsList) {
+          const floorId = floorIdMap[floor.floorName];
+          if (!floorId) continue;
+          const flatsList = Array.isArray(floor.flats) ? floor.flats : [];
+          flatsList.forEach(flat => {
+            flatRows.push([
+              floorId,
+              flat.type || null,
+              flat.area && flat.area !== '' ? parseFloat(flat.area) : null,
+              flat.count && flat.count !== '' ? parseInt(flat.count) : null
+            ]);
+          });
+        }
+
+        if (flatRows.length > 0) {
+          const flatInsert = buildBulkInsert(flatRows, 4);
           await query(
             `INSERT INTO flats (floor_id, flat_type, area_sqft, number_of_flats)
-             VALUES ($1, $2, $3, $4)`,
-            [
-              floorId, 
-              flat.type || null, 
-              flat.area && flat.area !== '' ? parseFloat(flat.area) : null, 
-              flat.count && flat.count !== '' ? parseInt(flat.count) : null
-            ]
+             VALUES ${flatInsert.placeholders}`,
+            flatInsert.values
           );
         }
       }
 
       // Second pass: Update twin relationships
-      for (const floor of building.floors || []) {
+      for (const floor of floorsList) {
         if (floor.twinOfFloorName && floorIdMap[floor.twinOfFloorName]) {
           await query(
             `UPDATE floors SET twin_of_floor_id = $1 WHERE id = $2`,
@@ -2462,7 +2669,7 @@ app.patch('/api/projects/:id', async (req, res) => {
     }
 
     // Second pass: Update building twin relationships
-    for (const building of buildings || []) {
+    for (const building of buildingsList) {
       if (building.twinOfBuildingName && buildingIdMap[building.twinOfBuildingName]) {
         await query(
           `UPDATE buildings SET twin_of_building_id = $1 WHERE id = $2`,
@@ -2479,6 +2686,24 @@ app.patch('/api/projects/:id', async (req, res) => {
   }
 });
 
+// Delete project (L0 and SUPER_ADMIN only)
+app.delete('/api/projects/:id', verifyToken, requireRole('SUPER_ADMIN', 'L0'), async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const projectResult = await query('SELECT id, name FROM projects WHERE id = $1', [id]);
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    await query('DELETE FROM projects WHERE id = $1', [id]);
+    res.json({ message: 'Project deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting project:', error);
+    res.status(500).json({ error: 'Failed to delete project' });
+  }
+});
+
 // Fetch full project with hierarchy
 app.get('/api/projects/:id/full', async (req, res) => {
   const { id } = req.params;
@@ -2490,7 +2715,24 @@ app.get('/api/projects/:id/full', async (req, res) => {
     }
 
     const project = projectResult.rows[0];
-    const buildingsResult = await query('SELECT * FROM buildings WHERE project_id = $1', [id]);
+    const societiesResult = await query(
+      'SELECT * FROM societies WHERE project_id = $1 ORDER BY name',
+      [id]
+    );
+    const buildingsResult = await query(
+      `SELECT buildings.*, societies.name AS society_name
+       FROM buildings
+       LEFT JOIN societies ON societies.id = buildings.society_id
+       WHERE buildings.project_id = $1`,
+      [id]
+    );
+
+    const societies = societiesResult.rows.map(society => ({
+      id: society.id,
+      name: society.name,
+      description: society.description,
+      project_id: society.project_id
+    }));
 
     const buildings = [];
     // First, create a map of building IDs to names for twin reference lookup
@@ -2516,11 +2758,15 @@ app.get('/api/projects/:id/full', async (req, res) => {
           id: floor.id,
           floorNumber: floor.floor_number,
           floorName: floor.floor_name,
+          floorHeight: floor.floor_height,
+          typicalLobbyArea: floor.typical_lobby_area,
           twinOfFloorId: floor.twin_of_floor_id,
           twinOfFloorName: floor.twin_of_floor_id ? floorIdToNameMap[floor.twin_of_floor_id] : null,
           // Also include snake_case for ProjectDetail page compatibility
           floor_number: floor.floor_number,
           floor_name: floor.floor_name,
+          floor_height: floor.floor_height,
+          typical_lobby_area: floor.typical_lobby_area,
           twin_of_floor_id: floor.twin_of_floor_id,
           flats: flatsResult.rows.map(f => ({
             id: f.id,
@@ -2547,6 +2793,11 @@ app.get('/api/projects/:id/full', async (req, res) => {
         twinOfBuildingId: building.twin_of_building_id,
         twinOfBuildingName: building.twin_of_building_id ? buildingIdToNameMap[building.twin_of_building_id] : null,
         twin_of_building_id: building.twin_of_building_id, // snake_case for compatibility
+        societyId: building.society_id,
+        society_id: building.society_id,
+        societyName: building.society_name,
+        gfEntranceLobby: building.gf_entrance_lobby,
+        gf_entrance_lobby: building.gf_entrance_lobby,
         floors,
       });
     }
@@ -2558,6 +2809,7 @@ app.get('/api/projects/:id/full', async (req, res) => {
       latitude: buildingsResult.rows[0]?.location_latitude || '',
       longitude: buildingsResult.rows[0]?.location_longitude || '',
       buildings,
+      societies,
     });
   } catch (error) {
     console.error('Error fetching project:', error);
@@ -3898,11 +4150,84 @@ app.get('/api/projects/:projectId/buildings', verifyToken, async (req, res) => {
     const { projectId } = req.params;
 
     const result = await query(
-      'SELECT * FROM buildings WHERE project_id = $1 ORDER BY name',
+      `SELECT 
+         buildings.id,
+         buildings.name,
+         buildings.project_id,
+         buildings.society_id,
+         buildings.application_type,
+         buildings.building_type,
+         buildings.residential_type,
+         buildings.villa_type,
+         buildings.villa_count,
+         buildings.gf_entrance_lobby,
+         buildings.car_parking_area,
+         buildings.created_at,
+         buildings.updated_at,
+         buildings.is_twin,
+         buildings.twin_of_building_id,
+         societies.name AS society_name,
+         COALESCE(floor_summary.floor_count, 0) AS floor_count,
+         COALESCE(floor_summary.total_height_m, 0) AS total_height_m,
+         COALESCE(floor_summary.avg_typical_lobby_area, 0) AS avg_typical_lobby_area
+       FROM buildings
+       LEFT JOIN societies ON societies.id = buildings.society_id
+       LEFT JOIN (
+         SELECT
+           building_id,
+           COUNT(*) AS floor_count,
+           COALESCE(SUM(COALESCE(floor_height, 3.5)), 0) AS total_height_m,
+           COALESCE(
+             AVG(typical_lobby_area) FILTER (WHERE typical_lobby_area > 0),
+             0
+           ) AS avg_typical_lobby_area
+         FROM floors
+         GROUP BY building_id
+       ) AS floor_summary ON floor_summary.building_id = buildings.id
+       WHERE buildings.project_id = $1
+       ORDER BY buildings.name`,
       [projectId]
     );
 
-    res.json(result.rows);
+    // Fetch flat data for each building
+    const buildings = await Promise.all(result.rows.map(async (building) => {
+      const flatsResult = await query(
+        `SELECT 
+           fl.flat_type,
+           fl.area_sqft,
+           SUM(fl.number_of_flats) as total_count
+         FROM flats fl
+         INNER JOIN floors f ON f.id = fl.floor_id
+         WHERE f.building_id = $1
+         GROUP BY fl.flat_type, fl.area_sqft
+         ORDER BY fl.flat_type`,
+        [building.id]
+      );
+
+      return {
+        ...building,
+        flats: flatsResult.rows.map(flat => ({
+          flat_type: flat.flat_type,
+          area_sqft: parseFloat(flat.area_sqft),
+          total_count: parseInt(flat.total_count)
+        }))
+      };
+    }));
+
+    console.log(`[DEBUG] Buildings for project ${projectId}:`, buildings.map(b => ({
+      name: b.name,
+      height: b.total_height_m,
+      floors: b.floor_count,
+      gf_lobby: b.gf_entrance_lobby,
+      avg_lobby: b.avg_typical_lobby_area,
+      flats_count: b.flats.reduce((sum, f) => sum + f.total_count, 0)
+    })));
+
+    // Disable caching to ensure fresh data
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.json(buildings);
   } catch (error) {
     console.error('Error fetching buildings:', error);
     res.status(500).json({ error: 'Failed to fetch buildings' });
@@ -4129,6 +4454,280 @@ app.get('/api/projects/:projectId/buildings-detailed', verifyToken, async (req, 
 });
 
 // ============= END WATER DEMAND CALCULATIONS ENDPOINTS =============
+
+// ============= ELECTRICAL LOAD CALCULATIONS ENDPOINTS =============
+
+// Create a new electrical load calculation
+app.post('/api/electrical-load-calculations', verifyToken, async (req, res) => {
+  try {
+    const {
+      projectId,
+      calculationName,
+      selectedBuildings,
+      inputParameters,
+      status,
+      remarks
+    } = req.body;
+
+    // Initialize calculator
+    const calculator = new ElectricalLoadCalculator({ query });
+
+    // Perform calculation
+    const results = await calculator.calculate(inputParameters, selectedBuildings);
+
+    // Save to database
+    const result = await query(
+      `INSERT INTO electrical_load_calculations (
+        project_id,
+        calculation_name,
+        selected_buildings,
+        input_parameters,
+        building_ca_loads,
+        flat_loads,
+        society_ca_loads,
+        building_breakdowns,
+        total_loads,
+        total_connected_load_kw,
+        maximum_demand_kw,
+        essential_demand_kw,
+        fire_demand_kw,
+        transformer_size_kva,
+        status,
+        calculated_by,
+        remarks,
+        created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      RETURNING *`,
+      [
+        projectId,
+        calculationName,
+        JSON.stringify(selectedBuildings),
+        JSON.stringify(inputParameters),
+        JSON.stringify(results.buildingCALoads),
+        JSON.stringify(results.flatLoads || null),
+        JSON.stringify(results.societyCALoads),
+        JSON.stringify(results.buildingBreakdowns || null),
+        JSON.stringify(results.totals),
+        results.totals.grandTotalTCL,
+        results.totals.totalMaxDemand,
+        results.totals.totalEssential,
+        results.totals.totalFire,
+        results.totals.transformerSizeKVA,
+        status || 'Draft',
+        req.user.email,
+        remarks,
+        req.user.email
+      ]
+    );
+
+    // Return the saved calculation with full results
+    const savedCalc = result.rows[0];
+    res.json({
+      ...savedCalc,
+      // Parse JSON fields for immediate use
+      selected_buildings: selectedBuildings,
+      input_parameters: inputParameters,
+      building_ca_loads: results.buildingCALoads,
+      flat_loads: results.flatLoads || null,
+      society_ca_loads: results.societyCALoads,
+      building_breakdowns: results.buildingBreakdowns || null,
+      total_loads: results.totals
+    });
+  } catch (error) {
+    console.error('Error creating electrical load calculation:', error);
+    res.status(500).json({ error: error.message || 'Failed to create electrical load calculation' });
+  }
+});
+
+// Get all electrical load calculations for a project
+app.get('/api/electrical-load-calculations', verifyToken, async (req, res) => {
+  try {
+    const { projectId } = req.query;
+
+    if (!projectId) {
+      return res.status(400).json({ error: 'projectId is required' });
+    }
+
+    const result = await query(
+      `SELECT * FROM electrical_load_calculations
+       WHERE project_id = $1
+       ORDER BY created_at DESC`,
+      [projectId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching electrical load calculations:', error);
+    res.status(500).json({ error: 'Failed to fetch electrical load calculations' });
+  }
+});
+
+// Get a single electrical load calculation by ID
+app.get('/api/electrical-load-calculations/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const calculationId = parseInt(id, 10);
+    if (Number.isNaN(calculationId)) {
+      return res.status(400).json({ error: 'Invalid calculation id' });
+    }
+
+    const result = await query(
+      'SELECT * FROM electrical_load_calculations WHERE id = $1',
+      [calculationId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Electrical load calculation not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching electrical load calculation:', error);
+    res.status(500).json({ error: 'Failed to fetch electrical load calculation' });
+  }
+});
+
+// Update an electrical load calculation
+app.put('/api/electrical-load-calculations/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const calculationId = parseInt(id, 10);
+    if (Number.isNaN(calculationId)) {
+      return res.status(400).json({ error: 'Invalid calculation id' });
+    }
+    const {
+      calculationName,
+      inputParameters,
+      selectedBuildings,
+      status,
+      remarks,
+      verifiedBy
+    } = req.body;
+
+    // Check if calculation exists
+    const existing = await query(
+      'SELECT * FROM electrical_load_calculations WHERE id = $1',
+      [calculationId]
+    );
+
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Electrical load calculation not found' });
+    }
+
+    // If inputs changed, recalculate
+    let results = null;
+    if (inputParameters) {
+      const calculator = new ElectricalLoadCalculator({ query });
+      const buildings = selectedBuildings || existing.rows[0].selected_buildings;
+      results = await calculator.calculate(inputParameters, buildings);
+    }
+
+    // Build update query dynamically
+    const updateFields = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (calculationName) {
+      updateFields.push(`calculation_name = $${paramIndex++}`);
+      values.push(calculationName);
+    }
+
+    if (inputParameters && results) {
+      updateFields.push(`input_parameters = $${paramIndex++}`);
+      values.push(JSON.stringify(inputParameters));
+
+      updateFields.push(`building_ca_loads = $${paramIndex++}`);
+      values.push(JSON.stringify(results.buildingCALoads));
+
+      updateFields.push(`society_ca_loads = $${paramIndex++}`);
+      values.push(JSON.stringify(results.societyCALoads));
+
+      updateFields.push(`total_loads = $${paramIndex++}`);
+      values.push(JSON.stringify(results.totals));
+
+      updateFields.push(`total_connected_load_kw = $${paramIndex++}`);
+      values.push(results.totals.grandTotalTCL);
+
+      updateFields.push(`maximum_demand_kw = $${paramIndex++}`);
+      values.push(results.totals.totalMaxDemand);
+
+      updateFields.push(`essential_demand_kw = $${paramIndex++}`);
+      values.push(results.totals.totalEssential);
+
+      updateFields.push(`fire_demand_kw = $${paramIndex++}`);
+      values.push(results.totals.totalFire);
+
+      updateFields.push(`transformer_size_kva = $${paramIndex++}`);
+      values.push(results.totals.transformerSizeKVA);
+    }
+
+    if (selectedBuildings) {
+      updateFields.push(`selected_buildings = $${paramIndex++}`);
+      values.push(JSON.stringify(selectedBuildings));
+    }
+
+    if (status) {
+      updateFields.push(`status = $${paramIndex++}`);
+      values.push(status);
+    }
+
+    if (remarks !== undefined) {
+      updateFields.push(`remarks = $${paramIndex++}`);
+      values.push(remarks);
+    }
+
+    if (verifiedBy) {
+      updateFields.push(`verified_by = $${paramIndex++}`);
+      values.push(verifiedBy);
+    }
+
+    updateFields.push(`updated_by = $${paramIndex++}`);
+    values.push(req.user.email);
+
+    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+
+    values.push(calculationId);
+
+    const result = await query(
+      `UPDATE electrical_load_calculations
+       SET ${updateFields.join(', ')}
+       WHERE id = $${paramIndex}
+       RETURNING *`,
+      values
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating electrical load calculation:', error);
+    res.status(500).json({ error: error.message || 'Failed to update electrical load calculation' });
+  }
+});
+
+// Delete an electrical load calculation
+app.delete('/api/electrical-load-calculations/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const calculationId = parseInt(id, 10);
+    if (Number.isNaN(calculationId)) {
+      return res.status(400).json({ error: 'Invalid calculation id' });
+    }
+
+    const calc = await query('SELECT * FROM electrical_load_calculations WHERE id = $1', [calculationId]);
+    
+    if (calc.rows.length === 0) {
+      return res.status(404).json({ error: 'Electrical load calculation not found' });
+    }
+
+    await query('DELETE FROM electrical_load_calculations WHERE id = $1', [calculationId]);
+
+    res.json({ message: 'Electrical load calculation deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting electrical load calculation:', error);
+    res.status(500).json({ error: 'Failed to delete electrical load calculation' });
+  }
+});
+
+// ============= END ELECTRICAL LOAD CALCULATIONS ENDPOINTS =============
 
 // ============= PROJECT CHANGE REQUEST ENDPOINTS =============
 

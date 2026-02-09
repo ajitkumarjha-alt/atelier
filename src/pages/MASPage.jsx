@@ -69,13 +69,25 @@ export default function MASPage() {
   }, [filter, searchTerm, items]);
 
   const getStatusCounts = () => {
-    return div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-lodha-gold"></div>
+    return {
+      all: items.length,
+      pending: items.filter(i => i.status === 'pending' || i.status === 'Pending').length,
+      inProgress: items.filter(i => i.status === 'in_progress' || i.status === 'In Progress').length,
+      resolved: items.filter(i => i.status === 'resolved' || i.status === 'Resolved').length
+    };
+  };
+
+  const counts = getStatusCounts();
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center py-12">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-lodha-gold"></div>
         </div>
       </Layout>
     );
   }
-
-  const counts = getStatusCounts();
 
   return (
     <Layout>
@@ -280,38 +292,7 @@ export default function MASPage() {
 
       {/* Mobile Scroll Indicator */}
       <div className="lg:hidden text-center py-2 text-xs text-lodha-grey/60 font-jost">
-        ← Scroll horizontally to see all columns →          </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        item.l1_status === 'Approved' 
-                          ? 'bg-green-100 text-green-700'
-                          : item.l1_status === 'Rejected'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-orange-100 text-orange-700'
-                      }`}>
-                        {item.l1_status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        item.final_status === 'Approved' 
-                          ? 'bg-green-100 text-green-700 border border-green-300'
-                          : item.final_status === 'Rejected'
-                          ? 'bg-red-100 text-red-700 border border-red-300'
-                          : 'bg-gray-100 text-gray-700 border border-gray-300'
-                      }`}>
-                        {item.final_status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-lodha-grey font-jost">
-                      {new Date(item.created_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        ← Scroll horizontally to see all columns →
       </div>
 
       {/* Create MAS Modal */}
