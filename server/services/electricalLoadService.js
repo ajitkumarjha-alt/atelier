@@ -71,7 +71,9 @@ class ElectricalLoadCalculator {
             numberOfFloors,
             buildingCALoads: buildingLoads,
             flatLoads: flatLoadsWithDF,
-            totals: combinedTotals
+            totals: combinedTotals,
+            isTwin: building.is_twin || !!building.twin_of_building_id,
+            twinOfBuildingId: building.twin_of_building_id
           });
           
           allFlatLoads.push(flatLoadsWithDF);

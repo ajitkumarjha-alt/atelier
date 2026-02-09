@@ -386,6 +386,7 @@ function BuildingSelection({ buildings, selectedBuildings, onToggle, onNext }) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {buildingsList.map(building => {
           const isSelected = selectedBuildings.find(b => b.id === building.id);
+          
           return (
             <div
               key={building.id}
@@ -711,24 +712,43 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
       {Array.isArray(results.buildingBreakdowns) && results.buildingBreakdowns.length > 0 && (
         <div className="space-y-4">
           {results.buildingBreakdowns.map((building, index) => {
-            // Find the corresponding building data to check if it's a twin
-            const buildingData = results.selectedBuildings.find(b => b.id === building.buildingId);
-            const isTwin = buildingData?.is_twin || buildingData?.twin_of_building_id;
-            
-            // Skip twin buildings - they're already included in the parent building's calculation
-            if (isTwin) {
-              return null;
+            // Skip duplicate twin buildings - only show one from each twin pair
+            // But only skip if the parent/twin building is also in the results
+            if (building.twinOfBuildingId) {
+              // Check if the parent building is in the selected buildings
+              const parentExists = results.buildingBreakdowns.some(b => 
+                b.buildingId === building.twinOfBuildingId
+              );
+              // Only skip if parent exists in selection
+              if (parentExists) {
+                return null;
+              }
             }
+            
+            // Find all twins of this building to show in the header
+            const twins = results.buildingBreakdowns.filter(b => 
+              b.twinOfBuildingId === building.buildingId || 
+              (building.twinOfBuildingId && b.buildingId === building.twinOfBuildingId)
+            );
             
             return (
               <div key={building.buildingId || building.buildingName} className="bg-white rounded-lg shadow p-6">
                 <div className="mb-4 pb-3 border-b border-gray-200">
-                  <h3 className="text-xl font-bold text-gray-900">
-                    {building.buildingName || `Building ${index + 1}`}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {building.numberOfFloors || '-'} floors • {Number(building.buildingHeight || 0).toFixed(1)} m height
-                  </p>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">
+                        {building.buildingName || `Building ${index + 1}`}
+                      </h3>
+                      {twins.length > 0 && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          Similar to: {twins.map(t => t.buildingName).join(', ')}
+                        </p>
+                      )}
+                      <p className="text-sm text-gray-500">
+                        {building.numberOfFloors || '-'} floors • {Number(building.buildingHeight || 0).toFixed(1)} m height
+                      </p>
+                    </div>
+                  </div>
                 </div>
                 
                 {/* Flat/Office/Shop Loads */}
@@ -762,6 +782,7 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
           <div className="bg-white rounded-lg shadow p-4 mb-4">
             <h4 className="text-lg font-bold mb-3">Building-wise Load Summary</h4>
             <p className="text-sm text-gray-600 mb-3">Individual building loads (flats + common areas)</p>
+            
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -775,17 +796,11 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
                 </thead>
                 <tbody>
                   {results.buildingBreakdowns.map((building, index) => {
-                    // Check if this building is a twin
-                    const buildingData = results.selectedBuildings.find(b => b.id === building.buildingId);
-                    const isTwin = buildingData?.is_twin || buildingData?.twin_of_building_id;
-                    
-                    if (isTwin) {
-                      return null; // Skip twin buildings in the summary
-                    }
-                    
                     return (
                       <tr key={building.buildingId || index} className="border-b border-gray-200">
-                        <td className="py-2 px-3 font-medium">{building.buildingName || `Building ${index + 1}`}</td>
+                        <td className="py-2 px-3 font-medium">
+                          {building.buildingName || `Building ${index + 1}`}
+                        </td>
                         <td className="py-2 px-3 text-right">{building.totals?.tcl?.toFixed(2) || '0.00'}</td>
                         <td className="py-2 px-3 text-right">{building.totals?.maxDemand?.toFixed(2) || '0.00'}</td>
                         <td className="py-2 px-3 text-right">{building.totals?.essential?.toFixed(2) || '0.00'}</td>
