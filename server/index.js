@@ -1415,6 +1415,74 @@ async function initializeDatabase() {
     `);
     console.log('✓ vendor_otp table initialized');
 
+    // Electrical Load Factors table - for L0 configurable factors
+    await query(`
+      CREATE TABLE IF NOT EXISTS electrical_load_factors (
+        id SERIAL PRIMARY KEY,
+        category VARCHAR(100) NOT NULL,
+        sub_category VARCHAR(100),
+        description TEXT NOT NULL,
+        watt_per_sqm DECIMAL(10, 2),
+        mdf DECIMAL(5, 4),
+        edf DECIMAL(5, 4),
+        fdf DECIMAL(5, 4),
+        notes TEXT,
+        is_active BOOLEAN DEFAULT TRUE,
+        updated_by VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(category, sub_category, description)
+      )
+    `);
+    console.log('✓ electrical_load_factors table initialized');
+
+    // Initialize default electrical load factors if table is empty
+    const factorsCount = await query('SELECT COUNT(*) as count FROM electrical_load_factors');
+    if (parseInt(factorsCount.rows[0].count) === 0) {
+      await query(`
+        INSERT INTO electrical_load_factors (category, sub_category, description, watt_per_sqm, mdf, edf, fdf, notes) VALUES
+        -- Residential Flat Loads
+        ('RESIDENTIAL', 'FLAT', 'Residential Flat Load', 25.00, 0.4000, 0.1000, 0.0000, 'NBC 2016 / EcoNiwas Samhita: 20-25 W/sqm'),
+        
+        -- Lighting
+        ('LIGHTING', 'LOBBY', 'GF Entrance Lobby', 3.00, 0.6000, 0.6000, 0.2500, 'EcoNiwas Samhita'),
+        ('LIGHTING', 'LOBBY', 'Typical Floor Lobby', 3.00, 0.6000, 0.6000, 0.2500, 'EcoNiwas Samhita'),
+        ('LIGHTING', 'TERRACE', 'Terrace Lighting', 2.00, 0.6000, 0.6000, 1.0000, 'Full load during fire'),
+        ('LIGHTING', 'LANDSCAPE', 'Landscape Lighting', 2.00, 0.6000, 0.6000, 0.2500, 'External lighting'),
+        ('LIGHTING', 'STREET', 'Street Lighting', 2.00, 0.6000, 0.6000, 0.0000, 'Society level'),
+        
+        -- Lifts
+        ('LIFTS', 'PASSENGER', 'Passenger Lift', NULL, 0.5000, 0.5000, 0.0000, 'Standard passenger lift'),
+        ('LIFTS', 'PASSENGER_FIRE', 'Passenger cum Fire Lift', NULL, 0.5000, 0.5000, 1.0000, 'Fire-rated lift'),
+        ('LIFTS', 'FIREMEN', 'Firemen Lift', NULL, 0.0000, 0.0000, 1.0000, 'Emergency use only'),
+        
+        -- HVAC & Ventilation
+        ('HVAC', 'VENTILATION', 'Mechanical Ventilation Fan', NULL, 0.7000, 0.0000, 0.0000, 'Basement/parking ventilation'),
+        
+        -- Pressurization
+        ('PRESSURIZATION', 'STAIRCASE', 'Staircase Pressurization Fan', NULL, 0.0000, 0.0000, 1.0000, 'Fire safety - staircase'),
+        ('PRESSURIZATION', 'LOBBY', 'Lobby Pressurization System', NULL, 0.0000, 0.0000, 1.0000, 'Fire safety - lobby'),
+        
+        -- PHE (Plumbing & Hydraulic Equipment)
+        ('PHE', 'BOOSTER', 'Booster Pump', NULL, 0.6000, 0.6000, 0.0000, 'Water supply'),
+        ('PHE', 'SEWAGE', 'Sewage Pump', NULL, 0.6000, 0.6000, 0.0000, 'Wastewater'),
+        ('PHE', 'WET_RISER', 'Wet Riser Pump', NULL, 0.0000, 0.0000, 1.0000, 'Fire fighting'),
+        ('PHE', 'FIRE_MAIN', 'Fire Fighting Main Pump', NULL, 0.0000, 0.0000, 1.0000, 'Fire fighting - main'),
+        ('PHE', 'FIRE_SPRINKLER', 'Sprinkler Pump', NULL, 0.0000, 0.0000, 1.0000, 'Fire fighting - sprinkler'),
+        ('PHE', 'DOM_TRANSFER', 'Domestic Transfer Pump', NULL, 0.7000, 0.0000, 0.0000, 'Society level water transfer'),
+        
+        -- Infrastructure
+        ('INFRASTRUCTURE', 'STP', 'Sewage Treatment Plant', NULL, 0.7000, 0.0000, 0.0000, 'Wastewater treatment'),
+        ('INFRASTRUCTURE', 'CLUBHOUSE', 'Clubhouse', NULL, 0.7000, 0.3000, 0.0000, 'Society amenity'),
+        ('INFRASTRUCTURE', 'EV_CHARGER', 'EV Charger', NULL, 0.2000, 0.0000, 0.0000, 'Electric vehicle charging'),
+        
+        -- Other
+        ('OTHER', 'SECURITY', 'Security System', NULL, 0.8000, 0.8000, 0.2500, 'CCTV, access control'),
+        ('OTHER', 'SMALL_POWER', 'Small Power Load', NULL, 0.6000, 0.3000, 0.0000, 'Miscellaneous')
+      `);
+      console.log('✓ electrical_load_factors table populated with default values');
+    }
+
     // Add flat_loads and building_breakdowns columns to electrical_load_calculations
     try {
       await query(`
@@ -4472,10 +4540,14 @@ app.post('/api/electrical-load-calculations', verifyToken, async (req, res) => {
     // Initialize calculator
     const calculator = new ElectricalLoadCalculator({ query });
 
-    // Perform calculation
-    const results = await calculator.calculate(inputParameters, selectedBuildings);
+    // Perform calculation with regulatory framework support
+    const results = await calculator.calculate(inputParameters, selectedBuildings, projectId);
 
-    // Save to database
+    // Extract regulatory compliance data
+    const regulatoryCompliance = results.regulatoryCompliance || {};
+    const frameworkIds = results.regulatoryFramework ? [results.regulatoryFramework.id] : [];
+
+    // Save to database with regulatory compliance fields
     const result = await query(
       `INSERT INTO electrical_load_calculations (
         project_id,
@@ -4492,11 +4564,32 @@ app.post('/api/electrical-load-calculations', verifyToken, async (req, res) => {
         essential_demand_kw,
         fire_demand_kw,
         transformer_size_kva,
+        framework_ids,
+        area_type,
+        total_carpet_area,
+        sanctioned_load_kw,
+        sanctioned_load_kva,
+        msedcl_minimum_kw,
+        load_method_applied,
+        load_after_df_kw,
+        load_after_df_kva,
+        dtc_needed,
+        dtc_type,
+        dtc_capacity_kva,
+        dtc_count,
+        dtc_land_sqm,
+        substation_needed,
+        substation_type,
+        substation_land_sqm,
+        exceeds_single_consumer_limit,
+        exceeds_cumulative_limit,
+        validation_warnings,
+        calculation_metadata,
         status,
         calculated_by,
         remarks,
         created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39)
       RETURNING *`,
       [
         projectId,
@@ -4513,6 +4606,27 @@ app.post('/api/electrical-load-calculations', verifyToken, async (req, res) => {
         results.totals.totalEssential,
         results.totals.totalFire,
         results.totals.transformerSizeKVA,
+        frameworkIds,
+        results.areaType,
+        parseFloat(inputParameters.totalCarpetArea) || null,
+        regulatoryCompliance.sanctionedLoad?.sanctionedLoadKW || null,
+        regulatoryCompliance.sanctionedLoad?.sanctionedLoadKVA || null,
+        regulatoryCompliance.msedclMinimum?.requiredKW || null,
+        regulatoryCompliance.msedclMinimum?.applied ? 'MSEDCL Minimum' : 'NBC',
+        regulatoryCompliance.loadAfterDF?.maxDemandKW || null,
+        regulatoryCompliance.loadAfterDF?.maxDemandKVA || null,
+        regulatoryCompliance.dtc?.needed || false,
+        regulatoryCompliance.dtc?.needed ? 'DTC_OUTDOOR' : null,
+        regulatoryCompliance.dtc?.totalCapacity || null,
+        regulatoryCompliance.dtc?.dtcCount || null,
+        regulatoryCompliance.dtc?.landRequired || null,
+        regulatoryCompliance.substation?.needed || false,
+        regulatoryCompliance.substation?.substationType || null,
+        regulatoryCompliance.substation?.landRequired || null,
+        regulatoryCompliance.validation?.exceedsKWLimit || false,
+        regulatoryCompliance.validation?.exceedsKVALimit || false,
+        regulatoryCompliance.warnings || [],
+        JSON.stringify(regulatoryCompliance),
         status || 'Draft',
         req.user.email,
         remarks,
@@ -4531,7 +4645,9 @@ app.post('/api/electrical-load-calculations', verifyToken, async (req, res) => {
       flat_loads: results.flatLoads || null,
       society_ca_loads: results.societyCALoads,
       building_breakdowns: results.buildingBreakdowns || null,
-      total_loads: results.totals
+      total_loads: results.totals,
+      regulatory_compliance: regulatoryCompliance,
+      regulatory_framework: results.regulatoryFramework
     });
   } catch (error) {
     console.error('Error creating electrical load calculation:', error);
@@ -4724,6 +4840,373 @@ app.delete('/api/electrical-load-calculations/:id', verifyToken, async (req, res
   } catch (error) {
     console.error('Error deleting electrical load calculation:', error);
     res.status(500).json({ error: 'Failed to delete electrical load calculation' });
+  }
+});
+
+// ============================================================================
+// Electrical Load Factors Management (L0 Only)
+// ============================================================================
+
+// Get all electrical load factors
+app.get('/api/electrical-load-factors', verifyToken, async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT * FROM electrical_load_factors ORDER BY category, sub_category, description'
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching electrical load factors:', error);
+    res.status(500).json({ error: 'Failed to fetch electrical load factors' });
+  }
+});
+
+// Get a specific electrical load factor
+app.get('/api/electrical-load-factors/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await query(
+      'SELECT * FROM electrical_load_factors WHERE id = $1',
+      [id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Factor not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching electrical load factor:', error);
+    res.status(500).json({ error: 'Failed to fetch electrical load factor' });
+  }
+});
+
+// Update electrical load factor (L0 only)
+app.put('/api/electrical-load-factors/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      category,
+      sub_category,
+      description,
+      watt_per_sqm,
+      mdf,
+      edf,
+      fdf,
+      notes,
+      is_active
+    } = req.body;
+
+    const result = await query(
+      `UPDATE electrical_load_factors
+       SET category = $1,
+           sub_category = $2,
+           description = $3,
+           watt_per_sqm = $4,
+           mdf = $5,
+           edf = $6,
+           fdf = $7,
+           notes = $8,
+           is_active = $9,
+           updated_by = $10,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $11
+       RETURNING *`,
+      [category, sub_category, description, watt_per_sqm, mdf, edf, fdf, notes, is_active, req.user.email, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Factor not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating electrical load factor:', error);
+    res.status(500).json({ error: 'Failed to update electrical load factor' });
+  }
+});
+
+// Create new electrical load factor (L0 only)
+app.post('/api/electrical-load-factors', verifyToken, async (req, res) => {
+  try {
+    const {
+      category,
+      sub_category,
+      description,
+      watt_per_sqm,
+      mdf,
+      edf,
+      fdf,
+      notes,
+      is_active
+    } = req.body;
+
+    const result = await query(
+      `INSERT INTO electrical_load_factors
+       (category, sub_category, description, watt_per_sqm, mdf, edf, fdf, notes, is_active, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING *`,
+      [category, sub_category, description, watt_per_sqm, mdf, edf, fdf, notes, is_active !== false, req.user.email]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating electrical load factor:', error);
+    res.status(500).json({ error: 'Failed to create electrical load factor' });
+  }
+});
+
+// ============= REGULATORY FRAMEWORK ENDPOINTS =============
+
+// Get all active regulatory frameworks
+app.get('/api/regulatory-frameworks', verifyToken, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT * FROM v_active_regulations
+      ORDER BY is_default DESC, framework_name
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching regulatory frameworks:', error);
+    res.status(500).json({ error: 'Failed to fetch regulatory frameworks' });
+  }
+});
+
+// Get single regulatory framework with all details
+app.get('/api/regulatory-frameworks/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const framework = await query(
+      'SELECT * FROM electrical_regulation_frameworks WHERE id = $1',
+      [id]
+    );
+
+    if (framework.rows.length === 0) {
+      return res.status(404).json({ error: 'Framework not found' });
+    }
+
+    // Load all related data
+    const [areaTypes, loadStandards, dtcThresholds, sanctionedLimits, powerFactors, substationReqs, landReqs, leaseTerms, infraSpecs, definitions] = await Promise.all([
+      query('SELECT * FROM regulation_area_types WHERE framework_id = $1 AND is_active = true', [id]),
+      query('SELECT * FROM regulation_load_standards WHERE framework_id = $1 AND is_active = true', [id]),
+      query('SELECT * FROM regulation_dtc_thresholds WHERE framework_id = $1 AND is_active = true', [id]),
+      query('SELECT * FROM regulation_sanctioned_load_limits WHERE framework_id = $1 AND is_active = true', [id]),
+      query('SELECT * FROM regulation_power_factors WHERE framework_id = $1 AND is_active = true', [id]),
+      query('SELECT * FROM regulation_substation_requirements WHERE framework_id = $1 AND is_active = true', [id]),
+      query('SELECT * FROM regulation_land_requirements WHERE framework_id = $1 AND is_active = true', [id]),
+      query('SELECT * FROM regulation_lease_terms WHERE framework_id = $1 AND is_active = true', [id]),
+      query('SELECT * FROM regulation_infrastructure_specs WHERE framework_id = $1 AND is_active = true', [id]),
+      query('SELECT * FROM regulation_definitions WHERE framework_id = $1 AND is_active = true', [id])
+    ]);
+
+    res.json({
+      ...framework.rows[0],
+      areaTypes: areaTypes.rows,
+      loadStandards: loadStandards.rows,
+      dtcThresholds: dtcThresholds.rows,
+      sanctionedLimits: sanctionedLimits.rows,
+      powerFactors: powerFactors.rows,
+      substationReqs: substationReqs.rows,
+      landReqs: landReqs.rows,
+      leaseTerms: leaseTerms.rows,
+      infraSpecs: infraSpecs.rows,
+      definitions: definitions.rows
+    });
+  } catch (error) {
+    console.error('Error fetching regulatory framework:', error);
+    res.status(500).json({ error: 'Failed to fetch regulatory framework' });
+  }
+});
+
+// Set project regulatory framework selection
+app.post('/api/projects/:projectId/regulatory-framework', verifyToken, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { frameworkId, notes } = req.body;
+
+    // Check if framework exists and is active
+    const framework = await query(
+      'SELECT * FROM electrical_regulation_frameworks WHERE id = $1 AND is_active = true',
+      [frameworkId]
+    );
+
+    if (framework.rows.length === 0) {
+      return res.status(404).json({ error: 'Framework not found or inactive' });
+    }
+
+    // Deactivate existing selections for this project
+    await query(
+      'UPDATE project_regulation_selection SET is_active = false WHERE project_id = $1',
+      [projectId]
+    );
+
+    // Insert new selection
+    const result = await query(
+      `INSERT INTO project_regulation_selection
+       (project_id, framework_id, selected_by, notes, is_active)
+       VALUES ($1, $2, $3, $4, true)
+       RETURNING *`,
+      [projectId, frameworkId, req.user.email, notes]
+    );
+
+    // Also update the project table
+    await query(
+      'UPDATE projects SET framework_id = $1 WHERE id = $2',
+      [frameworkId, projectId]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error setting project regulatory framework:', error);
+    res.status(500).json({ error: 'Failed to set project regulatory framework' });
+  }
+});
+
+// Get project's selected regulatory framework
+app.get('/api/projects/:projectId/regulatory-framework', verifyToken, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const result = await query(`
+      SELECT erf.*, prs.selected_at, prs.selected_by, prs.notes
+      FROM project_regulation_selection prs
+      JOIN electrical_regulation_frameworks erf ON prs.framework_id = erf.id
+      WHERE prs.project_id = $1 AND prs.is_active = true
+      ORDER BY prs.selected_at DESC
+      LIMIT 1
+    `, [projectId]);
+
+    if (result.rows.length === 0) {
+      // Return default framework
+      const defaultResult = await query(
+        'SELECT * FROM electrical_regulation_frameworks WHERE is_default = true AND is_active = true  LIMIT 1'
+      );
+      return res.json(defaultResult.rows[0] || null);
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching project regulatory framework:', error);
+    res.status(500).json({ error: 'Failed to fetch project regulatory framework' });
+  }
+});
+
+// Create new regulatory framework (L0 only)
+app.post('/api/regulatory-frameworks', verifyToken, async (req, res) => {
+  try {
+    // Check if user is L0
+    const userResult = await query(
+      'SELECT permission_level FROM users WHERE email = $1',
+      [req.user.email]
+    );
+
+    if (userResult.rows.length === 0 || userResult.rows[0].permission_level !== 'L0') {
+      return res.status(403).json({ error: 'Only L0 users can create regulatory frameworks' });
+    }
+
+    const {
+      framework_code,
+      framework_name,
+      issuing_authority,
+      state,
+      country,
+      circular_number,
+      issue_date,
+      effective_date,
+      document_url,
+      is_default,
+      notes
+    } = req.body;
+
+    // If setting as default, unset other defaults
+    if (is_default) {
+      await query('UPDATE electrical_regulation_frameworks SET is_default = false');
+    }
+
+    const result = await query(
+      `INSERT INTO electrical_regulation_frameworks
+       (framework_code, framework_name, issuing_authority, state, country, circular_number,
+        issue_date, effective_date, document_url, is_active, is_default, created_by, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, $10, $11, $12)
+       RETURNING *`,
+      [framework_code, framework_name, issuing_authority, state, country || 'India',
+       circular_number, issue_date, effective_date, document_url, is_default || false,
+       req.user.email, notes]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating regulatory framework:', error);
+    res.status(500).json({ error: 'Failed to create regulatory framework' });
+  }
+});
+
+// Update regulatory framework (L0 only)
+app.put('/api/regulatory-frameworks/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user is L0
+    const userResult = await query(
+      'SELECT permission_level FROM users WHERE email = $1',
+      [req.user.email]
+    );
+
+    if (userResult.rows.length === 0 || userResult.rows[0].permission_level !== 'L0') {
+      return res.status(403).json({ error: 'Only L0 users can update regulatory frameworks' });
+    }
+
+    const {
+      framework_name,
+      issuing_authority,
+      state,
+      country,
+      circular_number,
+      issue_date,
+      effective_date,
+      superseded_date,
+      document_url,
+      is_active,
+      is_default,
+      notes
+    } = req.body;
+
+    // If setting as default, unset other defaults
+    if (is_default) {
+      await query('UPDATE electrical_regulation_frameworks SET is_default = false WHERE id != $1', [id]);
+    }
+
+    const result = await query(
+      `UPDATE electrical_regulation_frameworks
+       SET framework_name = COALESCE($1, framework_name),
+           issuing_authority = COALESCE($2, issuing_authority),
+           state = COALESCE($3, state),
+           country = COALESCE($4, country),
+           circular_number = COALESCE($5, circular_number),
+           issue_date = COALESCE($6, issue_date),
+           effective_date = COALESCE($7, effective_date),
+           superseded_date = COALESCE($8, superseded_date),
+           document_url = COALESCE($9, document_url),
+           is_active = COALESCE($10, is_active),
+           is_default = COALESCE($11, is_default),
+           notes = COALESCE($12, notes),
+           updated_at = NOW(),
+           updated_by = $13
+       WHERE id = $14
+       RETURNING *`,
+      [framework_name, issuing_authority, state, country, circular_number, issue_date,
+       effective_date, superseded_date, document_url, is_active, is_default, notes,
+       req.user.email, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Framework not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating regulatory framework:', error);
+    res.status(500).json({ error: 'Failed to update regulatory framework' });
   }
 });
 

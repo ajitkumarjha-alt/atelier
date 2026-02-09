@@ -26,6 +26,10 @@ export default function ElectricalLoadCalculation() {
   // State for calculation
   const [selectedBuildings, setSelectedBuildings] = useState([]);
   const [inputParameters, setInputParameters] = useState({
+    // Regulatory Framework Settings
+    areaType: 'URBAN',
+    totalCarpetArea: 0,
+    
     // Project Level
     projectCategory: 'GOLD 2',
     
@@ -145,11 +149,31 @@ export default function ElectricalLoadCalculation() {
   const handleBuildingToggle = (building) => {
     setSelectedBuildings(prev => {
       const exists = prev.find(b => b.id === building.id);
+      let newSelection;
       if (exists) {
-        return prev.filter(b => b.id !== building.id);
+        newSelection = prev.filter(b => b.id !== building.id);
       } else {
-        return [...prev, building];
+        newSelection = [...prev, building];
       }
+      
+      // Auto-calculate total carpet area from selected buildings
+      const totalCarpetAreaSqFt = newSelection.reduce((total, bldg) => {
+        const buildingCarpetArea = (bldg.flats || []).reduce((sum, flat) => {
+          return sum + (parseFloat(flat.area_sqft) || 0) * (parseInt(flat.total_count) || 0);
+        }, 0);
+        return total + buildingCarpetArea;
+      }, 0);
+      
+      // Convert to sq.m (1 sq.ft = 0.092903 sq.m)
+      const totalCarpetAreaSqM = totalCarpetAreaSqFt * 0.092903;
+      
+      // Update input parameters with auto-calculated carpet area
+      setInputParameters(prev => ({
+        ...prev,
+        totalCarpetArea: parseFloat(totalCarpetAreaSqM.toFixed(2))
+      }));
+      
+      return newSelection;
     });
   };
 
@@ -202,7 +226,10 @@ export default function ElectricalLoadCalculation() {
         societyCALoads: result.society_ca_loads,
         totals: result.total_loads,
         buildingBreakdowns: result.building_breakdowns || null,
-        selectedBuildings: result.selected_buildings || []
+        selectedBuildings: result.selected_buildings || [],
+        regulatory_compliance: result.regulatory_compliance || result.calculation_metadata,
+        regulatory_framework: result.regulatory_framework,
+        areaType: result.area_type || inputParameters.areaType
       });
       setCurrentStep(3);
     } catch (error) {
@@ -547,6 +574,63 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
         )}
       </CollapsibleSection>
 
+      {/* Regulatory Settings */}
+      <CollapsibleSection title="Regulatory Settings (MSEDCL Compliance)" section="regulatory" icon={FileText}>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField 
+            label="Area Type" 
+            hint="Select the area classification per MSEDCL guidelines. Determines DTC thresholds and requirements."
+          >
+            <select
+              value={inputs.areaType}
+              onChange={(e) => onChange('areaType', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="RURAL">Rural Area (DTC threshold: 25 kVA)</option>
+              <option value="URBAN">Urban Area (DTC threshold: 75 kVA)</option>
+              <option value="METRO">Metropolitan Area (DTC threshold: 250 kVA)</option>
+              <option value="MAJOR_CITIES">Major Cities (DTC threshold: 250 kVA)</option>
+            </select>
+          </FormField>
+
+          <FormField
+            label="Total Carpet Area (sq.m)"
+            hint="✓ Auto-calculated from selected buildings. MSEDCL requires minimum 75 W/sq.m for residential."
+          >
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={inputs.totalCarpetArea}
+              onChange={(e) => {
+                const nextValue = parseFloat(e.target.value);
+                onChange('totalCarpetArea', Number.isNaN(nextValue) ? 0 : nextValue);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-green-50"
+              placeholder="Auto-calculated"
+              title="Auto-calculated from flat areas"
+            />
+            {inputs.totalCarpetArea > 0 && (
+              <p className="text-sm text-green-700 mt-2 font-semibold">
+                MSEDCL Minimum Required Load: {(inputs.totalCarpetArea * 75 / 1000).toFixed(2)} kW
+                <span className="text-xs text-gray-600 ml-2">(75 W/sq.m × {inputs.totalCarpetArea.toFixed(2)} sq.m)</span>
+              </p>
+            )}
+          </FormField>
+        </div>
+
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm font-semibold text-blue-900 mb-2">MSEDCL 2016 Guidelines:</p>
+          <ul className="text-xs text-blue-800 space-y-1">
+            <li>• <strong>Residential:</strong> Minimum 75 W/sq.m carpet area</li>
+            <li>• <strong>Commercial with AC:</strong> Minimum 200 W/sq.m carpet area</li>
+            <li>• <strong>Commercial (other):</strong> Minimum 150 W/sq.m carpet area</li>
+            <li>• <strong>Sanctioned Load Limit:</strong> Single consumer ≤ 160 kW / 200 kVA; Multiple consumers ≤ 480 kW / 600 kVA</li>
+            <li>• <strong>Load After DF:</strong> Used ONLY for DTC capacity sizing, NOT for billing</li>
+          </ul>
+        </div>
+      </CollapsibleSection>
+
       {/* Building Specifications */}
       <CollapsibleSection title="Building Specifications" section="building" icon={Building2}>
         <div className="grid grid-cols-2 gap-4">
@@ -707,6 +791,236 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
           <div className="text-xs text-gray-500">Based on 0.9 power factor</div>
         </div>
       </div>
+
+      {/* Regulatory Compliance (MSEDCL) */}
+      {results.regulatory_compliance && (
+        <div className="bg-white rounded-lg shadow-lg border-2 border-blue-500">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-t-lg">
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <FileText className="w-6 h-6" />
+              Regulatory Compliance - MSEDCL 2016
+            </h3>
+            <p className="text-sm text-blue-100 mt-1">
+              {results.regulatory_framework?.framework_name || 'MSEDCL Infrastructure Development Guidelines 2016'}
+            </p>
+          </div>
+
+          <div className="p-6 space-y-6">
+            {/* MSEDCL Minimum Load Check */}
+            {results.regulatory_compliance.msedclMinimum && (
+              <div className="border-l-4 border-blue-500 pl-4 bg-blue-50 p-4 rounded">
+                <h4 className="font-semibold text-blue-900 mb-2">Minimum Load Requirement</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-600">Carpet Area:</span>
+                    <span className="ml-2 font-semibold">{results.regulatory_compliance.msedclMinimum.carpetArea} sq.m</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">MSEDCL Minimum:</span>
+                    <span className="ml-2 font-semibold">{results.regulatory_compliance.msedclMinimum.requiredKW} kW</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-600">Standard:</span>
+                    <span className="ml-2 font-semibold">{results.regulatory_compliance.msedclMinimum.standard}</span>
+                    {results.regulatory_compliance.msedclMinimum.applied && (
+                      <span className="ml-2 text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded">
+                        ⚠️ Minimum applied
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Sanctioned Load (for billing) */}
+            {results.regulatory_compliance.sanctionedLoad && (
+              <div className="border-l-4 border-green-500 pl-4 bg-green-50 p-4 rounded">
+                <h4 className="font-semibold text-green-900 mb-2">Sanctioned Load (Contract Demand)</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm mb-2">
+                  <div>
+                    <span className="text-gray-600">Total Connected Load:</span>
+                    <span className="ml-2 font-bold text-lg">{results.regulatory_compliance.sanctionedLoad.totalConnectedLoadKW} kW</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Sanctioned Load:</span>
+                    <span className="ml-2 font-bold text-lg">{results.regulatory_compliance.sanctionedLoad.sanctionedLoadKW} kW / {results.regulatory_compliance.sanctionedLoad.sanctionedLoadKVA} kVA</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-600">Power Factor:</span>
+                    <span className="ml-2 font-semibold">{results.regulatory_compliance.sanctionedLoad.powerFactor}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-green-800 italic">
+                  {results.regulatory_compliance.sanctionedLoad.note}
+                </p>
+              </div>
+            )}
+
+            {/* Load After DF (for infrastructure) */}
+            {results.regulatory_compliance.loadAfterDF && (
+              <div className="border-l-4 border-purple-500 pl-4 bg-purple-50 p-4 rounded">
+                <h4 className="font-semibold text-purple-900 mb-2">Load After Diversity Factor (For DTC Sizing Only)</h4>
+                <div className="grid grid-cols-3 gap-3 text-sm mb-2">
+                  <div>
+                    <span className="text-gray-600">Max Demand:</span>
+                    <span className="ml-2 font-bold">{results.regulatory_compliance.loadAfterDF.maxDemandKW} kW / {results.regulatory_compliance.loadAfterDF.maxDemandKVA} kVA</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Essential:</span>
+                    <span className="ml-2 font-bold">{results.regulatory_compliance.loadAfterDF.essentialKW} kW</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Fire:</span>
+                    <span className="ml-2 font-bold">{results.regulatory_compliance.loadAfterDF.fireKW} kW</span>
+                  </div>
+                  <div className="col-span-3">
+                    <span className="text-gray-600">Power Factor:</span>
+                    <span className="ml-2 font-semibold">{results.regulatory_compliance.loadAfterDF.powerFactor}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-purple-800 italic font-semibold">
+                  ⚠️ {results.regulatory_compliance.loadAfterDF.note}
+                </p>
+              </div>
+            )}
+
+            {/* Validation Warnings */}
+            {results.regulatory_compliance.validation && !results.regulatory_compliance.validation.valid && (
+              <div className="border-l-4 border-red-500 pl-4 bg-red-50 p-4 rounded">
+                <h4 className="font-semibold text-red-900 mb-2">⚠️ Regulatory Limit Warnings</h4>
+                <div className="text-sm space-y-2">
+                  {results.regulatory_compliance.validation.exceedsKWLimit && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600">❌</span>
+                      <span>Sanctioned load exceeds {results.regulatory_compliance.validation.maxKW} kW limit</span>
+                    </div>
+                  )}
+                  {results.regulatory_compliance.validation.exceedsKVALimit && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600">❌</span>
+                      <span>Sanctioned load exceeds {results.regulatory_compliance.validation.maxKVA} kVA limit</span>
+                    </div>
+                  )}
+                  {results.regulatory_compliance.warnings && results.regulatory_compliance.warnings.map((warning, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="text-red-600">⚠️</span>
+                      <span className="text-red-700">{warning}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* DTC Requirements */}
+            {results.regulatory_compliance.dtc && results.regulatory_compliance.dtc.needed && (
+              <div className="border-l-4 border-orange-500 pl-4 bg-orange-50 p-4 rounded">
+                <h4 className="font-semibold text-orange-900 mb-2">DTC (Distribution Transformer Centre) Requirements</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-600">Area Type:</span>
+                    <span className="ml-2 font-semibold">{results.areaType}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Threshold:</span>
+                    <span className="ml-2 font-semibold">{results.regulatory_compliance.dtc.threshold} kVA</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Load After DF:</span>
+                    <span className="ml-2 font-bold text-orange-700">{results.regulatory_compliance.dtc.loadAfterDF_KVA} kVA</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Required DTCs:</span>
+                    <span className="ml-2 font-bold">{results.regulatory_compliance.dtc.dtcCount} × {results.regulatory_compliance.dtc.dtcCapacityPerUnit || 500} kVA</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Total Capacity:</span>
+                    <span className="ml-2 font-bold text-lg">{results.regulatory_compliance.dtc.totalCapacity} kVA</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Land Required:</span>
+                    <span className="ml-2 font-bold">{results.regulatory_compliance.dtc.landRequired} sq.m</span>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-orange-200">
+                  {results.regulatory_compliance.dtc.ringMainRequired && (
+                    <div className="text-xs text-orange-800 mb-1">
+                      ✓ Ring Main System Required (Metro/Major Cities)
+                    </div>
+                  )}
+                  {results.regulatory_compliance.dtc.individualTransformerRequired && (
+                    <div className="text-xs text-orange-800">
+                      ✓ Individual Transformer Per Building Required (Metro/Major Cities)
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Substation Requirements */}
+            {results.regulatory_compliance.substation && results.regulatory_compliance.substation.needed && (
+              <div className="border-l-4 border-indigo-500 pl-4 bg-indigo-50 p-4 rounded">
+                <h4 className="font-semibold text-indigo-900 mb-2">Substation Requirements</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="col-span-2">
+                    <span className="text-gray-600">Type:</span>
+                    <span className="ml-2 font-bold">{results.regulatory_compliance.substation.substationType}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Load After DF:</span>
+                    <span className="ml-2 font-bold text-indigo-700">{results.regulatory_compliance.substation.loadAfterDF_MVA} MVA</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Incoming Feeders:</span>
+                    <span className="ml-2 font-semibold">{results.regulatory_compliance.substation.incomingFeeders} × {results.regulatory_compliance.substation.feederCapacity} MVA</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-600">Land Required:</span>
+                    <span className="ml-2 font-bold">{results.regulatory_compliance.substation.landRequired || 'As per MSETCL'} {results.regulatory_compliance.substation.landRequired ? 'sq.m' : ''}</span>
+                  </div>
+                </div>
+                {results.regulatory_compliance.substation.specialRequirements && results.regulatory_compliance.substation.specialRequirements.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-indigo-200">
+                    <p className="text-xs font-semibold text-indigo-900 mb-1">Special Requirements:</p>
+                    {results.regulatory_compliance.substation.specialRequirements.map((req, i) => (
+                      <div key={i} className="text-xs text-indigo-800">✓ {req}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Land & Lease Summary */}
+            {results.regulatory_compliance.land && results.regulatory_compliance.land.total > 0 && (
+              <div className="border-l-4 border-teal-500 pl-4 bg-teal-50 p-4 rounded">
+                <h4 className="font-semibold text-teal-900 mb-2">Land & Lease Requirements</h4>
+                <div className="text-sm space-y-2">
+                  <div>
+                    <span className="text-gray-600">Total Land Required:</span>
+                    <span className="ml-2 font-bold text-lg">{results.regulatory_compliance.land.total} sq.m</span>
+                  </div>
+                  {results.regulatory_compliance.land.breakdown && results.regulatory_compliance.land.breakdown.map((item, i) => (
+                    <div key={i} className="ml-4 text-xs text-gray-700">
+                      • {item.type}: {item.totalLand} sq.m {item.count ? `(${item.count} units)` : ''}
+                    </div>
+                  ))}
+                  {results.regulatory_compliance.lease && (
+                    <div className="mt-3 pt-3 border-t border-teal-200">
+                      <p className="text-xs font-semibold text-teal-900 mb-1">Lease Terms:</p>
+                      <div className="text-xs text-teal-800 space-y-1">
+                        <div>• Duration: {results.regulatory_compliance.lease.duration}</div>
+                        <div>• Annual Rent: {results.regulatory_compliance.lease.annualRent}</div>
+                        <div>• Upfront Payment: {results.regulatory_compliance.lease.upfrontPayment}</div>
+                        {results.regulatory_compliance.lease.encumbranceFree && <div>• Encumbrance-free land required</div>}
+                        {results.regulatory_compliance.lease.registrationRequired && <div>• Lease deed registration required</div>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Per Building Calculations */}
       {Array.isArray(results.buildingBreakdowns) && results.buildingBreakdowns.length > 0 && (
@@ -908,36 +1222,73 @@ function LoadCategoryTable({ category }) {
     <div className="mb-6">
       <h4 className="font-semibold text-lg mb-2">{category.category}</h4>
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse border border-gray-300">
+        <table className="w-full border-collapse border border-gray-300 text-sm">
           <thead className="bg-gray-100">
             <tr>
-              <th className="border border-gray-300 p-2 text-left">Description</th>
-              <th className="border border-gray-300 p-2 text-right">Nos</th>
-              <th className="border border-gray-300 p-2 text-right">TCL (kW)</th>
-              <th className="border border-gray-300 p-2 text-right">Max (kW)</th>
-              <th className="border border-gray-300 p-2 text-right">Essential (kW)</th>
-              <th className="border border-gray-300 p-2 text-right">Fire (kW)</th>
+              <th className="border border-gray-300 p-2 text-left" rowSpan="2">Description</th>
+              <th className="border border-gray-300 p-2 text-center" colSpan="4">Connected Load</th>
+              <th className="border border-gray-300 p-2 text-center" colSpan="2">Maximum Demand</th>
+              <th className="border border-gray-300 p-2 text-center" colSpan="2">Essential</th>
+              <th className="border border-gray-300 p-2 text-center" colSpan="2">Fire Load</th>
+            </tr>
+            <tr>
+              <th className="border border-gray-300 p-1 text-right text-xs">Area (sqm)</th>
+              <th className="border border-gray-300 p-1 text-right text-xs">W/sqm</th>
+              <th className="border border-gray-300 p-1 text-right text-xs">Nos</th>
+              <th className="border border-gray-300 p-1 text-right text-xs bg-blue-50">TCL (kW)</th>
+              <th className="border border-gray-300 p-1 text-right text-xs">MDF</th>
+              <th className="border border-gray-300 p-1 text-right text-xs bg-green-50">Max (kW)</th>
+              <th className="border border-gray-300 p-1 text-right text-xs">EDF</th>
+              <th className="border border-gray-300 p-1 text-right text-xs bg-yellow-50">Ess (kW)</th>
+              <th className="border border-gray-300 p-1 text-right text-xs">FDF</th>
+              <th className="border border-gray-300 p-1 text-right text-xs bg-red-50">Fire (kW)</th>
             </tr>
           </thead>
           <tbody>
             {category.items.map((item, idx) => (
               <tr key={idx} className="hover:bg-gray-50">
                 <td className="border border-gray-300 p-2">{item.description}</td>
-                <td className="border border-gray-300 p-2 text-right">{item.nos || '-'}</td>
-                <td className="border border-gray-300 p-2 text-right">{item.tcl?.toFixed(2) || '0.00'}</td>
-                <td className="border border-gray-300 p-2 text-right">{item.maxDemandKW?.toFixed(2) || '0.00'}</td>
-                <td className="border border-gray-300 p-2 text-right">{item.essentialKW?.toFixed(2) || '0.00'}</td>
-                <td className="border border-gray-300 p-2 text-right">{item.fireKW?.toFixed(2) || '0.00'}</td>
+                <td className="border border-gray-300 p-1 text-right text-gray-600">
+                  {item.areaSqm ? Number(item.areaSqm).toFixed(1) : '-'}
+                </td>
+                <td className="border border-gray-300 p-1 text-right text-gray-600">
+                  {item.wattPerSqm ? Number(item.wattPerSqm).toFixed(1) : '-'}
+                </td>
+                <td className="border border-gray-300 p-1 text-right text-gray-600">{item.nos || '-'}</td>
+                <td className="border border-gray-300 p-1 text-right font-semibold bg-blue-50">
+                  {item.tcl?.toFixed(2) || '0.00'}
+                </td>
+                <td className="border border-gray-300 p-1 text-right text-gray-600">
+                  {item.mdf ? (item.mdf * 100).toFixed(0) + '%' : '-'}
+                </td>
+                <td className="border border-gray-300 p-1 text-right font-semibold bg-green-50">
+                  {item.maxDemandKW?.toFixed(2) || '0.00'}
+                </td>
+                <td className="border border-gray-300 p-1 text-right text-gray-600">
+                  {item.edf ? (item.edf * 100).toFixed(0) + '%' : '-'}
+                </td>
+                <td className="border border-gray-300 p-1 text-right font-semibold bg-yellow-50">
+                  {item.essentialKW?.toFixed(2) || '0.00'}
+                </td>
+                <td className="border border-gray-300 p-1 text-right text-gray-600">
+                  {item.fdf ? (item.fdf * 100).toFixed(0) + '%' : '-'}
+                </td>
+                <td className="border border-gray-300 p-1 text-right font-semibold bg-red-50">
+                  {item.fireKW?.toFixed(2) || '0.00'}
+                </td>
               </tr>
             ))}
           </tbody>
-          <tfoot className="bg-blue-50 font-bold">
+          <tfoot className="bg-gray-200 font-bold">
             <tr>
-              <td className="border border-gray-300 p-2" colSpan="2">Subtotal - {category.category}</td>
-              <td className="border border-gray-300 p-2 text-right">{category.totalTCL?.toFixed(2) || '0.00'}</td>
-              <td className="border border-gray-300 p-2 text-right">{category.totalMaxDemand?.toFixed(2) || '0.00'}</td>
-              <td className="border border-gray-300 p-2 text-right">{category.totalEssential?.toFixed(2) || '0.00'}</td>
-              <td className="border border-gray-300 p-2 text-right">{category.totalFire?.toFixed(2) || '0.00'}</td>
+              <td className="border border-gray-300 p-2" colSpan="4">Subtotal - {category.category}</td>
+              <td className="border border-gray-300 p-2 text-right bg-blue-100">{category.totalTCL?.toFixed(2) || '0.00'}</td>
+              <td className="border border-gray-300 p-2"></td>
+              <td className="border border-gray-300 p-2 text-right bg-green-100">{category.totalMaxDemand?.toFixed(2) || '0.00'}</td>
+              <td className="border border-gray-300 p-2"></td>
+              <td className="border border-gray-300 p-2 text-right bg-yellow-100">{category.totalEssential?.toFixed(2) || '0.00'}</td>
+              <td className="border border-gray-300 p-2"></td>
+              <td className="border border-gray-300 p-2 text-right bg-red-100">{category.totalFire?.toFixed(2) || '0.00'}</td>
             </tr>
           </tfoot>
         </table>
