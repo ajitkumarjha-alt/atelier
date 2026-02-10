@@ -667,34 +667,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
 
       {/* Building Specifications */}
       <CollapsibleSection title="Building Specifications" section="building" icon={Building2}>
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Building Height (m)" hint="Auto-filled from floor heights; per-building values are used in calculations.">
-            <input
-              type="number"
-              step="0.1"
-              min="0"
-              value={inputs.buildingHeight}
-              onChange={(e) => {
-                const nextValue = parseFloat(e.target.value);
-                onChange('buildingHeight', Number.isNaN(nextValue) ? 0 : nextValue);
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </FormField>
-
-          <FormField label="Number of Floors" hint="Auto-filled from the selected building(s).">
-            <input
-              type="number"
-              min="0"
-              value={inputs.numberOfFloors}
-              onChange={(e) => {
-                const nextValue = parseInt(e.target.value, 10);
-                onChange('numberOfFloors', Number.isNaN(nextValue) ? 0 : nextValue);
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </FormField>
-        </div>
+        {/* Removed Building Height and Number of Floors fields as per requirements */}
 
         {Array.isArray(selectedBuildings) && selectedBuildings.length > 0 && (
           <div className="mt-4 space-y-2">
