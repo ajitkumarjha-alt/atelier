@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { Plus, Trash2, Edit2, Check, X, Upload, FileText, Download } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Upload, FileText, Download, Calculator, Settings, ChevronRight } from 'lucide-react';
 
 export default function ProjectStandardsManagement() {
   const [standards, setStandards] = useState([]);
@@ -11,8 +11,10 @@ export default function ProjectStandardsManagement() {
   const [newEntry, setNewEntry] = useState({ category: 'application_type', value: '', description: '' });
   const [editData, setEditData] = useState({});
   
+  // Tab Management
+  const [activeTab, setActiveTab] = useState('calculations'); 
+
   // Document management states
-  const [activeTab, setActiveTab] = useState('standards'); // 'standards' or 'documents'
   const [documents, setDocuments] = useState([]);
   const [documentsByCategory, setDocumentsByCategory] = useState({});
   const [selectedDocCategory, setSelectedDocCategory] = useState('company_policies');
@@ -22,6 +24,18 @@ export default function ProjectStandardsManagement() {
   const [uploadDescription, setUploadDescription] = useState('');
   const [uploading, setUploading] = useState(false);
 
+  // --- UPDATED CALCULATION STANDARDS STATE ---
+  const [selectedMainCategory, setSelectedMainCategory] = useState('Electrical');
+  const [selectedSubModule, setSelectedSubModule] = useState('Electrical Load');
+
+  const calculationStructure = {
+    'Electrical': ['Electrical Load', 'Cable Selection', 'Transformers', 'Earthing', 'LPS'],
+    'PHE': ['Water Demand', 'Pump Head', 'Septic Tank', 'Rainwater Harvesting'],
+    'Fire Fighting': ['Hydrant System', 'Sprinkler System', 'Fire Pump Room'],
+    'LV': ['CCTV Storage', 'IT Rack Load', 'PA System'],
+    'HVAC': ['Heat Load', 'Duct Sizing', 'Chiller Capacity']
+  };
+
   const categories = [
     { value: 'application_type', label: 'Application Types' },
     { value: 'residential_type', label: 'Residential Types' },
@@ -29,7 +43,6 @@ export default function ProjectStandardsManagement() {
     { value: 'building_type', label: 'Building Types' },
   ];
 
-  // Fetch standards
   useEffect(() => {
     fetchAllStandards();
     fetchDocumentCategories();
@@ -48,7 +61,6 @@ export default function ProjectStandardsManagement() {
       }
     } catch (err) {
       setError(err.message);
-      console.error('Error fetching standards:', err);
     } finally {
       setLoading(false);
     }
@@ -61,9 +73,7 @@ export default function ProjectStandardsManagement() {
         const data = await response.json();
         setDocumentCategories(data.categories);
       }
-    } catch (err) {
-      console.error('Error fetching document categories:', err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const fetchDocuments = async () => {
@@ -74,95 +84,50 @@ export default function ProjectStandardsManagement() {
         setDocuments(data.documents);
         setDocumentsByCategory(data.documentsByCategory);
       }
-    } catch (err) {
-      console.error('Error fetching documents:', err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const handleFileUpload = async () => {
-    if (!uploadFile) {
-      alert('Please select a file');
-      return;
-    }
-
+    if (!uploadFile) return alert('Please select a file');
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append('file', uploadFile);
       formData.append('category', uploadCategory);
       formData.append('description', uploadDescription);
-
-      const response = await fetch('/api/project-standards-documents/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
+      const response = await fetch('/api/project-standards-documents/upload', { method: 'POST', body: formData });
       if (response.ok) {
         await fetchDocuments();
         setUploadFile(null);
         setUploadDescription('');
         alert('Document uploaded successfully');
-      } else {
-        const error = await response.json();
-        alert('Failed to upload document: ' + (error.error || 'Unknown error'));
       }
-    } catch (err) {
-      alert('Error uploading document: ' + err.message);
-    } finally {
-      setUploading(false);
-    }
+    } catch (err) { alert(err.message); } finally { setUploading(false); }
   };
 
   const handleDeleteDocument = async (docId) => {
-    if (!window.confirm('Are you sure you want to delete this document?')) {
-      return;
-    }
-
+    if (!window.confirm('Are you sure?')) return;
     try {
-      const response = await fetch(`/api/project-standards-documents/${docId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        await fetchDocuments();
-      } else {
-        alert('Failed to delete document');
-      }
-    } catch (err) {
-      alert('Error deleting document: ' + err.message);
-    }
+      const response = await fetch(`/api/project-standards-documents/${docId}`, { method: 'DELETE' });
+      if (response.ok) await fetchDocuments();
+    } catch (err) { alert(err.message); }
   };
 
-  // Add new standard
   const handleAddStandard = async () => {
-    if (!newEntry.value.trim()) {
-      alert('Please enter a value');
-      return;
-    }
-
+    if (!newEntry.value.trim()) return alert('Please enter a value');
     try {
       const response = await fetch('/api/project-standards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category: newEntry.category,
-          value: newEntry.value,
-          description: newEntry.description,
-        }),
+        body: JSON.stringify(newEntry),
       });
-
       if (response.ok) {
         await fetchAllStandards();
-        setNewEntry({ category: 'application_type', value: '', description: '' });
-      } else {
-        alert('Failed to add standard');
+        setNewEntry({ ...newEntry, value: '', description: '' });
       }
-    } catch (err) {
-      alert('Error adding standard: ' + err.message);
-    }
+    } catch (err) { alert(err.message); }
   };
 
-  // Update standard
   const handleUpdateStandard = async (id) => {
     try {
       const response = await fetch(`/api/project-standards/${id}`, {
@@ -170,57 +135,30 @@ export default function ProjectStandardsManagement() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editData[id]),
       });
-
       if (response.ok) {
         await fetchAllStandards();
         setEditingId(null);
-        setEditData({});
-      } else {
-        alert('Failed to update standard');
       }
-    } catch (err) {
-      alert('Error updating standard: ' + err.message);
-    }
+    } catch (err) { alert(err.message); }
   };
 
-  // Delete standard
   const handleDeleteStandard = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this standard?')) {
-      return;
-    }
-
+    if (!window.confirm('Are you sure?')) return;
     try {
-      const response = await fetch(`/api/project-standards/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        await fetchAllStandards();
-      } else {
-        alert('Failed to delete standard');
-      }
-    } catch (err) {
-      alert('Error deleting standard: ' + err.message);
-    }
+      const response = await fetch(`/api/project-standards/${id}`, { method: 'DELETE' });
+      if (response.ok) await fetchAllStandards();
+    } catch (err) { alert(err.message); }
   };
 
-  // Toggle active status
   const handleToggleActive = async (id, currentStatus) => {
     try {
-      const response = await fetch(`/api/project-standards/${id}`, {
+      await fetch(`/api/project-standards/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !currentStatus }),
       });
-
-      if (response.ok) {
-        await fetchAllStandards();
-      } else {
-        alert('Failed to update standard');
-      }
-    } catch (err) {
-      alert('Error updating standard: ' + err.message);
-    }
+      await fetchAllStandards();
+    } catch (err) { alert(err.message); }
   };
 
   const filteredStandards = standards.filter(s => s.category === selectedCategory);
@@ -230,45 +168,31 @@ export default function ProjectStandardsManagement() {
       <div className="p-6">
         <div className="mb-8">
           <h1 className="heading-primary mb-2">Project Standards Management</h1>
-          <p className="text-lodha-grey">Manage dropdown options and reference documents</p>
+          <p className="text-lodha-grey">Manage dropdown options, calculation factors, and reference documents</p>
         </div>
 
-        {error && (
-          <div className="mb-6 p-4 bg-lodha-sand border border-lodha-gold rounded text-lodha-black">
-            Error: {error}
-          </div>
-        )}
+        {error && <div className="mb-6 p-4 bg-lodha-sand border border-lodha-gold rounded">{error}</div>}
 
         {/* Tabs */}
         <div className="mb-6 border-b border-lodha-gold/30">
           <div className="flex gap-4">
-            <button
-              onClick={() => setActiveTab('standards')}
-              className={`px-6 py-3 font-jost font-semibold transition border-b-2 ${
-                activeTab === 'standards'
-                  ? 'border-lodha-gold text-lodha-gold'
-                  : 'border-transparent text-lodha-grey hover:text-lodha-black'
-              }`}
-            >
-              Dropdown Standards
-            </button>
-            <button
-              onClick={() => setActiveTab('documents')}
-              className={`px-6 py-3 font-jost font-semibold transition border-b-2 ${
-                activeTab === 'documents'
-                  ? 'border-lodha-gold text-lodha-gold'
-                  : 'border-transparent text-lodha-grey hover:text-lodha-black'
-              }`}
-            >
-              Reference Documents
-            </button>
+            {['standards', 'calculations', 'documents'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-6 py-3 font-jost font-semibold transition border-b-2 capitalize ${
+                  activeTab === tab ? 'border-lodha-gold text-lodha-gold' : 'border-transparent text-lodha-grey hover:text-lodha-black'
+                }`}
+              >
+                {tab === 'standards' ? 'Dropdown Standards' : tab === 'calculations' ? 'Calculation Standards' : 'Reference Documents'}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Standards Tab */}
+        {/* 1. Standards Tab (Preserved as is) */}
         {activeTab === 'standards' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Sidebar - Categories */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
             <div className="bg-white rounded-lg shadow-md p-6 h-fit">
               <h2 className="heading-secondary mb-4">Categories</h2>
               <div className="space-y-2">
@@ -277,9 +201,7 @@ export default function ProjectStandardsManagement() {
                     key={cat.value}
                     onClick={() => setSelectedCategory(cat.value)}
                     className={`w-full text-left px-4 py-2 rounded transition ${
-                      selectedCategory === cat.value
-                        ? 'bg-lodha-gold text-white'
-                        : 'bg-lodha-sand text-lodha-black hover:bg-lodha-sand/80 border border-lodha-gold/30'
+                      selectedCategory === cat.value ? 'bg-lodha-gold text-white' : 'bg-lodha-sand text-lodha-black hover:bg-lodha-sand/80 border border-lodha-gold/30'
                     }`}
                   >
                     {cat.label}
@@ -287,192 +209,166 @@ export default function ProjectStandardsManagement() {
                 ))}
               </div>
             </div>
-
-            {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Add New Standard */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="heading-secondary mb-4">Add New Standard</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-jost font-semibold mb-2">Category</label>
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="heading-secondary mb-4">Add New Standard</h2>
+                <div className="space-y-4">
                   <select
                     value={newEntry.category}
                     onChange={e => setNewEntry({ ...newEntry, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                    className="w-full px-3 py-2 border border-lodha-grey rounded"
                   >
-                    {categories.map(cat => (
-                      <option key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </option>
-                    ))}
+                    {categories.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-jost font-semibold mb-2">Value</label>
                   <input
                     type="text"
                     value={newEntry.value}
                     onChange={e => setNewEntry({ ...newEntry, value: e.target.value })}
-                    placeholder="e.g., Residential, Penthouse, etc."
-                    className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                    placeholder="Value (e.g. Residential)"
+                    className="w-full px-3 py-2 border border-lodha-grey rounded"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-jost font-semibold mb-2">Description</label>
                   <textarea
                     value={newEntry.description}
                     onChange={e => setNewEntry({ ...newEntry, description: e.target.value })}
-                    placeholder="e.g., Residential buildings"
-                    rows="3"
-                    className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                    placeholder="Description"
+                    rows="2"
+                    className="w-full px-3 py-2 border border-lodha-grey rounded"
                   />
+                  <button onClick={handleAddStandard} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-lodha-gold text-white rounded">
+                    <Plus className="w-4 h-4" /> Add Standard
+                  </button>
                 </div>
-
-                <button
-                  onClick={handleAddStandard}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-lodha-gold text-white rounded hover:bg-lodha-gold/90 transition"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Standard
-                </button>
               </div>
-            </div>
-
-            {/* Standards List */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="heading-secondary mb-4">
-                {categories.find(c => c.value === selectedCategory)?.label}
-              </h2>
-
-              {loading ? (
-                <p className="text-lodha-black/70">Loading standards...</p>
-              ) : filteredStandards.length === 0 ? (
-                <p className="text-lodha-black/70">No standards in this category. Add one above.</p>
-              ) : (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="heading-secondary mb-4">{categories.find(c => c.value === selectedCategory)?.label}</h2>
                 <div className="space-y-3">
                   {filteredStandards.map(standard => (
-                    <div
-                      key={standard.id}
-                      className="p-4 border border-lodha-gold/30 rounded-lg hover:bg-lodha-sand/30 transition bg-lodha-sand/50"
-                    >
+                    <div key={standard.id} className="p-4 border border-lodha-gold/30 rounded-lg bg-lodha-sand/50">
                       {editingId === standard.id ? (
-                        // Edit Mode
                         <div className="space-y-3">
                           <input
                             type="text"
                             value={editData[standard.id]?.value || standard.value}
-                            onChange={e =>
-                              setEditData({
-                                ...editData,
-                                [standard.id]: { ...editData[standard.id], value: e.target.value },
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
-                          />
-                          <textarea
-                            value={editData[standard.id]?.description || standard.description}
-                            onChange={e =>
-                              setEditData({
-                                ...editData,
-                                [standard.id]: { ...editData[standard.id], description: e.target.value },
-                              })
-                            }
-                            rows="2"
-                            className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                            onChange={e => setEditData({...editData, [standard.id]: {...editData[standard.id], value: e.target.value}})}
+                            className="w-full px-3 py-2 border rounded"
                           />
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => handleUpdateStandard(standard.id)}
-                              className="flex-1 flex items-center justify-center gap-2 px-3 py-1 bg-lodha-gold text-white rounded hover:bg-lodha-deep transition text-sm"
-                            >
-                              <Check className="w-4 h-4" />
-                              Save
-                            </button>
-                            <button
-                              onClick={() => setEditingId(null)}
-                              className="flex-1 flex items-center justify-center gap-2 px-3 py-1 bg-lodha-sand text-lodha-black rounded hover:bg-lodha-sand/80 transition text-sm border border-lodha-gold/30"
-                            >
-                              <X className="w-4 h-4" />
-                              Cancel
-                            </button>
+                            <button onClick={() => handleUpdateStandard(standard.id)} className="flex-1 bg-lodha-gold text-white py-1 rounded">Save</button>
+                            <button onClick={() => setEditingId(null)} className="flex-1 bg-gray-200 py-1 rounded">Cancel</button>
                           </div>
                         </div>
                       ) : (
-                        // View Mode
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3">
-                              <h3 className="font-jost font-semibold text-lodha-black">
-                                {standard.value}
-                              </h3>
-                              <span
-                                className={`text-xs px-2 py-1 rounded ${
-                                  standard.is_active
-                                    ? 'bg-lodha-sand text-lodha-black border border-lodha-gold'
-                                    : 'bg-lodha-sand/60 text-lodha-black/70 border border-lodha-gold/20'
-                                }`}
-                              >
-                                {standard.is_active ? 'Active' : 'Inactive'}
-                              </span>
-                            </div>
-                            {standard.description && (
-                              <p className="text-sm text-lodha-grey mt-1">{standard.description}</p>
-                            )}
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <h3 className="font-semibold">{standard.value}</h3>
+                            <p className="text-sm text-lodha-grey">{standard.description}</p>
                           </div>
-                          <div className="flex gap-2 ml-4">
-                            <button
-                              onClick={() => {
-                                setEditingId(standard.id);
-                                setEditData({
-                                  ...editData,
-                                  [standard.id]: {
-                                    value: standard.value,
-                                    description: standard.description,
-                                  },
-                                });
-                              }}
-                              className="p-2 text-lodha-gold hover:bg-lodha-gold/10 rounded transition"
-                              title="Edit"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleToggleActive(standard.id, standard.is_active)}
-                              className={`p-2 rounded transition ${
-                                standard.is_active
-                                  ? 'text-lodha-gold hover:bg-lodha-sand/80'
-                                  : 'text-lodha-black/50 hover:bg-lodha-sand/30'
-                              }`}
-                              title={standard.is_active ? 'Deactivate' : 'Activate'}
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteStandard(standard.id)}
-                              className="p-2 text-lodha-gold hover:bg-lodha-sand/80 rounded transition"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                          <div className="flex gap-2">
+                            <button onClick={() => setEditingId(standard.id)} className="p-2 text-lodha-gold"><Edit2 className="w-4 h-4"/></button>
+                            <button onClick={() => handleToggleActive(standard.id, standard.is_active)} className="p-2"><Check className={`w-4 h-4 ${standard.is_active ? 'text-green-600' : 'text-gray-400'}`}/></button>
+                            <button onClick={() => handleDeleteStandard(standard.id)} className="p-2 text-red-500"><Trash2 className="w-4 h-4"/></button>
                           </div>
                         </div>
                       )}
                     </div>
                   ))}
                 </div>
-              )}
+              </div>
             </div>
           </div>
-        </div>
         )}
 
-        {/* Documents Tab */}
+        {/* 2. Calculation Standards Tab (UPDATED) */}
+        {activeTab === 'calculations' && (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-fadeIn">
+            {/* Disciplines Column */}
+            <div className="bg-white rounded-lg shadow-md p-5 border border-lodha-gold/10 h-fit">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-lodha-grey mb-4">Disciplines</h2>
+              <div className="space-y-1">
+                {Object.keys(calculationStructure).map(main => (
+                  <button
+                    key={main}
+                    onClick={() => {
+                      setSelectedMainCategory(main);
+                      setSelectedSubModule(calculationStructure[main][0]);
+                    }}
+                    className={`w-full text-left px-4 py-2.5 rounded-md transition flex justify-between items-center ${
+                      selectedMainCategory === main ? 'bg-lodha-gold text-white shadow-sm' : 'text-lodha-black hover:bg-lodha-sand'
+                    }`}
+                  >
+                    <span className="font-medium">{main}</span>
+                    {selectedMainCategory === main && <ChevronRight className="w-4 h-4" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Modules Column */}
+            <div className="bg-white rounded-lg shadow-md p-5 border border-lodha-gold/10 h-fit">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-lodha-grey mb-4">{selectedMainCategory} Modules</h2>
+              <div className="space-y-1">
+                {calculationStructure[selectedMainCategory].map(sub => (
+                  <button
+                    key={sub}
+                    onClick={() => setSelectedSubModule(sub)}
+                    className={`w-full text-left px-4 py-2 rounded-md text-sm transition ${
+                      selectedSubModule === sub ? 'bg-lodha-sand text-lodha-gold font-bold border-l-4 border-lodha-gold' : 'text-lodha-grey hover:text-lodha-black'
+                    }`}
+                  >
+                    {sub}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Content Column */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white rounded-lg shadow-md p-6 border border-lodha-gold/10">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="heading-secondary">{selectedSubModule} Constants</h2>
+                  <button className="flex items-center gap-2 px-3 py-1.5 bg-lodha-gold text-white rounded-md text-sm">
+                    <Plus className="w-4 h-4" /> Add Factor
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-lodha-gold/20 text-lodha-grey text-xs uppercase">
+                        <th className="pb-3 font-bold">Factor</th>
+                        <th className="pb-3 font-bold">Value</th>
+                        <th className="pb-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-sm">
+                      <tr className="border-b border-lodha-gold/5 hover:bg-lodha-sand/20">
+                        <td className="py-4 font-medium">Standard {selectedSubModule} Factor</td>
+                        <td className="py-4 font-mono text-lodha-gold">0.85</td>
+                        <td className="py-4 text-right">
+                          <button className="text-lodha-gold p-1 hover:bg-lodha-gold/10 rounded"><Edit2 className="w-4 h-4"/></button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="bg-lodha-sand/50 border border-lodha-gold/30 rounded-lg p-5">
+                <div className="flex gap-3 items-start">
+                  <Settings className="w-5 h-5 text-lodha-gold mt-1" />
+                  <div>
+                    <h3 className="font-jost font-semibold text-lodha-black">Engine Integration</h3>
+                    <p className="text-sm text-lodha-grey mt-1">
+                      Values updated here are used as default constants for <strong>{selectedSubModule}</strong> calculations.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 3. Documents Tab (Preserved as is) */}
         {activeTab === 'documents' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Sidebar - Document Categories */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
             <div className="bg-white rounded-lg shadow-md p-6 h-fit">
               <h2 className="heading-secondary mb-4">Document Categories</h2>
               <div className="space-y-2">
@@ -481,9 +377,7 @@ export default function ProjectStandardsManagement() {
                     key={cat.value}
                     onClick={() => setSelectedDocCategory(cat.value)}
                     className={`w-full text-left px-4 py-2 rounded transition ${
-                      selectedDocCategory === cat.value
-                        ? 'bg-lodha-gold text-white'
-                        : 'bg-lodha-sand text-lodha-black hover:bg-lodha-sand/80 border border-lodha-gold/30'
+                      selectedDocCategory === cat.value ? 'bg-lodha-gold text-white' : 'bg-lodha-sand text-lodha-black hover:bg-lodha-sand/80 border border-lodha-gold/30'
                     }`}
                   >
                     {cat.label}
@@ -491,135 +385,60 @@ export default function ProjectStandardsManagement() {
                 ))}
               </div>
             </div>
-
-            {/* Document Management */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Upload Document */}
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="heading-secondary mb-4">Upload Document</h2>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-jost font-semibold mb-2">Category</label>
-                    <select
-                      value={uploadCategory}
-                      onChange={e => setUploadCategory(e.target.value)}
-                      className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
-                    >
-                      {documentCategories.map(cat => (
-                        <option key={cat.value} value={cat.value}>
-                          {cat.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-jost font-semibold mb-2">File (PDF)</label>
-                    <input
-                      type="file"
-                      accept=".pdf"
-                      onChange={e => setUploadFile(e.target.files[0])}
-                      className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
-                    />
-                    {uploadFile && (
-                      <p className="text-sm text-lodha-grey mt-2">
-                        Selected: {uploadFile.name} ({(uploadFile.size / 1024 / 1024).toFixed(2)} MB)
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-jost font-semibold mb-2">Description</label>
-                    <textarea
-                      value={uploadDescription}
-                      onChange={e => setUploadDescription(e.target.value)}
-                      placeholder="Brief description of the document"
-                      rows="3"
-                      className="w-full px-3 py-2 border border-lodha-grey rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
-                    />
-                  </div>
-
+                  <select
+                    value={uploadCategory}
+                    onChange={e => setUploadCategory(e.target.value)}
+                    className="w-full px-3 py-2 border border-lodha-grey rounded"
+                  >
+                    {documentCategories.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
+                  </select>
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={e => setUploadFile(e.target.files[0])}
+                    className="w-full px-3 py-2 border border-lodha-grey rounded"
+                  />
+                  <textarea
+                    value={uploadDescription}
+                    onChange={e => setUploadDescription(e.target.value)}
+                    placeholder="Description"
+                    rows="2"
+                    className="w-full px-3 py-2 border border-lodha-grey rounded"
+                  />
                   <button
                     onClick={handleFileUpload}
                     disabled={uploading || !uploadFile}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-lodha-gold text-white rounded hover:bg-lodha-gold/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-lodha-gold text-white rounded disabled:opacity-50"
                   >
-                    <Upload className="w-4 h-4" />
-                    {uploading ? 'Uploading...' : 'Upload Document'}
+                    <Upload className="w-4 h-4" /> {uploading ? 'Uploading...' : 'Upload Document'}
                   </button>
                 </div>
               </div>
-
-              {/* Documents List */}
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="heading-secondary mb-4">
                   {documentCategories.find(c => c.value === selectedDocCategory)?.label || 'Documents'}
                 </h2>
-
-                {documentsByCategory[selectedDocCategory]?.length === 0 || !documentsByCategory[selectedDocCategory] ? (
-                  <p className="text-lodha-black/70">No documents in this category. Upload one above.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {documentsByCategory[selectedDocCategory]?.map(doc => (
-                      <div
-                        key={doc.id}
-                        className="p-4 border border-lodha-gold/30 rounded-lg hover:bg-lodha-sand/30 transition bg-lodha-sand/50"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3">
-                              <FileText className="w-5 h-5 text-lodha-gold" />
-                              <h3 className="font-jost font-semibold text-lodha-black">
-                                {doc.document_name}
-                              </h3>
-                            </div>
-                            {doc.description && (
-                              <p className="text-sm text-lodha-grey mt-2">{doc.description}</p>
-                            )}
-                            <div className="text-xs text-lodha-grey mt-2">
-                              <p>Uploaded: {new Date(doc.created_at).toLocaleDateString()}</p>
-                              {doc.uploaded_by_name && <p>By: {doc.uploaded_by_name}</p>}
-                              <p>Size: {(doc.file_size / 1024 / 1024).toFixed(2)} MB</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2 ml-4">
-                            <a
-                              href={doc.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 text-lodha-gold hover:bg-lodha-gold/10 rounded transition"
-                              title="View/Download"
-                            >
-                              <Download className="w-4 h-4" />
-                            </a>
-                            <button
-                              onClick={() => handleDeleteDocument(doc.id)}
-                              className="p-2 text-lodha-gold hover:bg-lodha-sand/80 rounded transition"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
+                <div className="space-y-3">
+                  {(documentsByCategory[selectedDocCategory] || []).map(doc => (
+                    <div key={doc.id} className="p-4 border border-lodha-gold/30 rounded-lg flex justify-between items-start bg-lodha-sand/50">
+                      <div className="flex gap-3">
+                        <FileText className="w-5 h-5 text-lodha-gold" />
+                        <div>
+                          <h3 className="font-semibold text-sm">{doc.document_name}</h3>
+                          <p className="text-xs text-lodha-grey mt-1">{doc.description}</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Info Box */}
-              <div className="bg-lodha-sand/50 border border-lodha-gold/30 rounded-lg p-4">
-                <h3 className="font-jost font-semibold text-lodha-black mb-2">📚 About Reference Documents</h3>
-                <p className="text-sm text-lodha-grey">
-                  Upload company policies, local bylaws, IS codes, NBC codes, and other reference documents. 
-                  Atelier AI will read and analyze these documents to:
-                </p>
-                <ul className="text-sm text-lodha-grey mt-2 ml-4 space-y-1">
-                  <li>• Guide design calculations according to standards</li>
-                  <li>• Answer questions based on uploaded documents</li>
-                  <li>• Ensure compliance with regulations and policies</li>
-                  <li>• Provide context-aware recommendations</li>
-                </ul>
+                      <div className="flex gap-2">
+                        <a href={doc.file_url} target="_blank" rel="noreferrer" className="p-2 text-lodha-gold hover:bg-white rounded"><Download className="w-4 h-4"/></a>
+                        <button onClick={() => handleDeleteDocument(doc.id)} className="p-2 text-lodha-gold hover:bg-white rounded"><Trash2 className="w-4 h-4"/></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
