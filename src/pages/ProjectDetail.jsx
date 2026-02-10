@@ -172,7 +172,7 @@ export default function ProjectDetail() {
           <div className="space-y-3">
             <div>
               <p className="text-sm text-lodha-grey font-jost">Location</p>
-              <p className="text-body font-semibold">{project.description || '—'}</p>
+              <p className="text-body font-semibold">{project.location}</p>
             </div>
             <div>
               <p className="text-sm text-lodha-grey font-jost">Assigned Lead</p>
@@ -223,107 +223,153 @@ export default function ProjectDetail() {
         </div>
       </div>
 
-      {/* Floor-wise Details */}
+      {/* Floor-wise Details - Grouped by Society */}
       {project.buildings && project.buildings.length > 0 && (
         <div className="card mb-8">
-          <h2 className="heading-secondary mb-4">Floor-wise Details</h2>
-          <div className="space-y-6">
+          <h2 className="heading-secondary mb-4">Floor-wise Details (Grouped by Society)</h2>
+          <div className="space-y-10">
             {(() => {
-              // Filter out twin buildings - only show parent buildings
-              const parentBuildings = project.buildings.filter(b => !b.twin_of_building_id);
-              
-              return parentBuildings.map((building, idx) => {
-                // Find all twin buildings for this parent building
-                const twinBuildings = project.buildings.filter(b => b.twin_of_building_id === building.id);
-                const twinBuildingNames = twinBuildings.map(tb => tb.name).join(', ');
-                
+              // Always use societies from backend response
+              const societies = Array.isArray(project.societies) ? project.societies : [];
+              // Fallback: if no societies, create a dummy for 'No Society'
+              const buildingsBySociety = {};
+              project.buildings.forEach(b => {
+                const sid = b.societyId || b.society_id || 'no-society';
+                if (!buildingsBySociety[sid]) buildingsBySociety[sid] = [];
+                buildingsBySociety[sid].push(b);
+              });
+              // Render each society group, always showing the correct name from DB
+              return Object.entries(buildingsBySociety).map(([societyId, buildings], sIdx) => {
+                // societyId may be int or string, so match loosely
+                const society = societies.find(s => String(s.id) === String(societyId));
+                // Find parent buildings (those that are not twins, or are the lowest id in their twin set)
+                const shownBuildingIds = new Set();
+                const parentBuildings = buildings.filter(b => {
+                  if (b.twin_of_building_id) {
+                    // This is a twin, only show if its parent is not present (all twins, no parent)
+                    const parent = buildings.find(x => x.id === b.twin_of_building_id);
+                    if (!parent) {
+                      // Only show the lowest id in the twin set
+                      const twinSet = buildings.filter(x => x.twin_of_building_id === b.twin_of_building_id || x.id === b.twin_of_building_id);
+                      const minId = Math.min(...twinSet.map(x => x.id));
+                      if (b.id === minId) {
+                        twinSet.forEach(x => shownBuildingIds.add(x.id));
+                        return true;
+                      }
+                      return false;
+                    }
+                    return false;
+                  } else {
+                    // This is a parent, show it and mark all its twins as shown
+                    const twinSet = buildings.filter(x => x.twin_of_building_id === b.id || x.id === b.id);
+                    twinSet.forEach(x => shownBuildingIds.add(x.id));
+                    return true;
+                  }
+                });
                 return (
-                  <div key={building.id} className="border-l-4 border-lodha-gold pl-4">
-                    <h3 className="font-jost font-bold text-lg text-lodha-black mb-1">
-                      {building.name || `Building ${idx + 1}`}
-                      <span className="ml-3 text-sm font-normal text-lodha-grey">
-                        ({building.application_type})
-                      </span>
+                  <div key={societyId} className="mb-8">
+                    <h3 className="font-jost font-bold text-xl text-lodha-gold mb-2">
+                      {society ? society.name : 'No Society'}
                     </h3>
-                    {twinBuildingNames && (
-                      <div className="text-xs text-lodha-grey mb-3 font-jost">
-                        Twin buildings: {twinBuildingNames}
-                      </div>
-                    )}
-                    <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-lodha-grey/30">
-                        <th className="text-left py-2 px-3 font-jost font-semibold">Floor</th>
-                        <th className="text-left py-2 px-3 font-jost font-semibold">Flat Type</th>
-                        <th className="text-right py-2 px-3 font-jost font-semibold">Area (sqm)</th>
-                        <th className="text-right py-2 px-3 font-jost font-semibold">Count</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {building.floors && building.floors.length > 0 ? (
-                        (() => {
-                          // Filter out twin floors - only show parent floors
-                          const parentFloors = building.floors.filter(f => !f.twin_of_floor_id);
-                          
-                          return parentFloors.length > 0 ? parentFloors.map((floor) => {
-                            // Find all twin floors for this parent floor
-                            const twinFloors = building.floors.filter(f => f.twin_of_floor_id === floor.id);
-                            const twinNames = twinFloors.map(t => t.floor_name || `Floor ${t.floor_number}`).join(', ');
-                            
-                            return floor.flats && floor.flats.length > 0 ? (
-                              floor.flats.map((flat, flatIdx) => (
-                                <tr key={`${floor.id}-${flat.id}`} className="border-b border-lodha-grey/10 hover:bg-lodha-sand/30">
-                                  {flatIdx === 0 && (
-                                    <td rowSpan={floor.flats.length} className="py-2 px-3 font-semibold align-top">
-                                      <div>
-                                        {floor.floor_name || `Floor ${floor.floor_number}`}
-                                        {twinNames && (
-                                          <div className="text-xs font-normal text-lodha-grey mt-1">
-                                            Twin: {twinNames}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </td>
+                    <div className="space-y-6">
+                      {parentBuildings.map((building, idx) => {
+                        // Find all buildings in the same twin group (including self)
+                        let twinGroup = [];
+                        if (building.twin_of_building_id) {
+                          // This is a twin, find all buildings with same parent
+                          twinGroup = buildings.filter(b => b.twin_of_building_id === building.twin_of_building_id || b.id === building.twin_of_building_id);
+                        } else {
+                          // This is a parent, find all twins and self
+                          twinGroup = buildings.filter(b => b.twin_of_building_id === building.id || b.id === building.id);
+                        }
+                        const twinGroupNames = twinGroup.map(b => b.name).filter(Boolean).join(', ');
+                        return (
+                          <div key={building.id} className="border-l-4 border-lodha-gold pl-4">
+                            <h4 className="font-jost font-bold text-lg text-lodha-black mb-1">
+                              {building.name || `Building ${idx + 1}`}
+                              {twinGroup.length > 1 && (
+                                <span className="ml-2 text-xs font-normal text-lodha-grey">
+                                  (Identical: {twinGroupNames})
+                                </span>
+                              )}
+                              <span className="ml-3 text-sm font-normal text-lodha-grey">
+                                ({building.application_type})
+                              </span>
+                            </h4>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b border-lodha-grey/30">
+                                    <th className="text-left py-2 px-3 font-jost font-semibold">Floor</th>
+                                    <th className="text-left py-2 px-3 font-jost font-semibold">Flat Type</th>
+                                    <th className="text-right py-2 px-3 font-jost font-semibold">Area (sqm)</th>
+                                    <th className="text-right py-2 px-3 font-jost font-semibold">Count</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {building.floors && building.floors.length > 0 ? (
+                                    (() => {
+                                      const parentFloors = building.floors.filter(f => !f.twin_of_floor_id);
+                                      return parentFloors.length > 0 ? parentFloors.map((floor) => {
+                                        const twinFloors = building.floors.filter(f => f.twin_of_floor_id === floor.id);
+                                        const twinNames = twinFloors.map(t => t.floor_name || `Floor ${t.floor_number}`).join(', ');
+                                        return floor.flats && floor.flats.length > 0 ? (
+                                          floor.flats.map((flat, flatIdx) => (
+                                            <tr key={`${floor.id}-${flat.id}`} className="border-b border-lodha-grey/10 hover:bg-lodha-sand/30">
+                                              {flatIdx === 0 && (
+                                                <td rowSpan={floor.flats.length} className="py-2 px-3 font-semibold align-top">
+                                                  <div>
+                                                    {floor.floor_name || `Floor ${floor.floor_number}`}
+                                                    {twinNames && (
+                                                      <div className="text-xs font-normal text-lodha-grey mt-1">
+                                                        Twin: {twinNames}
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                </td>
+                                              )}
+                                              <td className="py-2 px-3">{flat.flat_type || '—'}</td>
+                                              <td className="py-2 px-3 text-right">{flat.area_sqft || '—'}</td>
+                                              <td className="py-2 px-3 text-right font-semibold">{flat.number_of_flats || 0}</td>
+                                            </tr>
+                                          ))
+                                        ) : (
+                                          <tr key={floor.id} className="border-b border-lodha-grey/10">
+                                            <td className="py-2 px-3 font-semibold">
+                                              <div>
+                                                {floor.floor_name || `Floor ${floor.floor_number}`}
+                                                {twinNames && (
+                                                  <div className="text-xs font-normal text-lodha-grey mt-1">
+                                                    Twin: {twinNames}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </td>
+                                            <td colSpan="3" className="py-2 px-3 text-lodha-grey italic">No flats added</td>
+                                          </tr>
+                                        );
+                                      }) : (
+                                        <tr>
+                                          <td colSpan="4" className="py-4 px-3 text-center text-lodha-grey italic">No floors added</td>
+                                        </tr>
+                                      );
+                                    })()
+                                  ) : (
+                                    <tr>
+                                      <td colSpan="4" className="py-4 px-3 text-center text-lodha-grey italic">No floors added</td>
+                                    </tr>
                                   )}
-                                  <td className="py-2 px-3">{flat.flat_type || '—'}</td>
-                                  <td className="py-2 px-3 text-right">{flat.area_sqft || '—'}</td>
-                                  <td className="py-2 px-3 text-right font-semibold">{flat.number_of_flats || 0}</td>
-                                </tr>
-                              ))
-                            ) : (
-                              <tr key={floor.id} className="border-b border-lodha-grey/10">
-                                <td className="py-2 px-3 font-semibold">
-                                  <div>
-                                    {floor.floor_name || `Floor ${floor.floor_number}`}
-                                    {twinNames && (
-                                      <div className="text-xs font-normal text-lodha-grey mt-1">
-                                        Twin: {twinNames}
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                                <td colSpan="3" className="py-2 px-3 text-lodha-grey italic">No flats added</td>
-                              </tr>
-                            );
-                          }) : (
-                            <tr>
-                              <td colSpan="4" className="py-4 px-3 text-center text-lodha-grey italic">No floors added</td>
-                            </tr>
-                          );
-                        })()
-                      ) : (
-                        <tr>
-                          <td colSpan="4" className="py-4 px-3 text-center text-lodha-grey italic">No floors added</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            );
-          });
-        })()}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
       )}

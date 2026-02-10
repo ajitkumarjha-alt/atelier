@@ -36,6 +36,9 @@ import ProjectStandardsManagement from './pages/ProjectStandardsManagement';
 import PolicyManagement from './pages/PolicyManagement';
 import { createOrUpdateUser } from './services/userService';
 import { Loader } from 'lucide-react';
+import FireFightingSystemDesign from './pages/calculations/FireFightingSystemDesign';
+import VentilationPressurisation from './pages/calculations/VentilationPressurisation';
+import PHEPumpSelection from './pages/calculations/PHEPumpSelection';
 
 // Calculation Pages
 import ElectricalLoadCalculation from './pages/calculations/ElectricalLoadCalculation';
@@ -70,6 +73,41 @@ function AppRoutes() {
   return (
     <Router>
       <Routes>
+                {/* Fire Fighting System Design */}
+                <Route 
+                  path="/projects/:projectId/calculations/fire-fighting-system-design" 
+                  element={
+                    user ? (
+                      <FireFightingSystemDesign />
+                    ) : (
+                      <Navigate to="/" replace />
+                    )
+                  } 
+                />
+
+                {/* Ventilation & Pressurisation */}
+                <Route 
+                  path="/projects/:projectId/calculations/ventilation-pressurisation" 
+                  element={
+                    user ? (
+                      <VentilationPressurisation />
+                    ) : (
+                      <Navigate to="/" replace />
+                    )
+                  } 
+                />
+
+                {/* PHE Pump Selection */}
+                <Route 
+                  path="/projects/:projectId/calculations/phe-pump-selection" 
+                  element={
+                    user ? (
+                      <PHEPumpSelection />
+                    ) : (
+                      <Navigate to="/" replace />
+                    )
+                  } 
+                />
         {/* Welcome Page - Main Landing Page */}
         <Route path="/" element={<WelcomePage />} />
         

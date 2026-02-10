@@ -98,19 +98,14 @@ export default function WaterDemandCalculation() {
     try {
       setLoading(true);
       
-      // Fetch project details
-      const projectResponse = await apiFetch(`/api/projects/${projectId}`);
-      
+
+      // Fetch project details (with societies and buildings)
+      const projectResponse = await apiFetch(`/api/projects/${projectId}/full`);
       if (!projectResponse.ok) throw new Error('Failed to fetch project');
       const projectData = await projectResponse.json();
       setProject(projectData);
-      
-      // Fetch buildings with detailed information
-      const buildingsResponse = await apiFetch(`/api/projects/${projectId}/buildings-detailed`);
-      
-      if (!buildingsResponse.ok) throw new Error('Failed to fetch buildings');
-      const buildingsData = await buildingsResponse.json();
-      setBuildings(buildingsData);
+      // Use buildings from the full project response
+      setBuildings(projectData.buildings || []);
       
     } catch (err) {
       setError(err.message);
@@ -823,106 +818,65 @@ export default function WaterDemandCalculation() {
                 </div>
               </div>
 
-              {/* Building-wise Storage Calculation */}
-              <div className="space-y-4">
-                {calculationResults.map((result, idx) => {
-                  const ohtCapacity = Math.ceil((result.totalDomestic * ohtDomesticDays) + (result.totalFlushing * ohtFlushingDays));
-                  const ugrCapacity = Math.ceil((result.totalDomestic * ugrDomesticDays) + (result.totalFlushing * ugrFlushingDays));
-                  
+              {/* Society-wise Storage Calculation */}
+              {(() => {
+                // Group calculationResults by societyId (or 'no-society')
+                const buildingsBySociety = {};
+
+                calculationResults.forEach(result => {
+                  const building = buildings.find(b => b.id === result.buildingId);
+                  // Always use string for societyId key
+                  const sid = String(building?.societyId ?? building?.society_id ?? 'no-society');
+                  if (!buildingsBySociety[sid]) buildingsBySociety[sid] = [];
+                  buildingsBySociety[sid].push(result);
+                });
+
+                // Get societies from project (if available)
+                const societies = Array.isArray(project?.societies) ? project.societies : [];
+
+                return Object.entries(buildingsBySociety).map(([societyId, resultsInSociety], idx) => {
+                  // Find society name using string comparison
+                  const society = societies.find(s => String(s.id) === societyId);
+                  // Aggregate UGR for this society
+                  const ugrTotal = resultsInSociety.reduce((sum, r) => sum + (r.totalDomestic * ugrDomesticDays) + (r.totalFlushing * ugrFlushingDays), 0);
                   return (
-                    <div key={idx} className="border border-gray-200 rounded-lg p-4">
-                      <h3 className="font-semibold text-gray-900 mb-3">{result.buildingName}</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-orange-50 rounded p-3">
-                          <div className="text-xs text-gray-600 mb-1">OHT Capacity</div>
-                          <div className="text-lg font-bold text-orange-700">
-                            {ohtCapacity.toLocaleString()} L
-                          </div>
-                          <div className="text-sm text-orange-600">
-                            {(ohtCapacity / 1000).toFixed(2)} KL
-                          </div>
-                          <div className="text-xs text-gray-600 mt-2">
-                            Domestic: {Math.ceil(result.totalDomestic * ohtDomesticDays).toLocaleString()} L<br />
-                            Flushing: {Math.ceil(result.totalFlushing * ohtFlushingDays).toLocaleString()} L
-                          </div>
-                          {ohtDepth > 0 && (
-                            <div className="mt-3 pt-3 border-t border-orange-200">
-                              <div className="text-xs text-gray-700 font-medium">Required Area</div>
-                              <div className="text-base font-bold text-orange-800">
-                                {((ohtCapacity / 1000) / ohtDepth).toFixed(2)} m²
-                              </div>
-                              <div className="text-xs text-gray-600 mt-1">
-                                ({Math.sqrt((ohtCapacity / 1000) / ohtDepth).toFixed(2)} m × {Math.sqrt((ohtCapacity / 1000) / ohtDepth).toFixed(2)} m)
-                              </div>
-                            </div>
-                          )}
+                    <div key={societyId} className="border-2 border-blue-300 bg-blue-50 rounded-lg p-4 mb-6">
+                      <h3 className="font-semibold text-gray-900 mb-3">
+                        UGR for {society ? society.name : 'No Society'}
+                      </h3>
+                      <div className="bg-blue-100 rounded p-4">
+                        <div className="text-xs text-gray-700 font-medium mb-1">Total UGR Capacity Required</div>
+                        <div className="text-2xl font-bold text-blue-800">
+                          {Math.ceil(ugrTotal).toLocaleString()} L
                         </div>
-                        <div className="bg-blue-50 rounded p-3">
-                          <div className="text-xs text-gray-600 mb-1">UGR Capacity</div>
-                          <div className="text-lg font-bold text-blue-700">
-                            {ugrCapacity.toLocaleString()} L
-                          </div>
-                          <div className="text-sm text-blue-600">
-                            {(ugrCapacity / 1000).toFixed(2)} KL
-                          </div>
-                          <div className="text-xs text-gray-600 mt-2">
-                            Domestic: {Math.ceil(result.totalDomestic * ugrDomesticDays).toLocaleString()} L<br />
-                            Flushing: {Math.ceil(result.totalFlushing * ugrFlushingDays).toLocaleString()} L
-                          </div>
-                          {ugrDepth > 0 && (
-                            <div className="mt-3 pt-3 border-t border-blue-200">
-                              <div className="text-xs text-gray-700 font-medium">Required Area</div>
-                              <div className="text-base font-bold text-blue-800">
-                                {((ugrCapacity / 1000) / ugrDepth).toFixed(2)} m²
-                              </div>
-                              <div className="text-xs text-gray-600 mt-1">
-                                ({Math.sqrt((ugrCapacity / 1000) / ugrDepth).toFixed(2)} m × {Math.sqrt((ugrCapacity / 1000) / ugrDepth).toFixed(2)} m)
-                              </div>
-                            </div>
-                          )}
+                        <div className="text-lg text-blue-700 mt-1">
+                          {(Math.ceil(ugrTotal) / 1000).toFixed(2)} KL
                         </div>
+                        {ugrDepth > 0 && (
+                          <div className="mt-4 pt-4 border-t border-blue-300">
+                            <div className="text-xs text-gray-700 font-medium">Combined Tank Area Required</div>
+                            <div className="text-xl font-bold text-blue-900 mt-1">
+                              {((Math.ceil(ugrTotal) / 1000) / ugrDepth).toFixed(2)} m²
+                            </div>
+                            <div className="text-sm text-blue-700 mt-1">
+                              ({Math.sqrt((Math.ceil(ugrTotal) / 1000) / ugrDepth).toFixed(2)} m × {Math.sqrt((Math.ceil(ugrTotal) / 1000) / ugrDepth).toFixed(2)} m)
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {/* List buildings in this society */}
+                      <div className="mt-4">
+                        <div className="text-xs text-gray-700 font-medium mb-1">Buildings in this society:</div>
+                        <ul className="list-disc list-inside text-sm text-gray-800">
+                          {resultsInSociety.map(r => (
+                            <li key={r.buildingId}>{r.buildingName}</li>
+                          ))}
+                        </ul>
                       </div>
                     </div>
                   );
-                })}
-
-                {/* Combined Total for All Selected Buildings */}
-                {calculationResults.length > 1 && (
-                  <div className="border-2 border-blue-300 bg-blue-50 rounded-lg p-4">
-                    <h3 className="font-semibold text-gray-900 mb-3">Combined Total for All Buildings</h3>
-                    <div className="bg-blue-100 rounded p-4">
-                      <div className="text-xs text-gray-700 font-medium mb-1">Total UGR Capacity Required</div>
-                      <div className="text-2xl font-bold text-blue-800">
-                        {Math.ceil(calculationResults.reduce((sum, r) => 
-                          sum + (r.totalDomestic * ugrDomesticDays) + (r.totalFlushing * ugrFlushingDays), 0
-                        )).toLocaleString()} L
-                      </div>
-                      <div className="text-lg text-blue-700 mt-1">
-                        {(Math.ceil(calculationResults.reduce((sum, r) => 
-                          sum + (r.totalDomestic * ugrDomesticDays) + (r.totalFlushing * ugrFlushingDays), 0
-                        )) / 1000).toFixed(2)} KL
-                      </div>
-                      {ugrDepth > 0 && (
-                        <div className="mt-4 pt-4 border-t border-blue-300">
-                          <div className="text-xs text-gray-700 font-medium">Combined Tank Area Required</div>
-                          <div className="text-xl font-bold text-blue-900 mt-1">
-                            {((Math.ceil(calculationResults.reduce((sum, r) => 
-                              sum + (r.totalDomestic * ugrDomesticDays) + (r.totalFlushing * ugrFlushingDays), 0
-                            )) / 1000) / ugrDepth).toFixed(2)} m²
-                          </div>
-                          <div className="text-sm text-blue-700 mt-1">
-                            ({Math.sqrt((Math.ceil(calculationResults.reduce((sum, r) => 
-                              sum + (r.totalDomestic * ugrDomesticDays) + (r.totalFlushing * ugrFlushingDays), 0
-                            )) / 1000) / ugrDepth).toFixed(2)} m × {Math.sqrt((Math.ceil(calculationResults.reduce((sum, r) => 
-                              sum + (r.totalDomestic * ugrDomesticDays) + (r.totalFlushing * ugrFlushingDays), 0
-                            )) / 1000) / ugrDepth).toFixed(2)} m)
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+                });
+              })()}
             </div>
           </div>
         )}

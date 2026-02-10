@@ -57,17 +57,52 @@ export default function DesignCalculations() {
 
   const statuses = ['Draft', 'Under Review', 'Approved', 'Rejected', 'Revised'];
 
+  // Debounced fetch for project data
   useEffect(() => {
+    let isMounted = true;
     if (projectId) {
-      fetchProjectDetails();
-      fetchBuildings();
-      fetchCalculations();
-      fetchStats();
+      Promise.all([
+        apiFetch(`/api/projects/${projectId}`),
+        apiFetch(`/api/projects/${projectId}/buildings`),
+        apiFetch(`/api/design-calculations?projectId=${projectId}`),
+        apiFetch(`/api/water-demand-calculations?projectId=${projectId}`),
+        apiFetch(`/api/design-calculations/stats/${projectId}`)
+      ]).then(async ([projectRes, buildingsRes, designCalcsRes, waterDemandRes, statsRes]) => {
+        if (!isMounted) return;
+        if (projectRes.ok) setProject(await projectRes.json());
+        if (buildingsRes.ok) setBuildings(await buildingsRes.json());
+        let allCalculations = [];
+        if (designCalcsRes.ok) allCalculations = [...await designCalcsRes.json()];
+        if (waterDemandRes.ok) {
+          const waterDemandCalcs = await waterDemandRes.json();
+          const normalizedWaterCalcs = waterDemandCalcs.map(calc => ({
+            ...calc,
+            calculation_type: 'Water Demand Calculation',
+            title: calc.calculation_name,
+            created_at: calc.created_at,
+            building_name: null,
+            floor_name: null
+          }));
+          allCalculations = [...allCalculations, ...normalizedWaterCalcs];
+        }
+        allCalculations.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        setCalculations(allCalculations);
+        if (statsRes.ok) setStats(await statsRes.json());
+        setLoading(false);
+      }).catch(() => setLoading(false));
     }
+    return () => { isMounted = false; };
   }, [projectId]);
 
+  // Only apply filters when calculations or filter values change
   useEffect(() => {
-    applyFilters();
+    setFilteredCalculations(() => {
+      let filtered = [...calculations];
+      if (typeFilter !== 'All') filtered = filtered.filter(calc => calc.calculation_type === typeFilter);
+      if (statusFilter !== 'All') filtered = filtered.filter(calc => calc.status === statusFilter);
+      if (buildingFilter !== 'All') filtered = filtered.filter(calc => calc.building_id === parseInt(buildingFilter));
+      return filtered;
+    });
   }, [calculations, typeFilter, statusFilter, buildingFilter]);
 
   const fetchProjectDetails = async () => {
@@ -329,15 +364,11 @@ export default function DesignCalculations() {
     }
   };
 
+  // Memoize canCreateEdit to avoid repeated calls
   const canCreateEdit = () => {
-    if (!userLevel) {
-      console.log('canCreateEdit: No userLevel yet');
-      return false;
-    }
+    if (!userLevel) return false;
     const effectiveLevel = getEffectiveUserLevel(userLevel, location.pathname);
-    const canEdit = canCreateEditCalculations(effectiveLevel);
-    console.log('canCreateEdit called:', { userLevel, path: location.pathname, effectiveLevel, canEdit });
-    return canEdit;
+    return canCreateEditCalculations(effectiveLevel);
   };
 
   const getEffectiveLevel = () => {
@@ -424,8 +455,8 @@ export default function DesignCalculations() {
           <div className="bg-gradient-to-r from-lodha-sand to-white p-4 sm:p-6 rounded-lg shadow mb-4 sm:mb-6 border-2 border-lodha-gold">
             <div className="flex items-center gap-2 mb-3 sm:mb-4">
               <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-lodha-gold" />
-              <h3 className="font-garamond font-bold text-lodha-black text-base sm:text-lg">Quick Calculators</h3>
-              <span className="text-xs sm:text-sm text-lodha-grey ml-2 hidden sm:inline">(Auto-calculate from project data)</span>
+              <h3 className="font-garamond font-bold text-lodha-black text-base sm:text-lg">Quick Calculators & Design Links</h3>
+              <span className="text-xs sm:text-sm text-lodha-grey ml-2 hidden sm:inline">(Auto-calculate from project data & access design pages)</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               <button
@@ -438,7 +469,7 @@ export default function DesignCalculations() {
                   <div className="text-xs text-lodha-grey">Auto-calculate from buildings</div>
                 </div>
               </button>
-              
+
               <button
                 onClick={() => navigate(`/projects/${projectId}/calculations/electrical-load/new`)}
                 className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-lodha-gold rounded-lg hover:bg-lodha-sand transition group"
@@ -459,6 +490,40 @@ export default function DesignCalculations() {
                 <div className="text-left">
                   <div className="font-semibold text-lodha-black text-sm sm:text-base">HVAC Load</div>
                   <div className="text-xs text-lodha-grey">Coming soon</div>
+                </div>
+              </button>
+
+              {/* New Design Links */}
+              <button
+                onClick={() => navigate(`/projects/${projectId}/calculations/fire-fighting-system-design`)}
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-red-500 rounded-lg hover:bg-red-100 transition group"
+              >
+                <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-red-600 group-hover:scale-110 transition flex-shrink-0" />
+                <div className="text-left">
+                  <div className="font-semibold text-lodha-black text-sm sm:text-base">Fire Fighting System Design</div>
+                  <div className="text-xs text-lodha-grey">View design page</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => navigate(`/projects/${projectId}/calculations/ventilation-pressurisation`)}
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-blue-400 rounded-lg hover:bg-blue-100 transition group"
+              >
+                <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-blue-400 group-hover:scale-110 transition flex-shrink-0" />
+                <div className="text-left">
+                  <div className="font-semibold text-lodha-black text-sm sm:text-base">Ventilation & Pressurisation</div>
+                  <div className="text-xs text-lodha-grey">View design page</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => navigate(`/projects/${projectId}/calculations/phe-pump-selection`)}
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-green-500 rounded-lg hover:bg-green-100 transition group"
+              >
+                <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 group-hover:scale-110 transition flex-shrink-0" />
+                <div className="text-left">
+                  <div className="font-semibold text-lodha-black text-sm sm:text-base">PHE Pump Selection</div>
+                  <div className="text-xs text-lodha-grey">View design page</div>
                 </div>
               </button>
             </div>
