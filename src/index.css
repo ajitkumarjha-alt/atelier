@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Accessibility utilities */
+@import './styles/accessibility.css';
+
 /* Base styles */
 @layer base {
   html, body {

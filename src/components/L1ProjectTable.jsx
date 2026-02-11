@@ -11,8 +11,6 @@ export default function L1ProjectTable({ userEmail, userLevel }) {
   const [assigningProjectId, setAssigningProjectId] = useState(null);
   const navigate = useNavigate();
 
-  console.log('L1ProjectTable userLevel:', userLevel);
-
   useEffect(() => {
     if (userEmail) {
       fetchProjects();

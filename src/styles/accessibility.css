@@ -1,0 +1,229 @@
+/* Accessibility Utility CSS Classes */
+
+/* Screen Reader Only - Visually hidden but accessible to screen readers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Screen Reader Only Focusable - Hidden until focused (for skip links) */
+.sr-only-focusable:focus,
+.sr-only-focusable:active {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Focus Visible - Modern focus indicator */
+*:focus-visible {
+  outline: 2px solid var(--focus-color, #d4af37);
+  outline-offset: 2px;
+}
+
+/* Remove default focus for mouse users, keep for keyboard users */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Skip to Main Content Link */
+.skip-to-main {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 8px 16px;
+  text-decoration: none;
+  z-index: 100;
+  transition: top 0.3s;
+}
+
+.skip-to-main:focus {
+  top: 0;
+}
+
+/* Keyboard Focus Ring */
+.focus-ring {
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.focus-ring:focus-visible {
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.5);
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  * {
+    border-color: currentColor !important;
+  }
+  
+  button,
+  a {
+    text-decoration: underline;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus Within - Highlight parent when child is focused */
+.focus-within:focus-within {
+  border-color: var(--focus-color, #d4af37);
+  box-shadow: 0 0 0 1px var(--focus-color, #d4af37);
+}
+
+/* Disabled State - Clear visual indicator */
+[disabled],
+[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  user-select: none;
+}
+
+/* Loading State */
+[aria-busy="true"] {
+  cursor: wait;
+}
+
+/* Hidden Content - Using aria-hidden */
+[aria-hidden="true"] {
+  display: none !important;
+}
+
+/* Interactive Elements - Ensure minimum touch target size (44x44px per WCAG) */
+button,
+a,
+input[type="checkbox"],
+input[type="radio"],
+[role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Ensure sufficient color contrast */
+::selection {
+  background-color: #d4af37;
+  color: #000;
+}
+
+/* Error States - Clear visual indicator */
+.error,
+[aria-invalid="true"] {
+  border-color: #dc2626 !important;
+}
+
+.error-message {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* Success States */
+.success,
+[aria-valid="true"] {
+  border-color: #16a34a !important;
+}
+
+/* Required Fields Indicator */
+.required::after {
+  content: " *";
+  color: #dc2626;
+  font-weight: bold;
+}
+
+/* Tooltip - Accessible tooltip styling */
+[role="tooltip"] {
+  position: absolute;
+  z-index: 1000;
+  background: #1f2937;
+  color: #fff;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  max-width: 300px;
+}
+
+/* Progress Indicators */
+[role="progressbar"] {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Status Indicators */
+[role="status"],
+[role="alert"] {
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  margin-bottom: 1rem;
+}
+
+[role="alert"] {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+/* Keyboard Navigation Highlights */
+.keyboard-nav *:focus {
+  outline: 2px solid #d4af37;
+  outline-offset: 2px;
+}
+
+/* Tab Panel Accessibility */
+[role="tabpanel"]:not([hidden]) {
+  display: block;
+}
+
+[role="tabpanel"][hidden] {
+  display: none;
+}
+
+/* Dialog/Modal Accessibility */
+[role="dialog"],
+[role="alertdialog"] {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Landmarks for Screen Readers */
+[role="main"] {
+  min-height: 100vh;
+}
+
+/* Print Styles - Ensure accessibility in print */
+@media print {
+  .sr-only {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+  }
+  
+  a[href]::after {
+    content: " (" attr(href) ")";
+  }
+}

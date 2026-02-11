@@ -69,4 +69,17 @@ export const closePool = async () => {
   console.log('Database pool closed');
 };
 
+/**
+ * Get pool statistics for monitoring
+ * @returns {object} Pool statistics
+ */
+export const getPoolStats = () => {
+  return {
+    total: pool.totalCount,
+    idle: pool.idleCount,
+    waiting: pool.waitingCount,
+    max: pool.options.max
+  };
+};
+
 export default pool;

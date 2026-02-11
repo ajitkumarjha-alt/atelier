@@ -28,6 +28,7 @@ import {
 } from './middleware/index.js';
 import logger from './utils/logger.js';
 import { performHealthCheck } from './utils/health.js';
+import { sendOTPEmail, sendWelcomeEmail } from './utils/emailService.js';
 import policyRoutes from './routes/policy.js';
 import ElectricalLoadCalculator from './services/electricalLoadService.js';
 
@@ -2777,24 +2778,49 @@ app.get('/api/projects/:id/full', async (req, res) => {
   const { id } = req.params;
 
   try {
+    // Query 1: Get project
     const projectResult = await query('SELECT * FROM projects WHERE id = $1', [id]);
     if (projectResult.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found' });
     }
-
     const project = projectResult.rows[0];
+
+    // Query 2: Get societies
     const societiesResult = await query(
       'SELECT * FROM societies WHERE project_id = $1 ORDER BY name',
       [id]
     );
+
+    // Query 3: Get all buildings at once
     const buildingsResult = await query(
       `SELECT buildings.*, societies.name AS society_name
        FROM buildings
        LEFT JOIN societies ON societies.id = buildings.society_id
-       WHERE buildings.project_id = $1`,
+       WHERE buildings.project_id = $1
+       ORDER BY buildings.id`,
       [id]
     );
 
+    // Query 4: Get all floors for all buildings at once
+    const floorsResult = await query(
+      `SELECT floors.* FROM floors
+       INNER JOIN buildings ON floors.building_id = buildings.id
+       WHERE buildings.project_id = $1
+       ORDER BY floors.building_id, floors.floor_number`,
+      [id]
+    );
+
+    // Query 5: Get all flats for all floors at once
+    const flatsResult = await query(
+      `SELECT flats.* FROM flats
+       INNER JOIN floors ON flats.floor_id = floors.id
+       INNER JOIN buildings ON floors.building_id = buildings.id
+       WHERE buildings.project_id = $1
+       ORDER BY flats.floor_id`,
+      [id]
+    );
+
+    // Build societies array
     const societies = societiesResult.rows.map(society => ({
       id: society.id,
       name: society.name,
@@ -2802,78 +2828,93 @@ app.get('/api/projects/:id/full', async (req, res) => {
       project_id: society.project_id
     }));
 
-    const buildings = [];
-    // First, create a map of building IDs to names for twin reference lookup
+    // Create lookup maps
     const buildingIdToNameMap = {};
     buildingsResult.rows.forEach(b => {
       buildingIdToNameMap[b.id] = b.name;
     });
 
-    for (const building of buildingsResult.rows) {
-      const floorsResult = await query('SELECT * FROM floors WHERE building_id = $1', [building.id]);
+    const floorIdToNameMap = {};
+    floorsResult.rows.forEach(f => {
+      floorIdToNameMap[f.id] = f.floor_name;
+    });
 
-      const floors = [];
-      // First, create a map of floor IDs to names for twin reference lookup
-      const floorIdToNameMap = {};
-      floorsResult.rows.forEach(f => {
-        floorIdToNameMap[f.id] = f.floor_name;
-      });
-
-      for (const floor of floorsResult.rows) {
-        const flatsResult = await query('SELECT * FROM flats WHERE floor_id = $1', [floor.id]);
-
-        floors.push({
-          id: floor.id,
-          floorNumber: floor.floor_number,
-          floorName: floor.floor_name,
-          floorHeight: floor.floor_height,
-          typicalLobbyArea: floor.typical_lobby_area,
-          twinOfFloorId: floor.twin_of_floor_id,
-          twinOfFloorName: floor.twin_of_floor_id ? floorIdToNameMap[floor.twin_of_floor_id] : null,
-          // Also include snake_case for ProjectDetail page compatibility
-          floor_number: floor.floor_number,
-          floor_name: floor.floor_name,
-          floor_height: floor.floor_height,
-          typical_lobby_area: floor.typical_lobby_area,
-          twin_of_floor_id: floor.twin_of_floor_id,
-          flats: flatsResult.rows.map(f => ({
-            id: f.id,
-            type: f.flat_type,
-            area: f.area_sqft,
-            count: f.number_of_flats,
-            // Also include snake_case for compatibility
-            flat_type: f.flat_type,
-            area_sqft: f.area_sqft,
-            number_of_flats: f.number_of_flats,
-          })),
-        });
+    // Group flats by floor_id
+    const flatsByFloorId = {};
+    flatsResult.rows.forEach(flat => {
+      if (!flatsByFloorId[flat.floor_id]) {
+        flatsByFloorId[flat.floor_id] = [];
       }
-
-      buildings.push({
-        id: building.id,
-        name: building.name,
-        applicationType: building.application_type,
-        application_type: building.application_type, // snake_case for compatibility
-        residentialType: building.residential_type,
-        villaType: building.villa_type,
-        villaCount: building.villa_count,
-        isTwin: building.is_twin,
-        twinOfBuildingId: building.twin_of_building_id,
-        twinOfBuildingName: building.twin_of_building_id ? buildingIdToNameMap[building.twin_of_building_id] : null,
-        twin_of_building_id: building.twin_of_building_id, // snake_case for compatibility
-        societyId: building.society_id,
-        society_id: building.society_id,
-        societyName: building.society_name,
-        gfEntranceLobby: building.gf_entrance_lobby,
-        gf_entrance_lobby: building.gf_entrance_lobby,
-        floors,
+      flatsByFloorId[flat.floor_id].push({
+        id: flat.id,
+        type: flat.flat_type,
+        area: flat.area_sqft,
+        count: flat.number_of_flats,
+        flat_type: flat.flat_type,
+        area_sqft: flat.area_sqft,
+        number_of_flats: flat.number_of_flats,
       });
-    }
+    });
+
+    // Group floors by building_id
+    const floorsByBuildingId = {};
+    floorsResult.rows.forEach(floor => {
+      if (!floorsByBuildingId[floor.building_id]) {
+        floorsByBuildingId[floor.building_id] = [];
+      }
+      floorsByBuildingId[floor.building_id].push({
+        id: floor.id,
+        floorNumber: floor.floor_number,
+        floorName: floor.floor_name,
+        floorHeight: floor.floor_height,
+        typicalLobbyArea: floor.typical_lobby_area,
+        twinOfFloorId: floor.twin_of_floor_id,
+        twinOfFloorName: floor.twin_of_floor_id ? floorIdToNameMap[floor.twin_of_floor_id] : null,
+        floor_number: floor.floor_number,
+        floor_name: floor.floor_name,
+        floor_height: floor.floor_height,
+        typical_lobby_area: floor.typical_lobby_area,
+        twin_of_floor_id: floor.twin_of_floor_id,
+        flats: flatsByFloorId[floor.id] || [],
+      });
+    });
+
+    // Build buildings array
+    const buildings = buildingsResult.rows.map(building => ({
+      id: building.id,
+      name: building.name,
+      applicationType: building.application_type,
+      application_type: building.application_type,
+      residentialType: building.residential_type,
+      villaType: building.villa_type,
+      villaCount: building.villa_count,
+      isTwin: building.is_twin,
+      twinOfBuildingId: building.twin_of_building_id,
+      twinOfBuildingName: building.twin_of_building_id ? buildingIdToNameMap[building.twin_of_building_id] : null,
+      twin_of_building_id: building.twin_of_building_id,
+      societyId: building.society_id,
+      society_id: building.society_id,
+      societyName: building.society_name,
+      gfEntranceLobby: building.gf_entrance_lobby,
+      gf_entrance_lobby: building.gf_entrance_lobby,
+      floors: floorsByBuildingId[building.id] || [],
+    }));
 
     res.json({
       id: project.id,
       name: project.name,
       location: project.description,
+      description: project.description,
+      completion_percentage: project.completion_percentage,
+      floors_completed: project.floors_completed,
+      total_floors: project.total_floors,
+      material_stock_percentage: project.material_stock_percentage,
+      mep_status: project.mep_status,
+      lifecycle_stage: project.lifecycle_stage,
+      assigned_lead_name: project.lead_name,
+      start_date: project.created_at,
+      target_completion_date: project.created_at,
+      status: project.project_status,
       latitude: buildingsResult.rows[0]?.location_latitude || '',
       longitude: buildingsResult.rows[0]?.location_longitude || '',
       buildings,
@@ -4850,13 +4891,35 @@ app.delete('/api/electrical-load-calculations/:id', verifyToken, async (req, res
 // Get all electrical load factors
 app.get('/api/electrical-load-factors', verifyToken, async (req, res) => {
   try {
-    const result = await query(
-      'SELECT * FROM electrical_load_factors ORDER BY category, sub_category, description'
-    );
+    const { guideline } = req.query;
+    let queryText = 'SELECT * FROM electrical_load_factors WHERE is_active = true';
+    const params = [];
+    
+    if (guideline) {
+      queryText += ' AND guideline = $1';
+      params.push(guideline);
+    }
+    
+    queryText += ' ORDER BY guideline, category, sub_category, description';
+    
+    const result = await query(queryText, params);
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching electrical load factors:', error);
     res.status(500).json({ error: 'Failed to fetch electrical load factors' });
+  }
+});
+
+// Get distinct guidelines
+app.get('/api/electrical-load-factors/guidelines/list', verifyToken, async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT DISTINCT guideline FROM electrical_load_factors WHERE is_active = true ORDER BY guideline'
+    );
+    res.json(result.rows.map(r => r.guideline));
+  } catch (error) {
+    console.error('Error fetching guidelines:', error);
+    res.status(500).json({ error: 'Failed to fetch guidelines' });
   }
 });
 
@@ -4892,6 +4955,7 @@ app.put('/api/electrical-load-factors/:id', verifyToken, async (req, res) => {
       mdf,
       edf,
       fdf,
+      guideline,
       notes,
       is_active
     } = req.body;
@@ -4905,13 +4969,14 @@ app.put('/api/electrical-load-factors/:id', verifyToken, async (req, res) => {
            mdf = $5,
            edf = $6,
            fdf = $7,
-           notes = $8,
-           is_active = $9,
-           updated_by = $10,
+           guideline = $8,
+           notes = $9,
+           is_active = $10,
+           updated_by = $11,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $11
+       WHERE id = $12
        RETURNING *`,
-      [category, sub_category, description, watt_per_sqm, mdf, edf, fdf, notes, is_active, req.user.email, id]
+      [category, sub_category, description, watt_per_sqm, mdf, edf, fdf, guideline, notes, is_active, req.user.email, id]
     );
 
     if (result.rows.length === 0) {
@@ -4936,16 +5001,17 @@ app.post('/api/electrical-load-factors', verifyToken, async (req, res) => {
       mdf,
       edf,
       fdf,
+      guideline,
       notes,
       is_active
     } = req.body;
 
     const result = await query(
       `INSERT INTO electrical_load_factors
-       (category, sub_category, description, watt_per_sqm, mdf, edf, fdf, notes, is_active, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       (category, sub_category, description, watt_per_sqm, mdf, edf, fdf, guideline, notes, is_active, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
-      [category, sub_category, description, watt_per_sqm, mdf, edf, fdf, notes, is_active !== false, req.user.email]
+      [category, sub_category, description, watt_per_sqm, mdf, edf, fdf, guideline, notes, is_active !== false, req.user.email]
     );
 
     res.status(201).json(result.rows[0]);
@@ -4955,7 +5021,33 @@ app.post('/api/electrical-load-factors', verifyToken, async (req, res) => {
   }
 });
 
-// ============= REGULATORY FRAMEWORK ENDPOINTS =============
+// Delete electrical load factor (soft delete - L0 only)
+app.delete('/api/electrical-load-factors/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await query(
+      `UPDATE electrical_load_factors
+       SET is_active = false,
+           updated_by = $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2
+       RETURNING *`,
+      [req.user.email, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Factor not found' });
+    }
+
+    res.json({ message: 'Factor deleted successfully', factor: result.rows[0] });
+  } catch (error) {
+    console.error('Error deleting electrical load factor:', error);
+    res.status(500).json({ error: 'Failed to delete electrical load factor' });
+  }
+});
+
+// =============REGULATORY FRAMEWORK ENDPOINTS =============
 
 // Get all active regulatory frameworks
 app.get('/api/regulatory-frameworks', verifyToken, async (req, res) => {
@@ -5708,8 +5800,16 @@ app.post('/api/consultants/send-otp', async (req, res) => {
       [email, otp, expiresAt]
     );
 
-    // TODO: Send OTP via email service (for now, just log it)
-    console.log(`OTP for ${email}: ${otp}`);
+    // Send OTP via email
+    const emailSent = await sendOTPEmail(email, otp, 'consultant');
+    
+    if (!emailSent) {
+      logger.warn(`Failed to send OTP email to ${email}, but OTP is available`);
+      // Fallback: Log OTP in development
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[DEV] OTP for ${email}: ${otp}`);
+      }
+    }
 
     res.json({ success: true, message: 'OTP sent to email' });
   } catch (error) {
@@ -6215,8 +6315,16 @@ app.post('/api/vendors/send-otp', async (req, res) => {
       [email, otp, expiresAt]
     );
 
-    // TODO: Send OTP via email service (for now, just log it)
-    console.log(`OTP for vendor ${email}: ${otp}`);
+    // Send OTP via email
+    const emailSent = await sendOTPEmail(email, otp, 'vendor');
+    
+    if (!emailSent) {
+      logger.warn(`Failed to send OTP email to vendor ${email}, but OTP is available`);
+      // Fallback: Log OTP in development
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[DEV] OTP for vendor ${email}: ${otp}`);
+      }
+    }
 
     res.json({ success: true, message: 'OTP sent to email' });
   } catch (error) {

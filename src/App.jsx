@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { UserProvider, useUser } from './lib/UserContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import WelcomePage from './pages/WelcomePage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -689,20 +690,22 @@ function AppRoutes() {
 
 function App() {
   return (
-    <UserProvider>
-      <Toaster
-        position="top-right"
-        reverseOrder={false}
-        gutter={8}
-        toastOptions={{
-          duration: 3000,
-          style: {
-            fontFamily: 'Jost, sans-serif',
-          },
-        }}
-      />
-      <AppRoutes />
-    </UserProvider>
+    <ErrorBoundary>
+      <UserProvider>
+        <Toaster
+          position="top-right"
+          reverseOrder={false}
+          gutter={8}
+          toastOptions={{
+            duration: 3000,
+            style: {
+              fontFamily: 'Jost, sans-serif',
+            },
+          }}
+        />
+        <AppRoutes />
+      </UserProvider>
+    </ErrorBoundary>
   );
 }
 

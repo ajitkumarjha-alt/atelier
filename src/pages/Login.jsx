@@ -15,14 +15,11 @@ export default function Login() {
     setError(null);
     
     try {
-      console.log('Starting Google Sign In...');
       const result = await signInWithPopup(auth, googleProvider);
-      console.log('Sign in successful:', result.user.email);
       
       if (result.user) {
         try {
           await createOrUpdateUser(result.user.email, result.user.displayName);
-          console.log('User data saved to database');
           // Let App's auth listener handle routing based on `userLevel`.
         } catch (dbError) {
           console.error('Database error:', dbError);

@@ -1,4 +1,4 @@
-import { query } from '../db.js';
+import { query, getPoolStats } from '../db.js';
 import { isStorageConfigured } from '../storage.js';
 import { isLLMConfigured } from '../llm.js';
 
@@ -11,9 +11,13 @@ export const checkDatabase = async () => {
     await query('SELECT 1');
     const duration = Date.now() - start;
     
+    // Get pool statistics
+    const poolStats = getPoolStats();
+    
     return {
       status: 'healthy',
-      responseTime: `${duration}ms`
+      responseTime: `${duration}ms`,
+      pool: poolStats
     };
   } catch (error) {
     return {
