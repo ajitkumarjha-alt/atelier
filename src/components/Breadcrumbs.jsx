@@ -10,27 +10,42 @@ import { Home, ChevronRight } from 'lucide-react';
 const routeNameMap = {
   '': 'Home',
   'dashboard': 'Dashboard',
-  'l0-dashboard': 'L0 Dashboard',
-  'l1-dashboard': 'L1 Dashboard',
-  'l2-dashboard': 'L2 Dashboard',
-  'l3-dashboard': 'L3 Dashboard',
-  'l4-dashboard': 'L4 Dashboard',
-  'cm-dashboard': 'CM Dashboard',
+  'l0-dashboard': 'Executive Overview',
+  'l1-dashboard': 'Project Allocation',
+  'l2-dashboard': 'Execution Dashboard',
+  'l3-dashboard': 'L3 Supervisor Dashboard',
+  'l4-dashboard': 'L4 Team Member Dashboard',
+  'cm-dashboard': 'Construction Manager Dashboard',
   'consultant-dashboard': 'Consultant Dashboard',
   'vendor-dashboard': 'Vendor Dashboard',
-  'super-admin-dashboard': 'Super Admin',
+  'super-admin-dashboard': 'Super Admin Dashboard',
   'project-input': 'Create Project',
+  'project-input-enhanced': 'Create Project',
   'project': 'Project Details',
   'mas': 'Material Approval Sheets',
-  'rfi': 'Requests for Information',
+  'mas-list': 'Material Approval Sheets',
+  'mas-form': 'Material Approval Sheet',
+  'rfi': 'Request for Information',
+  'rfi-list': 'Request for Information',
   'design-calculations': 'Design Calculations',
-  'drawings': 'Drawings',
+  'drawing-schedule': 'Drawing Schedule',
   'change-requests': 'Change Requests',
+  'change-request': 'Change Request',
   'project-standards': 'Project Standards',
-  'team-management': 'Team Management',
+  'standards-management': 'Standards Management',
+  'task-management': 'Task Management',
+  'rfc-management': 'Request for Change',
+  'dds': 'Design Delivery Schedule',
+  'policy-management': 'Policy Management',
+  'pending-approval': 'Pending Approval',
   'consultant-login': 'Consultant Login',
-  'consultant-registration': 'Consultant Registration',
-  'vendor-registration': 'Vendor Registration',
+  'vendor-login': 'Vendor Login',
+  'calculations': 'Calculations',
+  'electrical-load': 'Electrical Load',
+  'water-demand': 'Water Demand',
+  'project-plans': 'Project Plans',
+  'structural-data': 'Structural Data',
+  'settings': 'Settings',
 };
 
 const Breadcrumbs = ({ customCrumbs = null }) => {
@@ -100,6 +115,11 @@ const Breadcrumbs = ({ customCrumbs = null }) => {
         {pathnames.map((segment, index) => {
           let path = `/${pathnames.slice(0, index + 1).join('/')}`;
           
+          // Skip numeric segments (project IDs) — they don't need their own breadcrumb
+          if (!isNaN(segment) && segment !== '') {
+            return null;
+          }
+
           // Special handling for calculations breadcrumb
           if (segment === 'calculations' && index > 0) {
             const projectId = pathnames[index - 1];
@@ -108,7 +128,8 @@ const Breadcrumbs = ({ customCrumbs = null }) => {
             }
           }
           
-          const isLast = index === pathnames.length - 1;
+          const isLast = index === pathnames.length - 1 || 
+            (index === pathnames.length - 2 && !isNaN(pathnames[pathnames.length - 1]));
           const label = routeNameMap[segment] || segment.replace(/-/g, ' ');
 
           return (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader, ArrowLeft } from 'lucide-react';
+import { Loader, ArrowLeft, ChevronDown, ChevronRight, Building2, Layers } from 'lucide-react';
 import Layout from '../components/Layout';
 import ProjectTeamManagement from '../components/ProjectTeamManagement';
 import { auth } from '../lib/firebase';
@@ -15,6 +15,16 @@ export default function ProjectDetail() {
   const [updatingStage, setUpdatingStage] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [userLevel, setUserLevel] = useState(null);
+  const [collapsedSocieties, setCollapsedSocieties] = useState({});
+  const [collapsedBuildings, setCollapsedBuildings] = useState({});
+
+  const toggleSociety = (societyId) => {
+    setCollapsedSocieties(prev => ({ ...prev, [societyId]: !prev[societyId] }));
+  };
+
+  const toggleBuilding = (buildingId) => {
+    setCollapsedBuildings(prev => ({ ...prev, [buildingId]: !prev[buildingId] }));
+  };
 
   useEffect(() => {
     fetchProject();
@@ -233,7 +243,7 @@ export default function ProjectDetail() {
       {project.buildings && project.buildings.length > 0 && (
         <div className="card mb-8">
           <h2 className="heading-secondary mb-4">Floor-wise Details (Grouped by Society)</h2>
-          <div className="space-y-10">
+          <div className="space-y-6">
             {(() => {
               // Always use societies from backend response
               const societies = Array.isArray(project.societies) ? project.societies : [];
@@ -273,11 +283,26 @@ export default function ProjectDetail() {
                   }
                 });
                 return (
-                  <div key={societyId} className="mb-8">
-                    <h3 className="font-jost font-bold text-xl text-lodha-gold mb-2">
-                      {society ? society.name : 'No Society'}
-                    </h3>
-                    <div className="space-y-6">
+                  <div key={societyId} className="border border-lodha-steel/30 rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => toggleSociety(societyId)}
+                      className="w-full flex items-center gap-3 px-5 py-4 bg-lodha-sand/60 hover:bg-lodha-sand transition-colors text-left"
+                    >
+                      {collapsedSocieties[societyId] ? (
+                        <ChevronRight className="w-5 h-5 text-lodha-gold flex-shrink-0" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-lodha-gold flex-shrink-0" />
+                      )}
+                      <Layers className="w-5 h-5 text-lodha-gold flex-shrink-0" />
+                      <h3 className="font-jost font-bold text-lg text-lodha-black">
+                        {society ? society.name : 'No Society'}
+                      </h3>
+                      <span className="ml-auto text-sm text-lodha-grey font-jost">
+                        {parentBuildings.length} building{parentBuildings.length !== 1 ? 's' : ''}
+                      </span>
+                    </button>
+                    {!collapsedSocieties[societyId] && (
+                    <div className="p-5 space-y-4">
                       {parentBuildings.map((building, idx) => {
                         // Find all buildings in the same twin group (including self)
                         let twinGroup = [];
@@ -289,19 +314,36 @@ export default function ProjectDetail() {
                           twinGroup = buildings.filter(b => b.twin_of_building_id === building.id || b.id === building.id);
                         }
                         const twinGroupNames = twinGroup.map(b => b.name).filter(Boolean).join(', ');
+                        const floorCount = building.floors?.filter(f => !f.twin_of_floor_id)?.length || 0;
                         return (
-                          <div key={building.id} className="border-l-4 border-lodha-gold pl-4">
-                            <h4 className="font-jost font-bold text-lg text-lodha-black mb-1">
-                              {building.name || `Building ${idx + 1}`}
+                          <div key={building.id} className="border border-lodha-steel/20 rounded-lg overflow-hidden">
+                            <button
+                              onClick={() => toggleBuilding(building.id)}
+                              className="w-full flex items-center gap-3 px-4 py-3 bg-white hover:bg-lodha-sand/30 transition-colors text-left"
+                            >
+                              {collapsedBuildings[building.id] ? (
+                                <ChevronRight className="w-4 h-4 text-lodha-grey flex-shrink-0" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-lodha-grey flex-shrink-0" />
+                              )}
+                              <Building2 className="w-4 h-4 text-lodha-gold flex-shrink-0" />
+                              <h4 className="font-jost font-bold text-base text-lodha-black">
+                                {building.name || `Building ${idx + 1}`}
+                              </h4>
                               {twinGroup.length > 1 && (
-                                <span className="ml-2 text-xs font-normal text-lodha-grey">
+                                <span className="text-xs text-lodha-grey font-jost">
                                   (Identical: {twinGroupNames})
                                 </span>
                               )}
-                              <span className="ml-3 text-sm font-normal text-lodha-grey">
-                                ({building.application_type})
+                              <span className="text-xs text-lodha-grey font-jost px-2 py-0.5 bg-lodha-sand rounded-full">
+                                {building.application_type}
                               </span>
-                            </h4>
+                              <span className="ml-auto text-xs text-lodha-grey font-jost">
+                                {floorCount} floor{floorCount !== 1 ? 's' : ''}
+                              </span>
+                            </button>
+                            {!collapsedBuildings[building.id] && (
+                            <div className="px-4 pb-4">
                             <div className="overflow-x-auto">
                               <table className="w-full text-sm">
                                 <thead>
@@ -368,10 +410,13 @@ export default function ProjectDetail() {
                                 </tbody>
                               </table>
                             </div>
+                            </div>
+                            )}
                           </div>
                         );
                       })}
                     </div>
+                    )}
                   </div>
                 );
               });
