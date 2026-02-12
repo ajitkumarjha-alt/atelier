@@ -318,16 +318,16 @@ export default function ElectricalLoadCalculation() {
           <div className="flex items-center space-x-4">
             <button
               onClick={() => navigate(`/design-calculations/${projectId}`)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-lodha-sand rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <h1 className="heading-primary flex items-center gap-2">
                 <Zap className="w-7 h-7 text-yellow-500" />
                 Electrical Load Calculation
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-lodha-grey/70 mt-1">
                 {project?.name || 'Loading...'}
               </p>
             </div>
@@ -345,18 +345,18 @@ export default function ElectricalLoadCalculation() {
               <div key={step.num} className="flex items-center flex-1">
                 <div className={`flex items-center ${idx > 0 ? 'w-full' : ''}`}>
                   {idx > 0 && (
-                    <div className={`flex-1 h-1 ${currentStep > idx ? 'bg-blue-500' : 'bg-gray-200'}`} />
+                    <div className={`flex-1 h-1 ${currentStep > idx ? 'bg-blue-500' : 'bg-lodha-steel/20'}`} />
                   )}
                   <div className={`flex items-center gap-2 ${idx > 0 ? 'ml-2' : ''}`}>
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                       currentStep >= step.num 
                         ? 'bg-blue-500 text-white' 
-                        : 'bg-gray-200 text-gray-600'
+                        : 'bg-lodha-steel/20 text-lodha-grey'
                     }`}>
                       {step.num}
                     </div>
                     <span className={`text-sm hidden sm:inline ${
-                      currentStep >= step.num ? 'text-blue-600 font-medium' : 'text-gray-500'
+                      currentStep >= step.num ? 'text-blue-600 font-medium' : 'text-lodha-grey/70'
                     }`}>
                       {step.label}
                     </span>
@@ -455,20 +455,20 @@ function BuildingSelection({ buildings, selectedBuildings, onToggle, onNext }) {
               className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                 isSelected 
                   ? 'border-blue-500 bg-blue-50' 
-                  : 'border-gray-200 hover:border-blue-300'
+                  : 'border-lodha-steel/30 hover:border-blue-300'
               }`}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-gray-900">{building.name}</h3>
-                  <p className="text-sm text-gray-500">
+                  <h3 className="font-semibold text-lodha-black">{building.name}</h3>
+                  <p className="text-sm text-lodha-grey/70">
                     {building.floor_count || 0} floors • {Number(building.total_height_m || 0).toFixed(1)} m
                   </p>
                 </div>
                 <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
                   isSelected 
                     ? 'bg-blue-500 border-blue-500' 
-                    : 'border-gray-300'
+                    : 'border-lodha-steel'
                 }`}>
                   {isSelected && <span className="text-white text-sm">✓</span>}
                 </div>
@@ -479,14 +479,14 @@ function BuildingSelection({ buildings, selectedBuildings, onToggle, onNext }) {
       </div>
 
       {buildingsList.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-lodha-grey/70">
           <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
           <p>No buildings found in this project</p>
         </div>
       )}
 
       <div className="flex justify-between items-center pt-4 border-t">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-lodha-grey">
           Selected: <span className="font-semibold">{selectedBuildings.length}</span> building(s)
         </p>
         <button
@@ -522,19 +522,19 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
   };
 
   const CollapsibleSection = ({ title, section, icon: Icon, children }) => (
-    <div className="border border-gray-200 rounded-lg mb-4">
+    <div className="border border-lodha-steel/30 rounded-lg mb-4">
       <button
         onClick={() => toggleSection(section)}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-lodha-sand/40 transition-colors"
       >
         <div className="flex items-center gap-2">
           <Icon className="w-5 h-5 text-blue-500" />
-          <h3 className="font-semibold text-gray-900">{title}</h3>
+          <h3 className="font-semibold text-lodha-black">{title}</h3>
         </div>
         {expandedSections[section] ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
       </button>
       {expandedSections[section] && (
-        <div className="px-4 py-4 border-t border-gray-200">
+        <div className="px-4 py-4 border-t border-lodha-steel/30">
           {children}
         </div>
       )}
@@ -543,11 +543,11 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
 
   const FormField = ({ label, children, hint }) => (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
+      <label className="block text-sm font-medium text-lodha-grey mb-1">
         {label}
       </label>
       {children}
-      {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-lodha-grey/70 mt-1">{hint}</p>}
     </div>
   );
 
@@ -561,7 +561,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
         <button
           type="button"
           onClick={onBack}
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+          className="px-4 py-2 bg-lodha-steel/20 text-lodha-grey rounded-lg hover:bg-lodha-steel/30"
         >
           Back to Building Selection
         </button>
@@ -575,14 +575,14 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               type="text"
               value={inputs.projectCategory || '—'}
               readOnly
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg bg-lodha-sand/40"
             />
           </FormField>
         </div>
 
         {Array.isArray(selectedBuildings) && selectedBuildings.length > 0 && (
           <div className="mt-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">Society Details</p>
+            <p className="text-sm font-medium text-lodha-grey mb-2">Society Details</p>
             <div className="space-y-2">
               {Object.entries(
                 selectedBuildings.reduce((acc, building) => {
@@ -594,10 +594,10 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
                   return acc;
                 }, {})
               ).map(([societyName, buildingNames]) => (
-                <div key={societyName} className="flex items-start justify-between rounded-lg border border-gray-200 p-3">
+                <div key={societyName} className="flex items-start justify-between rounded-lg border border-lodha-steel/30 p-3">
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">{societyName}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-sm font-semibold text-lodha-black">{societyName}</p>
+                    <p className="text-xs text-lodha-grey/70">
                       {buildingNames.length} building(s): {buildingNames.join(', ')}
                     </p>
                   </div>
@@ -618,7 +618,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
             <select
               value={inputs.areaType}
               onChange={(e) => onChange('areaType', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="RURAL">Rural Area (DTC threshold: 25 kVA)</option>
               <option value="URBAN">Urban Area (DTC threshold: 75 kVA)</option>
@@ -640,14 +640,14 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
                 const nextValue = parseFloat(e.target.value);
                 onChange('totalCarpetArea', Number.isNaN(nextValue) ? 0 : nextValue);
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-green-50"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500 bg-green-50"
               placeholder="Auto-calculated"
               title="Auto-calculated from flat areas"
             />
             {inputs.totalCarpetArea > 0 && (
               <p className="text-sm text-green-700 mt-2 font-semibold">
                 MSEDCL Minimum Required Load: {(inputs.totalCarpetArea * 75 / 1000).toFixed(2)} kW
-                <span className="text-xs text-gray-600 ml-2">(75 W/sq.m × {inputs.totalCarpetArea.toFixed(2)} sq.m)</span>
+                <span className="text-xs text-lodha-grey ml-2">(75 W/sq.m × {inputs.totalCarpetArea.toFixed(2)} sq.m)</span>
               </p>
             )}
           </FormField>
@@ -672,16 +672,16 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
         {Array.isArray(selectedBuildings) && selectedBuildings.length > 0 && (
           <div className="mt-4 space-y-2">
             {selectedBuildings.map(building => (
-              <div key={building.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 p-3 text-sm">
-                <div className="font-semibold text-gray-900">{building.name}</div>
-                <div className="text-gray-600">
+              <div key={building.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-lodha-steel/30 p-3 text-sm">
+                <div className="font-semibold text-lodha-black">{building.name}</div>
+                <div className="text-lodha-grey">
                   Height: {Number(building.total_height_m || 0).toFixed(1)} m
                 </div>
-                <div className="text-gray-600">Floors: {building.floor_count || 0}</div>
-                <div className="text-gray-600">
+                <div className="text-lodha-grey">Floors: {building.floor_count || 0}</div>
+                <div className="text-lodha-grey">
                   GF Lobby: {Number(building.gf_entrance_lobby || building.gfEntranceLobby || 0).toFixed(1)} sq.m
                 </div>
-                <div className="text-gray-600">
+                <div className="text-lodha-grey">
                   Typical Lobby: {Number(building.avg_typical_lobby_area || building.typical_lobby_area || building.typicalLobbyArea || 0).toFixed(1)} sq.m
                 </div>
               </div>
@@ -699,7 +699,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               min="0"
               value={inputs.passengerLifts}
               onChange={(e) => onChange('passengerLifts', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
           <FormField label="Passenger + Fire Lifts" hint="Dual-purpose lifts (fire-rated)">
@@ -708,7 +708,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               min="0"
               value={inputs.passengerFireLifts}
               onChange={(e) => onChange('passengerFireLifts', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
           <FormField label="Firemen Lifts" hint="Dedicated firemen evacuation lifts">
@@ -717,7 +717,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               min="0"
               value={inputs.firemenLifts}
               onChange={(e) => onChange('firemenLifts', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
         </div>
@@ -730,7 +730,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
             <select
               value={inputs.lobbyType}
               onChange={(e) => onChange('lobbyType', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="Nat. Vent">Natural Ventilation</option>
               <option value="AC">Air Conditioned</option>
@@ -743,9 +743,9 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
                 type="checkbox"
                 checked={inputs.terraceLighting}
                 onChange={(e) => onChange('terraceLighting', e.target.checked)}
-                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="w-5 h-5 rounded border-lodha-steel text-blue-600 focus:ring-blue-500"
               />
-              <span className="text-sm text-gray-700">Include terrace lighting load</span>
+              <span className="text-sm text-lodha-grey">Include terrace lighting load</span>
             </div>
           </FormField>
         </div>
@@ -757,7 +757,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
                 min="0"
                 value={inputs.terraceArea}
                 onChange={(e) => onChange('terraceArea', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </FormField>
           </div>
@@ -770,7 +770,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
                 min="0"
                 value={inputs.ventilationCFM}
                 onChange={(e) => onChange('ventilationCFM', parseInt(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </FormField>
             <FormField label="Number of Ventilation Fans">
@@ -779,7 +779,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
                 min="0"
                 value={inputs.ventilationFans}
                 onChange={(e) => onChange('ventilationFans', parseInt(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </FormField>
           </div>
@@ -791,9 +791,9 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
                 type="checkbox"
                 checked={inputs.landscapeLighting}
                 onChange={(e) => onChange('landscapeLighting', e.target.checked)}
-                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="w-5 h-5 rounded border-lodha-steel text-blue-600 focus:ring-blue-500"
               />
-              <span className="text-sm text-gray-700">Include landscape/external lighting</span>
+              <span className="text-sm text-lodha-grey">Include landscape/external lighting</span>
             </div>
           </FormField>
           {inputs.landscapeLighting && (
@@ -804,7 +804,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
                 step="0.5"
                 value={inputs.landscapeLightingLoad}
                 onChange={(e) => onChange('landscapeLightingLoad', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </FormField>
           )}
@@ -820,7 +820,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               min="1"
               value={inputs.numberOfStaircases}
               onChange={(e) => onChange('numberOfStaircases', parseInt(e.target.value) || 2)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
         </div>
@@ -839,14 +839,14 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               min="0"
               value={inputs.boosterPumpFlow}
               onChange={(e) => onChange('boosterPumpFlow', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
           <FormField label="Booster Pump Set">
             <select
               value={inputs.boosterPumpSet}
               onChange={(e) => onChange('boosterPumpSet', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="1W+1S">1 Working + 1 Standby</option>
               <option value="2W+1S">2 Working + 1 Standby</option>
@@ -858,7 +858,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               min="0"
               value={inputs.sewagePumpCapacity}
               onChange={(e) => onChange('sewagePumpCapacity', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
           <FormField label="Number of Sewage Pumps">
@@ -867,7 +867,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               min="0"
               value={inputs.sewagePumpSet}
               onChange={(e) => onChange('sewagePumpSet', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
         </div>
@@ -878,9 +878,9 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
                 type="checkbox"
                 checked={inputs.wetRiserPump}
                 onChange={(e) => onChange('wetRiserPump', e.target.checked)}
-                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="w-5 h-5 rounded border-lodha-steel text-blue-600 focus:ring-blue-500"
               />
-              <span className="text-sm text-gray-700">Include wet riser pump (separate from main FF)</span>
+              <span className="text-sm text-lodha-grey">Include wet riser pump (separate from main FF)</span>
             </div>
           </FormField>
           {inputs.wetRiserPump && (
@@ -891,7 +891,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
                 step="0.5"
                 value={inputs.wetRiserPumpPower}
                 onChange={(e) => onChange('wetRiserPumpPower', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </FormField>
           )}
@@ -907,14 +907,14 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               min="0"
               value={inputs.mainPumpFlow}
               onChange={(e) => onChange('mainPumpFlow', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
           <FormField label="FBT Pump Set Type">
             <select
               value={inputs.fbtPumpSetType}
               onChange={(e) => onChange('fbtPumpSetType', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="Main+SBY+Jky">Main + Standby + Jockey</option>
               <option value="2 Main+SBY+Jky">2 Main + Standby + Jockey</option>
@@ -926,14 +926,14 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               min="0"
               value={inputs.sprinklerPumpFlow}
               onChange={(e) => onChange('sprinklerPumpFlow', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
           <FormField label="Sprinkler Pump Set">
             <select
               value={inputs.sprinklerPumpSet}
               onChange={(e) => onChange('sprinklerPumpSet', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="Main+SBY+Jky">Main + Standby + Jockey</option>
               <option value="2 Main+SBY+Jky">2 Main + Standby + Jockey</option>
@@ -951,14 +951,14 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               min="0"
               value={inputs.domTransferFlow}
               onChange={(e) => onChange('domTransferFlow', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
           <FormField label="Transfer Pump Config">
             <select
               value={inputs.domTransferConfig}
               onChange={(e) => onChange('domTransferConfig', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="1W+1S">1 Working + 1 Standby</option>
               <option value="2W+1S">2 Working + 1 Standby</option>
@@ -971,7 +971,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               min="0"
               value={inputs.stpCapacity}
               onChange={(e) => onChange('stpCapacity', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
           <FormField label="Clubhouse Load (kW)" hint="Total amenity electrical load">
@@ -981,7 +981,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               step="1"
               value={inputs.clubhouseLoad}
               onChange={(e) => onChange('clubhouseLoad', parseFloat(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
           <FormField label="Street Lighting Load (kW)">
@@ -991,7 +991,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               step="1"
               value={inputs.streetLightingLoad}
               onChange={(e) => onChange('streetLightingLoad', parseFloat(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
           <FormField label="EV Charger Count">
@@ -1000,7 +1000,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               min="0"
               value={inputs.evChargerCount}
               onChange={(e) => onChange('evChargerCount', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
           {inputs.evChargerCount > 0 && (
@@ -1008,7 +1008,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               <select
                 value={inputs.evChargerType}
                 onChange={(e) => onChange('evChargerType', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 <option value="slow">Slow (3.3 kW)</option>
                 <option value="standard">Standard (7.4 kW)</option>
@@ -1026,7 +1026,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               step="0.5"
               value={inputs.securitySystemLoad}
               onChange={(e) => onChange('securitySystemLoad', parseFloat(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
           <FormField label="Common Area Small Power (kW)">
@@ -1036,7 +1036,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
               step="0.5"
               value={inputs.smallPowerLoad}
               onChange={(e) => onChange('smallPowerLoad', parseFloat(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </FormField>
         </div>
@@ -1047,7 +1047,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
         <button
           type="button"
           onClick={onBack}
-          className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+          className="px-6 py-2 bg-lodha-steel/30 text-lodha-grey rounded-lg hover:bg-lodha-steel/50"
         >
           Back to Building Selection
         </button>
@@ -1098,10 +1098,10 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-900">Results & Save</h2>
+        <h2 className="text-xl font-bold text-lodha-black">Results & Save</h2>
         <button
           onClick={onBack}
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+          className="px-4 py-2 bg-lodha-steel/20 text-lodha-grey rounded-lg hover:bg-lodha-steel/30"
         >
           Back to Input Parameters
         </button>
@@ -1114,28 +1114,28 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
-            <div className="text-sm text-gray-600">Total Connected Load</div>
-            <div className="text-3xl font-bold text-gray-900">
+            <div className="text-sm text-lodha-grey">Total Connected Load</div>
+            <div className="text-3xl font-bold text-lodha-black">
               {totals.grandTotalTCL.toFixed(2)} kW
             </div>
           </div>
           
           <div>
-            <div className="text-sm text-gray-600">Maximum Demand</div>
+            <div className="text-sm text-lodha-grey">Maximum Demand</div>
             <div className="text-3xl font-bold text-blue-600">
               {totals.totalMaxDemand.toFixed(2)} kW
             </div>
           </div>
           
           <div>
-            <div className="text-sm text-gray-600">Essential Load</div>
+            <div className="text-sm text-lodha-grey">Essential Load</div>
             <div className="text-3xl font-bold text-green-600">
               {totals.totalEssential.toFixed(2)} kW
             </div>
           </div>
           
           <div>
-            <div className="text-sm text-gray-600">Fire Load</div>
+            <div className="text-sm text-lodha-grey">Fire Load</div>
             <div className="text-3xl font-bold text-red-600">
               {totals.totalFire.toFixed(2)} kW
             </div>
@@ -1143,11 +1143,11 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
         </div>
         
         <div className="mt-4 pt-4 border-t border-yellow-300">
-          <div className="text-sm text-gray-600">Recommended Transformer Size</div>
+          <div className="text-sm text-lodha-grey">Recommended Transformer Size</div>
           <div className="text-2xl font-bold text-purple-600">
             {totals.transformerSizeKVA} kVA
           </div>
-          <div className="text-xs text-gray-500">Based on 0.9 power factor</div>
+          <div className="text-xs text-lodha-grey/70">Based on 0.9 power factor</div>
         </div>
       </div>
 
@@ -1202,14 +1202,14 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
                         const category = parts[0];
                         const description = parts[2] || parts[1];
                         return (
-                          <tr key={key} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                            <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-700">{category}</td>
-                            <td className="py-2 px-3 border-b border-gray-100 text-gray-800">{description}</td>
-                            <td className="py-2 px-3 border-b border-gray-100 text-right font-mono">{factor.wattPerSqm != null ? factor.wattPerSqm : '—'}</td>
-                            <td className="py-2 px-3 border-b border-gray-100 text-right font-mono">{(factor.mdf * 100).toFixed(0)}%</td>
-                            <td className="py-2 px-3 border-b border-gray-100 text-right font-mono">{(factor.edf * 100).toFixed(0)}%</td>
-                            <td className="py-2 px-3 border-b border-gray-100 text-right font-mono">{(factor.fdf * 100).toFixed(0)}%</td>
-                            <td className="py-2 px-3 border-b border-gray-100 text-xs text-gray-500">{factor.notes || '—'}</td>
+                          <tr key={key} className={idx % 2 === 0 ? 'bg-white' : 'bg-lodha-sand/40'}>
+                            <td className="py-2 px-3 border-b border-lodha-steel/15 font-medium text-lodha-grey">{category}</td>
+                            <td className="py-2 px-3 border-b border-lodha-steel/15 text-lodha-black">{description}</td>
+                            <td className="py-2 px-3 border-b border-lodha-steel/15 text-right font-mono">{factor.wattPerSqm != null ? factor.wattPerSqm : '—'}</td>
+                            <td className="py-2 px-3 border-b border-lodha-steel/15 text-right font-mono">{(factor.mdf * 100).toFixed(0)}%</td>
+                            <td className="py-2 px-3 border-b border-lodha-steel/15 text-right font-mono">{(factor.edf * 100).toFixed(0)}%</td>
+                            <td className="py-2 px-3 border-b border-lodha-steel/15 text-right font-mono">{(factor.fdf * 100).toFixed(0)}%</td>
+                            <td className="py-2 px-3 border-b border-lodha-steel/15 text-xs text-lodha-grey/70">{factor.notes || '—'}</td>
                           </tr>
                         );
                     })}
@@ -1217,7 +1217,7 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
                 </table>
               </div>
             ) : (
-              <p className="text-sm text-gray-500 italic">No factor data available.</p>
+              <p className="text-sm text-lodha-grey/70 italic">No factor data available.</p>
             )}
           </div>
           )}
@@ -1265,11 +1265,11 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
           </h3>
           <div className="flex items-center gap-3">
             {!projectSummaryOpen && (
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-lodha-grey/70">
                 TCL: {totals.grandTotalTCL?.toFixed(2)} kW | Max: {totals.totalMaxDemand?.toFixed(2)} kW
               </span>
             )}
-            {projectSummaryOpen ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+            {projectSummaryOpen ? <ChevronUp className="w-5 h-5 text-lodha-grey/50" /> : <ChevronDown className="w-5 h-5 text-lodha-grey/50" />}
           </div>
         </button>
 
@@ -1279,12 +1279,12 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
         {Array.isArray(results.buildingBreakdowns) && results.buildingBreakdowns.length > 0 && (
           <div className="bg-white rounded-lg shadow p-4 mb-4">
             <h4 className="text-lg font-bold mb-3">Building-wise Load Summary</h4>
-            <p className="text-sm text-gray-600 mb-3">Individual building loads (flats + common areas)</p>
+            <p className="text-sm text-lodha-grey mb-3">Individual building loads (flats + common areas)</p>
             
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b-2 border-gray-300">
+                  <tr className="border-b-2 border-lodha-steel">
                     <th className="text-left py-2 px-3 font-semibold">Building Name</th>
                     <th className="text-right py-2 px-3 font-semibold">Connected Load (kW)</th>
                     <th className="text-right py-2 px-3 font-semibold">Max Demand (kW)</th>
@@ -1295,7 +1295,7 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
                 <tbody>
                   {results.buildingBreakdowns.map((building, index) => {
                     return (
-                      <tr key={building.buildingId || index} className="border-b border-gray-200">
+                      <tr key={building.buildingId || index} className="border-b border-lodha-steel/30">
                         <td className="py-2 px-3 font-medium">
                           {building.buildingName || `Building ${index + 1}`}
                         </td>
@@ -1306,7 +1306,7 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
                       </tr>
                     );
                   })}
-                  <tr className="border-t-2 border-gray-400 font-bold bg-gray-50">
+                  <tr className="border-t-2 border-lodha-steel font-bold bg-lodha-sand/40">
                     <td className="py-2 px-3">Subtotal (All Buildings)</td>
                     <td className="py-2 px-3 text-right">{results.totals?.perBuilding?.tcl?.toFixed(2) || '0.00'}</td>
                     <td className="py-2 px-3 text-right">{results.totals?.perBuilding?.maxDemand?.toFixed(2) || '0.00'}</td>
@@ -1335,7 +1335,7 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
         <h3 className="text-xl font-bold mb-4">Save Calculation</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-lodha-grey mb-1">
               Calculation Name *
             </label>
             <input
@@ -1343,16 +1343,16 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
               value={calculationName}
               onChange={(e) => setCalculationName(e.target.value)}
               placeholder="e.g., Electrical Load - Initial Design"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <label className="block text-sm font-medium text-lodha-grey mb-1">Status</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="Draft">Draft</option>
               <option value="Under Review">Under Review</option>
@@ -1361,13 +1361,13 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+            <label className="block text-sm font-medium text-lodha-grey mb-1">Remarks</label>
             <textarea
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
               rows="3"
               placeholder="Additional notes or comments..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
@@ -1377,7 +1377,7 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
       <div className="flex justify-between">
         <button
           onClick={onBack}
-          className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+          className="px-6 py-2 bg-lodha-steel/30 text-lodha-grey rounded-lg hover:bg-lodha-steel/50"
         >
           Modify Inputs
         </button>
@@ -1413,15 +1413,15 @@ function BuildingBreakdownCard({ building, twins, index }) {
         className="w-full text-left p-5 flex items-start justify-between"
       >
         <div className="flex-1">
-          <h3 className="text-xl font-bold text-gray-900">
+          <h3 className="text-xl font-bold text-lodha-black">
             {building.buildingName || `Building ${index + 1}`}
           </h3>
           {twins.length > 0 && (
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-lodha-grey mt-1">
               Similar to: {twins.map(t => t.buildingName).join(', ')}
             </p>
           )}
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-lodha-grey/70">
             {building.numberOfFloors || '-'} floors • {Number(building.buildingHeight || 0).toFixed(1)} m height
             {building.totalUnits > 0 && ` • ${building.totalUnits} units`}
           </p>
@@ -1433,16 +1433,16 @@ function BuildingBreakdownCard({ building, twins, index }) {
         </div>
         <div className="flex items-center gap-3 ml-4 mt-1 shrink-0">
           {!expanded && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-lodha-grey/70">
               TCL: {building.totals?.tcl?.toFixed(2)} kW | Max: {building.totals?.maxDemand?.toFixed(2)} kW
             </span>
           )}
-          {expanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+          {expanded ? <ChevronUp className="w-5 h-5 text-lodha-grey/50" /> : <ChevronDown className="w-5 h-5 text-lodha-grey/50" />}
         </div>
       </button>
       
       {expanded && (
-        <div className="px-5 pb-5 border-t border-gray-200">
+        <div className="px-5 pb-5 border-t border-lodha-steel/30">
           {building.flatLoads && building.flatLoads.items && building.flatLoads.items.length > 0 && (
             <div className="mt-3">
               <LoadCategoryTable category={building.flatLoads} />
@@ -1466,85 +1466,85 @@ function LoadCategoryTable({ category }) {
     <div className="mb-4">
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="w-full flex items-center justify-between py-2 px-1 hover:bg-gray-50 rounded transition-colors"
+        className="w-full flex items-center justify-between py-2 px-1 hover:bg-lodha-sand/40 rounded transition-colors"
       >
-        <h4 className="font-semibold text-base text-gray-900">{category.category}</h4>
+        <h4 className="font-semibold text-base text-lodha-black">{category.category}</h4>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-lodha-grey/70">
             TCL: {category.totalTCL?.toFixed(2) || '0.00'} kW | Max: {category.totalMaxDemand?.toFixed(2) || '0.00'} kW
           </span>
-          {collapsed ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronUp className="w-4 h-4 text-gray-400" />}
+          {collapsed ? <ChevronDown className="w-4 h-4 text-lodha-grey/50" /> : <ChevronUp className="w-4 h-4 text-lodha-grey/50" />}
         </div>
       </button>
       {!collapsed && hasItems && (
         <div className="overflow-x-auto mt-1">
-          <table className="w-full border-collapse border border-gray-300 text-sm">
-            <thead className="bg-gray-100">
+          <table className="w-full border-collapse border border-lodha-steel text-sm">
+            <thead className="bg-lodha-sand">
               <tr>
-                <th className="border border-gray-300 p-2 text-left" rowSpan="2">Description</th>
-                <th className="border border-gray-300 p-2 text-center" colSpan="4">Connected Load</th>
-                <th className="border border-gray-300 p-2 text-center" colSpan="2">Maximum Demand</th>
-                <th className="border border-gray-300 p-2 text-center" colSpan="2">Essential</th>
-                <th className="border border-gray-300 p-2 text-center" colSpan="2">Fire Load</th>
+                <th className="border border-lodha-steel p-2 text-left" rowSpan="2">Description</th>
+                <th className="border border-lodha-steel p-2 text-center" colSpan="4">Connected Load</th>
+                <th className="border border-lodha-steel p-2 text-center" colSpan="2">Maximum Demand</th>
+                <th className="border border-lodha-steel p-2 text-center" colSpan="2">Essential</th>
+                <th className="border border-lodha-steel p-2 text-center" colSpan="2">Fire Load</th>
               </tr>
               <tr>
-                <th className="border border-gray-300 p-1 text-right text-xs">Area (sqm)</th>
-                <th className="border border-gray-300 p-1 text-right text-xs">W/sqm</th>
-                <th className="border border-gray-300 p-1 text-right text-xs">Nos</th>
-                <th className="border border-gray-300 p-1 text-right text-xs bg-blue-50">TCL (kW)</th>
-                <th className="border border-gray-300 p-1 text-right text-xs">MDF</th>
-                <th className="border border-gray-300 p-1 text-right text-xs bg-green-50">Max (kW)</th>
-                <th className="border border-gray-300 p-1 text-right text-xs">EDF</th>
-                <th className="border border-gray-300 p-1 text-right text-xs bg-yellow-50">Ess (kW)</th>
-                <th className="border border-gray-300 p-1 text-right text-xs">FDF</th>
-                <th className="border border-gray-300 p-1 text-right text-xs bg-red-50">Fire (kW)</th>
+                <th className="border border-lodha-steel p-1 text-right text-xs">Area (sqm)</th>
+                <th className="border border-lodha-steel p-1 text-right text-xs">W/sqm</th>
+                <th className="border border-lodha-steel p-1 text-right text-xs">Nos</th>
+                <th className="border border-lodha-steel p-1 text-right text-xs bg-blue-50">TCL (kW)</th>
+                <th className="border border-lodha-steel p-1 text-right text-xs">MDF</th>
+                <th className="border border-lodha-steel p-1 text-right text-xs bg-green-50">Max (kW)</th>
+                <th className="border border-lodha-steel p-1 text-right text-xs">EDF</th>
+                <th className="border border-lodha-steel p-1 text-right text-xs bg-yellow-50">Ess (kW)</th>
+                <th className="border border-lodha-steel p-1 text-right text-xs">FDF</th>
+                <th className="border border-lodha-steel p-1 text-right text-xs bg-red-50">Fire (kW)</th>
               </tr>
             </thead>
             <tbody>
               {category.items.map((item, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="border border-gray-300 p-2">{item.description}</td>
-                  <td className="border border-gray-300 p-1 text-right text-gray-600">
+                <tr key={idx} className="hover:bg-lodha-sand/40">
+                  <td className="border border-lodha-steel p-2">{item.description}</td>
+                  <td className="border border-lodha-steel p-1 text-right text-lodha-grey">
                     {item.areaSqm ? Number(item.areaSqm).toFixed(1) : '-'}
                   </td>
-                  <td className="border border-gray-300 p-1 text-right text-gray-600">
+                  <td className="border border-lodha-steel p-1 text-right text-lodha-grey">
                     {item.wattPerSqm ? Number(item.wattPerSqm).toFixed(1) : '-'}
                   </td>
-                  <td className="border border-gray-300 p-1 text-right text-gray-600">{item.nos || '-'}</td>
-                  <td className="border border-gray-300 p-1 text-right font-semibold bg-blue-50">
+                  <td className="border border-lodha-steel p-1 text-right text-lodha-grey">{item.nos || '-'}</td>
+                  <td className="border border-lodha-steel p-1 text-right font-semibold bg-blue-50">
                     {item.tcl?.toFixed(2) || '0.00'}
                   </td>
-                  <td className="border border-gray-300 p-1 text-right text-gray-600">
+                  <td className="border border-lodha-steel p-1 text-right text-lodha-grey">
                     {item.mdf != null ? (item.mdf * 100).toFixed(0) + '%' : '-'}
                   </td>
-                  <td className="border border-gray-300 p-1 text-right font-semibold bg-green-50">
+                  <td className="border border-lodha-steel p-1 text-right font-semibold bg-green-50">
                     {item.maxDemandKW?.toFixed(2) || '0.00'}
                   </td>
-                  <td className="border border-gray-300 p-1 text-right text-gray-600">
+                  <td className="border border-lodha-steel p-1 text-right text-lodha-grey">
                     {item.edf != null ? (item.edf * 100).toFixed(0) + '%' : '-'}
                   </td>
-                  <td className="border border-gray-300 p-1 text-right font-semibold bg-yellow-50">
+                  <td className="border border-lodha-steel p-1 text-right font-semibold bg-yellow-50">
                     {item.essentialKW?.toFixed(2) || '0.00'}
                   </td>
-                  <td className="border border-gray-300 p-1 text-right text-gray-600">
+                  <td className="border border-lodha-steel p-1 text-right text-lodha-grey">
                     {item.fdf != null ? (item.fdf * 100).toFixed(0) + '%' : '-'}
                   </td>
-                  <td className="border border-gray-300 p-1 text-right font-semibold bg-red-50">
+                  <td className="border border-lodha-steel p-1 text-right font-semibold bg-red-50">
                     {item.fireKW?.toFixed(2) || '0.00'}
                   </td>
                 </tr>
               ))}
             </tbody>
-            <tfoot className="bg-gray-200 font-bold">
+            <tfoot className="bg-lodha-steel/20 font-bold">
               <tr>
-                <td className="border border-gray-300 p-2" colSpan="4">Subtotal - {category.category}</td>
-                <td className="border border-gray-300 p-2 text-right bg-blue-100">{category.totalTCL?.toFixed(2) || '0.00'}</td>
-                <td className="border border-gray-300 p-2"></td>
-                <td className="border border-gray-300 p-2 text-right bg-green-100">{category.totalMaxDemand?.toFixed(2) || '0.00'}</td>
-                <td className="border border-gray-300 p-2"></td>
-                <td className="border border-gray-300 p-2 text-right bg-yellow-100">{category.totalEssential?.toFixed(2) || '0.00'}</td>
-                <td className="border border-gray-300 p-2"></td>
-                <td className="border border-gray-300 p-2 text-right bg-red-100">{category.totalFire?.toFixed(2) || '0.00'}</td>
+                <td className="border border-lodha-steel p-2" colSpan="4">Subtotal - {category.category}</td>
+                <td className="border border-lodha-steel p-2 text-right bg-blue-100">{category.totalTCL?.toFixed(2) || '0.00'}</td>
+                <td className="border border-lodha-steel p-2"></td>
+                <td className="border border-lodha-steel p-2 text-right bg-green-100">{category.totalMaxDemand?.toFixed(2) || '0.00'}</td>
+                <td className="border border-lodha-steel p-2"></td>
+                <td className="border border-lodha-steel p-2 text-right bg-yellow-100">{category.totalEssential?.toFixed(2) || '0.00'}</td>
+                <td className="border border-lodha-steel p-2"></td>
+                <td className="border border-lodha-steel p-2 text-right bg-red-100">{category.totalFire?.toFixed(2) || '0.00'}</td>
               </tr>
             </tfoot>
           </table>

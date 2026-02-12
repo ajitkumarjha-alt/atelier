@@ -145,7 +145,7 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
       'CM': { color: 'bg-cyan-100 text-cyan-700', label: 'Construction Manager' },
       'CONSULTANT': { color: 'bg-teal-100 text-teal-700', label: 'Consultant' }
     };
-    return badges[level] || { color: 'bg-gray-100 text-gray-700', label: level };
+    return badges[level] || { color: 'bg-lodha-sand text-lodha-grey', label: level };
   };
 
   // Filter out users already in the team
@@ -156,15 +156,15 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
-        <p className="text-gray-500">Loading team members...</p>
+        <p className="text-lodha-grey/70">Loading team members...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200">
+    <div className="bg-white rounded-lg shadow-md border border-lodha-steel/30">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-lodha-steel/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-lodha-gold/10 rounded-lg">
@@ -174,7 +174,7 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
               <h2 className="text-xl font-garamond font-bold text-lodha-black">
                 Project Team
               </h2>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-lodha-grey">
                 {teamMembers.length} team member{teamMembers.length !== 1 ? 's' : ''}
               </p>
             </div>
@@ -227,9 +227,9 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
       <div className="p-6">
         {teamMembers.length === 0 ? (
           <div className="text-center py-12">
-            <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 font-jost">No team members assigned yet</p>
-            <p className="text-sm text-gray-400 mt-2">
+            <Users className="w-16 h-16 text-lodha-steel mx-auto mb-4" />
+            <p className="text-lodha-grey/70 font-jost">No team members assigned yet</p>
+            <p className="text-sm text-lodha-grey/50 mt-2">
               Click "Add Team Member" to assign engineers, technicians, construction managers, consultants, and vendors
             </p>
           </div>
@@ -240,7 +240,7 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
               return (
                 <div
                   key={member.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-lodha-gold transition-colors"
+                  className="flex items-center justify-between p-4 bg-lodha-sand/40 rounded-lg border border-lodha-steel/30 hover:border-lodha-gold transition-colors"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-lodha-gold/20 rounded-full flex items-center justify-center">
@@ -252,12 +252,12 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
                       <h3 className="font-jost font-semibold text-lodha-black">
                         {member.full_name}
                       </h3>
-                      <p className="text-sm text-gray-600">{member.email}</p>
+                      <p className="text-sm text-lodha-grey">{member.email}</p>
                       {member.role && (
-                        <p className="text-xs text-gray-500 mt-1">Role: {member.role}</p>
+                        <p className="text-xs text-lodha-grey/70 mt-1">Role: {member.role}</p>
                       )}
                       {member.assigned_by_name && (
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-lodha-grey/70">
                           Assigned by {member.assigned_by_name}
                         </p>
                       )}
@@ -290,7 +290,7 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-6 border-b border-lodha-steel/30">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-garamond font-bold text-lodha-black">
                   Add Team Member
@@ -303,7 +303,7 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
                     setSelectedRole('');
                     setError('');
                   }}
-                  className="p-1 hover:bg-gray-100 rounded"
+                  className="p-1 hover:bg-lodha-sand rounded"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -312,7 +312,7 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
 
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-lodha-grey mb-2">
                   User Type
                 </label>
                 <select
@@ -321,7 +321,7 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
                     setSelectedUserType(e.target.value);
                     setSelectedUserId('');
                   }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                  className="w-full px-4 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                 >
                   <option value="">All User Types</option>
                   {(currentUserLevel === 'L0' || currentUserLevel === 'SUPER_ADMIN') && (
@@ -337,13 +337,13 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-lodha-grey mb-2">
                   Select User
                 </label>
                 <select
                   value={selectedUserId}
                   onChange={(e) => setSelectedUserId(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                  className="w-full px-4 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                 >
                   <option value="">Choose a user...</option>
                   {(selectedUserType ? availableUsers.filter(u => u.user_level === selectedUserType) : availableUsers)
@@ -356,19 +356,19 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
                       );
                     })}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-lodha-grey/70 mt-1">
                   {selectedUserType ? `Showing ${availableUsers.filter(u => u.user_level === selectedUserType).length} user(s)` : `${availableUsers.length} users available`}
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-lodha-grey mb-2">
                   Role
                 </label>
                 <select
                   value={selectedRole}
                   onChange={(e) => setSelectedRole(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                  className="w-full px-4 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                 >
                   <option value="">Select a role...</option>
                   {roleOptions.map(category => (
@@ -386,7 +386,7 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
 
               {selectedRole === 'custom' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-lodha-grey mb-2">
                     Custom Role
                   </label>
                   <input
@@ -394,13 +394,13 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
                     value={selectedRole === 'custom' ? '' : selectedRole}
                     onChange={(e) => setSelectedRole(e.target.value)}
                     placeholder="Enter custom role..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                    className="w-full px-4 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                   />
                 </div>
               )}
             </div>
 
-            <div className="p-6 border-t border-gray-200 flex gap-3">
+            <div className="p-6 border-t border-lodha-steel/30 flex gap-3">
               <button
                 onClick={handleAddMember}
                 disabled={!selectedUserId}
@@ -416,7 +416,7 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
                   setSelectedRole('');
                   setError('');
                 }}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                className="px-4 py-2 bg-lodha-steel/20 text-lodha-grey rounded-lg hover:bg-lodha-steel/30 transition-colors font-medium"
               >
                 Cancel
               </button>

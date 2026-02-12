@@ -1107,7 +1107,7 @@ export default function ProjectInput() {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-600 mt-1">Assign an L1 manager who will be responsible for this project</p>
+                <p className="text-xs text-lodha-grey mt-1">Assign an L1 manager who will be responsible for this project</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1184,13 +1184,13 @@ export default function ProjectInput() {
             </div>
 
             {siteAreas.length === 0 ? (
-              <div className="p-4 rounded-lg border border-dashed border-gray-300 text-gray-500 text-sm">
+              <div className="p-4 rounded-lg border border-dashed border-lodha-steel text-lodha-grey/70 text-sm">
                 No site areas added yet. Add landscape zones, amenities, parking, or infrastructure here.
               </div>
             ) : (
               <div className="space-y-4">
                 {siteAreas.map((area, index) => (
-                  <div key={area.id} className="border border-gray-200 rounded-lg p-4">
+                  <div key={area.id} className="border border-lodha-steel/30 rounded-lg p-4">
                     <div className="flex flex-col md:flex-row md:items-end gap-4">
                       <div className="flex-1">
                         <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Area Name</label>
@@ -1284,7 +1284,7 @@ export default function ProjectInput() {
                     </div>
 
                     {selectedSiteArea === area.id && (
-                      <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
+                      <div className="mt-4 pt-4 border-t border-lodha-steel/30 space-y-4">
                         <div>
                           <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">Description</label>
                           <textarea
@@ -1325,7 +1325,7 @@ export default function ProjectInput() {
                                 <p className="text-xs text-red-600 mt-1">Softscape area cannot exceed total landscape area.</p>
                               )}
                               {area.area_sqm && area.softscape_area_sqm && Number(area.softscape_area_sqm) <= Number(area.area_sqm) && (
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-lodha-grey/70 mt-1">
                                   Hardscape area: {Math.max(Number(area.area_sqm) - Number(area.softscape_area_sqm), 0)} sqm
                                 </p>
                               )}
@@ -1477,7 +1477,7 @@ export default function ProjectInput() {
             </div>
 
             {projectData.societies.length === 0 ? (
-              <div className="p-4 rounded-lg border border-dashed border-gray-300 text-gray-500 text-sm">
+              <div className="p-4 rounded-lg border border-dashed border-lodha-steel text-lodha-grey/70 text-sm">
                 No societies added yet. Add at least one to group buildings.
               </div>
             ) : (
@@ -1528,7 +1528,7 @@ export default function ProjectInput() {
                 disabled={!trimmedProjectName || !trimmedProjectLocation || warnings.some(w => w.type === 'error')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
                   !trimmedProjectName || !trimmedProjectLocation || warnings.some(w => w.type === 'error')
-                    ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                    ? 'bg-lodha-steel/30 text-lodha-grey cursor-not-allowed'
                     : 'bg-lodha-gold text-white hover:bg-lodha-gold/90'
                 }`}
                 title={
@@ -1582,7 +1582,7 @@ export default function ProjectInput() {
               disabled={!trimmedProjectName || warnings.some(w => w.type === 'error') || saving || (isEditing && !hasChanges)}
               className={`px-6 py-3 font-jost font-semibold rounded-lg transition-all ${
                 !trimmedProjectName || warnings.some(w => w.type === 'error') || saving || (isEditing && !hasChanges)
-                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                  ? 'bg-lodha-steel/30 text-lodha-grey cursor-not-allowed'
                   : 'bg-lodha-gold text-white hover:bg-lodha-gold/90'
               }`}
               title={
@@ -1604,7 +1604,7 @@ export default function ProjectInput() {
               disabled={saving}
               className={`px-6 py-3 font-jost font-semibold rounded-lg border border-lodha-gold ${
                 saving
-                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  ? 'bg-lodha-steel/20 text-lodha-grey/70 cursor-not-allowed'
                   : 'bg-lodha-sand text-lodha-black hover:bg-lodha-sand/80'
               }`}
             >
@@ -2026,7 +2026,7 @@ function BuildingSection({
               disabled={!building.name.trim() || !building.applicationType}
               className={`flex items-center gap-1 px-3 py-1 text-sm rounded transition-all ${
                 !building.name.trim() || !building.applicationType
-                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                  ? 'bg-lodha-steel/30 text-lodha-grey cursor-not-allowed'
                   : 'bg-lodha-gold/20 text-lodha-gold hover:bg-lodha-gold/30'
               }`}
               title={
@@ -2216,7 +2216,7 @@ function FloorSection({
                 className={`flex items-center gap-1 text-xs px-2 py-1 rounded ${
                   selectedCopySource
                     ? 'bg-lodha-sand text-lodha-black hover:bg-lodha-sand/80 border border-lodha-gold'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-lodha-steel/20 text-lodha-grey/50 cursor-not-allowed'
                 }`}
                 title={!selectedCopySource ? 'Select a floor to copy from' : 'Copy selected floor data'}
               >
@@ -2316,7 +2316,7 @@ function FlatRow({
       <select
         value={flat.type}
         onChange={e =>onUpdate(buildingId, floorId, flatId, { type: e.target.value })}
-        className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-lodha-gold"
+        className="flex-1 px-2 py-1 border border-lodha-steel rounded text-xs focus:outline-none focus:ring-1 focus:ring-lodha-gold"
       >
         <option value="">Type</option>
         {standards.flatTypes?.map(type => (
@@ -2333,9 +2333,9 @@ function FlatRow({
           value={flat.area}
           onChange={e => onUpdate(buildingId, floorId, flatId, { area: e.target.value })}
           placeholder="Area"
-          className="w-20 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-lodha-gold"
+          className="w-20 px-2 py-1 border border-lodha-steel rounded text-xs focus:outline-none focus:ring-1 focus:ring-lodha-gold"
         />
-        <span className="text-xs text-gray-600">sqm</span>
+        <span className="text-xs text-lodha-grey">sqm</span>
       </div>
 
       <div className="flex flex-col">
@@ -2344,7 +2344,7 @@ function FlatRow({
           value={flat.count}
           onChange={e => onUpdate(buildingId, floorId, flatId, { count: e.target.value })}
           placeholder="Count"
-          className="w-16 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-lodha-gold"
+          className="w-16 px-2 py-1 border border-lodha-steel rounded text-xs focus:outline-none focus:ring-1 focus:ring-lodha-gold"
         />
         {twinFloorsCount > 0 && (
           <span className="text-xs text-lodha-grey mt-0.5">

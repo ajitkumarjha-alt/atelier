@@ -329,8 +329,8 @@ export default function StandardsManagement() {
       <div className="mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-garamond font-bold text-lodha-grey">Standards Management</h1>
-            <p className="text-sm text-lodha-grey/60 font-jost mt-1">Manage calculation standards, ratings, and reference documents</p>
+            <h1 className="heading-primary">Standards Management</h1>
+            <p className="page-subtitle">Manage calculation standards, ratings, and reference documents</p>
           </div>
           {canEdit && (
             <button onClick={handleAdd} className="flex items-center gap-2 px-5 py-2.5 bg-lodha-gold text-white rounded-lg text-sm font-jost font-semibold hover:bg-lodha-grey transition-colors">

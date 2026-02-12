@@ -117,11 +117,11 @@ export default function Layout({ children }) {
     return (
       <button
         onClick={() => navigate(item.path)}
-        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg
-                   transition-all duration-200 font-jost ${
+        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg
+                   transition-all duration-200 font-jost text-sm ${
           isActive
-            ? 'bg-gradient-to-r from-lodha-gold to-lodha-gold/90 text-white shadow-md transform scale-105'
-            : 'text-white/80 hover:bg-white/10 hover:text-white hover:translate-x-1'
+            ? 'bg-lodha-gold/90 text-white shadow-sm font-semibold'
+            : 'text-white/70 hover:bg-white/8 hover:text-white'
         }`}
         aria-current={isActive ? 'page' : undefined}
         aria-label={item.name}
@@ -136,7 +136,7 @@ export default function Layout({ children }) {
     <div className="min-h-screen flex max-w-full overflow-x-hidden">
       {/* Sidebar */}
       <div 
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-lodha-grey via-lodha-grey to-lodha-cool-grey transform 
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-60 bg-gradient-to-b from-[#3a3a3c] to-[#2d2d2f] transform 
                    ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
                    lg:translate-x-0 transition-transform duration-200 ease-in-out
                    flex flex-col shadow-xl`}
@@ -144,12 +144,12 @@ export default function Layout({ children }) {
         aria-label="Main navigation"
       >
         {/* Sidebar Header */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-lodha-gold/30 bg-gradient-to-r from-transparent to-lodha-gold/10">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-lodha-gold rounded flex items-center justify-center">
+        <div className="h-16 flex items-center justify-between px-5 border-b border-white/10">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-lodha-gold rounded-lg flex items-center justify-center">
               <span className="text-white font-garamond font-bold text-lg">A</span>
             </div>
-            <h1 className="text-2xl font-garamond font-bold text-white">
+            <h1 className="text-xl font-garamond font-bold text-white tracking-wide">
               Atelier
             </h1>
           </div>
@@ -163,23 +163,23 @@ export default function Layout({ children }) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {navItems.map(item => (
             <NavItem key={item.path} item={item} />
           ))}
         </nav>
 
         {/* User Profile */}
-        <div className="p-4 border-t border-lodha-gold/20">
-          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gradient-to-r from-lodha-gold/20 to-lodha-gold/10 border border-lodha-gold/30 text-white">
-            <div className="w-10 h-10 bg-lodha-gold rounded-full flex items-center justify-center flex-shrink-0">
-              <User className="w-5 h-5 text-white" />
+        <div className="p-3 border-t border-white/10">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5 text-white">
+            <div className="w-9 h-9 bg-lodha-gold/80 rounded-full flex items-center justify-center flex-shrink-0">
+              <User className="w-4 h-4 text-white" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-jost font-medium truncate">
                 {user?.displayName}
               </p>
-              <p className="text-xs text-white/70 truncate font-jost">
+              <p className="text-xs text-white/50 truncate font-jost">
                 {user?.email}
               </p>
             </div>
@@ -190,17 +190,17 @@ export default function Layout({ children }) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Top Navigation */}
-        <header className="h-16 bg-white shadow-sm flex items-center justify-between px-4 md:px-6 border-b border-lodha-steel">
+        <header className="h-14 bg-white flex items-center justify-between px-4 md:px-6 border-b border-lodha-steel/30">
           <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-1 rounded-md hover:bg-lodha-sand"
+              className="lg:hidden p-1.5 rounded-lg hover:bg-lodha-sand"
               aria-label="Open navigation menu"
               aria-expanded={isSidebarOpen}
             >
-              <Menu className="w-6 h-6 text-lodha-grey" aria-hidden="true" />
+              <Menu className="w-5 h-5 text-lodha-grey" aria-hidden="true" />
             </button>
-            <h2 className="text-lg md:text-xl font-garamond font-bold text-lodha-grey truncate">
+            <h2 className="text-lg font-garamond font-bold text-lodha-black truncate">
               {navItems.find(item => item.path === location.pathname)?.name || 'Dashboard'}
             </h2>
           </div>
@@ -208,19 +208,19 @@ export default function Layout({ children }) {
             <NotificationBell />
             <button
               onClick={handleSignOut}
-              className="flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 rounded-lg hover:bg-lodha-sand
-                       text-lodha-grey text-xs md:text-sm font-jost font-semibold transition-colors duration-200
-                       border border-lodha-gold hover:border-lodha-grey flex-shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-lodha-sand
+                       text-lodha-grey text-sm font-jost font-medium transition-colors duration-150
+                       border border-lodha-steel/40 hover:border-lodha-steel flex-shrink-0"
               aria-label="Sign out"
             >
-              <LogOut className="w-4 h-4" aria-hidden="true" />
+              <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
               <span className="hidden sm:inline">Sign Out</span>
             </button>
           </div>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 bg-lodha-sand p-4 md:p-6 overflow-auto w-full max-w-full" role="main">
+        <main className="flex-1 bg-lodha-sand/50 p-4 md:p-6 lg:p-8 overflow-auto w-full max-w-full" role="main">
           <div className="max-w-7xl mx-auto w-full">
             <Breadcrumbs />
             {children}

@@ -13,7 +13,7 @@ export const Skeleton = ({ className = '', width, height }) => {
 
   return (
     <div
-      className={`animate-pulse bg-gray-200 rounded ${className}`}
+      className={`animate-pulse bg-lodha-steel/20 rounded ${className}`}
       style={style}
       aria-hidden="true"
     />
@@ -79,7 +79,7 @@ export const TableSkeleton = ({ rows = 5, columns = 5, showHeader = true }) => {
     <div className="overflow-x-auto">
       <table className="min-w-full bg-white">
         {showHeader && (
-          <thead className="bg-gray-50">
+          <thead className="bg-lodha-sand/40">
             <tr>
               {Array.from({ length: columns }).map((_, i) => (
                 <th key={i} className="px-4 py-3 text-left">
@@ -215,13 +215,13 @@ export const DetailPageSkeleton = () => {
 // Page loader (full screen)
 export const PageLoader = ({ message = 'Loading...' }) => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-lodha-sand/40">
       <div className="text-center">
         <div className="inline-block">
           <div className="w-16 h-16 border-4 border-lodha-gold border-t-transparent rounded-full animate-spin" />
         </div>
         {message && (
-          <p className="mt-4 text-gray-600 font-medium">{message}</p>
+          <p className="mt-4 text-lodha-grey font-medium">{message}</p>
         )}
       </div>
     </div>

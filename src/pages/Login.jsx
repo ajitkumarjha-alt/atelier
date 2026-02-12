@@ -70,7 +70,7 @@ export default function Login() {
       {/* Right Side - Login Section */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-lg shadow-2xl border border-lodha-steel p-8 space-y-8">
+          <div className="bg-white rounded-xl shadow-elevated border border-lodha-steel/30 p-8 space-y-8">
             {/* Logo and Title */}
             <div className="text-center">
               <div className="w-16 h-16 bg-lodha-gold rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -98,7 +98,7 @@ export default function Login() {
                 aria-busy={isLoading}
                 className="w-full flex items-center justify-center gap-3 px-6 py-4
                          text-sm font-medium rounded-lg
-                         text-white bg-lodha-gold hover:bg-lodha-grey 
+                         text-white bg-lodha-gold hover:bg-lodha-deep 
                          focus:outline-none focus:ring-2 focus:ring-offset-2 
                          focus:ring-lodha-gold transition-all duration-200
                          disabled:opacity-50 disabled:cursor-not-allowed

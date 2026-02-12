@@ -79,20 +79,20 @@ export default function ConsultantProjectCalculations() {
   return (
     <div className="min-h-screen bg-lodha-sand">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-white shadow-sm border-b border-lodha-steel/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/consultant-dashboard')}
-              className="p-2 hover:bg-gray-100 rounded-md"
+              className="p-2 hover:bg-lodha-sand rounded-md"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-garamond font-bold text-lodha-gold">
+              <h1 className="text-2xl font-garamond font-bold text-lodha-gold tracking-tight">
                 {project?.name || 'Project'} - Design Calculations
               </h1>
-              <p className="text-sm text-gray-600">View project design calculations</p>
+              <p className="text-sm text-lodha-grey">View project design calculations</p>
             </div>
           </div>
         </div>
@@ -117,8 +117,8 @@ export default function ConsultantProjectCalculations() {
                   <Calculator className="w-6 h-6 text-lodha-gold" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">{calc.name}</h3>
-                  <p className="text-sm text-gray-500 mt-1">View calculations</p>
+                  <h3 className="font-semibold text-lodha-black">{calc.name}</h3>
+                  <p className="text-sm text-lodha-grey/70 mt-1">View calculations</p>
                 </div>
               </div>
             </button>

@@ -103,7 +103,7 @@ export default function L1ProjectTable({ userEmail, userLevel }) {
           {projects.map(project => (
             <tr 
               key={project.id}
-              className="border-b border-gray-200 hover:bg-lodha-sand/50 transition-colors"
+              className="border-b border-lodha-steel/30 hover:bg-lodha-sand/50 transition-colors"
             >
               <td 
                 className="py-2 md:py-3 px-[2%] text-lodha-black font-jost font-semibold cursor-pointer hover:text-lodha-gold text-sm md:text-base"
@@ -122,7 +122,7 @@ export default function L1ProjectTable({ userEmail, userLevel }) {
                   <div className="flex justify-between mb-1">
                     <span className="text-xs md:text-sm text-lodha-grey font-jost">{project.completion_percentage}%</span>
                   </div>
-                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-2 bg-lodha-steel/20 rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-lodha-gold transition-all duration-300"
                       style={{ width: `${project.completion_percentage}%` }}

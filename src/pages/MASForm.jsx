@@ -96,7 +96,7 @@ export default function MASForm() {
         <div className="bg-lodha-gold text-white px-6 py-4 rounded-t-lg border-b-4 border-lodha-black">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-garamond font-bold mb-1">
+              <h1 className="heading-primary">
                 Material Approval Sheet (MAS)
               </h1>
               <p className="text-sm opacity-90">Create new material approval request</p>
@@ -128,7 +128,7 @@ export default function MASForm() {
                   value={formData.projectName}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
+                  className="w-full px-4 py-3 border-2 border-lodha-steel rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
                 />
               </div>
               <div>
@@ -141,7 +141,7 @@ export default function MASForm() {
                   value={formData.contractorName}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
+                  className="w-full px-4 py-3 border-2 border-lodha-steel rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
                 />
               </div>
               <div>
@@ -155,7 +155,7 @@ export default function MASForm() {
                   onChange={handleChange}
                   placeholder="e.g., MAS-2026-001"
                   required
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
+                  className="w-full px-4 py-3 border-2 border-lodha-steel rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
                 />
               </div>
               <div>
@@ -168,7 +168,7 @@ export default function MASForm() {
                   value={formData.date}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
+                  className="w-full px-4 py-3 border-2 border-lodha-steel rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
                 />
               </div>
             </div>
@@ -189,7 +189,7 @@ export default function MASForm() {
                   value={formData.materialCategory}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
+                  className="w-full px-4 py-3 border-2 border-lodha-steel rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
                 >
                   <option value="">Select Category</option>
                   <option value="Cement">Cement</option>
@@ -214,7 +214,7 @@ export default function MASForm() {
                   value={formData.manufacturer}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
+                  className="w-full px-4 py-3 border-2 border-lodha-steel rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
                 />
               </div>
               <div>
@@ -227,7 +227,7 @@ export default function MASForm() {
                   value={formData.brandModel}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
+                  className="w-full px-4 py-3 border-2 border-lodha-steel rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
                 />
               </div>
               <div>
@@ -239,7 +239,7 @@ export default function MASForm() {
                   name="gradeSpecification"
                   value={formData.gradeSpecification}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
+                  className="w-full px-4 py-3 border-2 border-lodha-steel rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
                 />
               </div>
               <div className="md:col-span-2">
@@ -253,7 +253,7 @@ export default function MASForm() {
                   required
                   rows={4}
                   placeholder="Provide detailed description of the material..."
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-lodha-gold focus:outline-none font-jost resize-none"
+                  className="w-full px-4 py-3 border-2 border-lodha-steel rounded-lg focus:border-lodha-gold focus:outline-none font-jost resize-none"
                 />
               </div>
             </div>
@@ -277,7 +277,7 @@ export default function MASForm() {
                   required
                   min="0"
                   step="0.01"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
+                  className="w-full px-4 py-3 border-2 border-lodha-steel rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
                 />
               </div>
               <div>
@@ -289,7 +289,7 @@ export default function MASForm() {
                   value={formData.unit}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
+                  className="w-full px-4 py-3 border-2 border-lodha-steel rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
                 >
                   <option value="">Select Unit</option>
                   <option value="kg">Kilograms (kg)</option>
@@ -316,7 +316,7 @@ export default function MASForm() {
                   onChange={handleChange}
                   required
                   placeholder="e.g., Tower A, 10th Floor"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
+                  className="w-full px-4 py-3 border-2 border-lodha-steel rounded-lg focus:border-lodha-gold focus:outline-none font-jost"
                 />
               </div>
             </div>
@@ -332,7 +332,7 @@ export default function MASForm() {
                   required
                   rows={3}
                   placeholder="Describe where and how this material will be used..."
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-lodha-gold focus:outline-none font-jost resize-none"
+                  className="w-full px-4 py-3 border-2 border-lodha-steel rounded-lg focus:border-lodha-gold focus:outline-none font-jost resize-none"
                 />
               </div>
               <div>
@@ -345,7 +345,7 @@ export default function MASForm() {
                   onChange={handleChange}
                   rows={4}
                   placeholder="Enter technical specifications, standards, certifications required..."
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-lodha-gold focus:outline-none font-jost resize-none"
+                  className="w-full px-4 py-3 border-2 border-lodha-steel rounded-lg focus:border-lodha-gold focus:outline-none font-jost resize-none"
                 />
               </div>
 
@@ -363,11 +363,11 @@ export default function MASForm() {
           </div>
 
           {/* Footer Actions */}
-          <div className="border-t-2 border-gray-200 px-6 py-4 bg-gray-50 rounded-b-lg flex items-center justify-between">
+          <div className="border-t-2 border-lodha-steel/30 px-6 py-4 bg-lodha-sand/40 rounded-b-lg flex items-center justify-between">
             <button
               type="button"
               onClick={() => navigate('/mas-list')}
-              className="px-6 py-3 border-2 border-gray-300 text-lodha-black font-jost font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+              className="px-6 py-3 border-2 border-lodha-steel text-lodha-black font-jost font-semibold rounded-lg hover:bg-lodha-sand transition-colors"
             >
               Cancel
             </button>

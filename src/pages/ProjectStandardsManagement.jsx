@@ -534,7 +534,7 @@ export default function ProjectStandardsManagement() {
                           className="flex-1 px-3 py-1.5 border border-lodha-gold/30 rounded text-sm"
                         />
                         <button onClick={() => handleUpdateStandard(standard.id)} className="px-3 py-1 bg-lodha-gold text-white text-sm rounded">Save</button>
-                        <button onClick={() => setEditingId(null)} className="px-3 py-1 bg-gray-200 text-sm rounded">Cancel</button>
+                        <button onClick={() => setEditingId(null)} className="px-3 py-1 bg-lodha-steel/20 text-sm rounded">Cancel</button>
                       </>
                     ) : (
                       <>
@@ -544,7 +544,7 @@ export default function ProjectStandardsManagement() {
                         </div>
                         <div className="flex gap-1 shrink-0">
                           <button onClick={() => setEditingId(standard.id)} className="p-1.5 text-lodha-gold hover:bg-lodha-gold/10 rounded" title="Edit"><Edit2 className="w-3.5 h-3.5"/></button>
-                          <button onClick={() => handleToggleActive(standard.id, standard.is_active)} className="p-1.5 hover:bg-green-50 rounded" title={standard.is_active ? 'Active' : 'Inactive'}><Check className={`w-3.5 h-3.5 ${standard.is_active ? 'text-green-600' : 'text-gray-300'}`}/></button>
+                          <button onClick={() => handleToggleActive(standard.id, standard.is_active)} className="p-1.5 hover:bg-green-50 rounded" title={standard.is_active ? 'Active' : 'Inactive'}><Check className={`w-3.5 h-3.5 ${standard.is_active ? 'text-green-600' : 'text-lodha-grey/40'}`}/></button>
                           <button onClick={() => handleDeleteStandard(standard.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded" title="Delete"><Trash2 className="w-3.5 h-3.5"/></button>
                         </div>
                       </>

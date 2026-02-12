@@ -223,14 +223,14 @@ export default function PolicyCreationWizard({ onClose, onPolicyCreated }) {
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                 step > index + 1 ? 'bg-green-500 text-white' :
                 step === index + 1 ? 'bg-lodha-gold text-white' :
-                'bg-gray-200 text-gray-600'
+                'bg-lodha-steel/20 text-lodha-grey'
               }`}>
                 {step > index + 1 ? '✓' : index + 1}
               </div>
-              <span className="text-xs text-gray-600 mt-1">{label}</span>
+              <span className="text-xs text-lodha-grey mt-1">{label}</span>
             </div>
             {index < steps.length - 1 && (
-              <div className={`h-0.5 flex-1 ${step > index + 1 ? 'bg-green-500' : 'bg-gray-200'}`} />
+              <div className={`h-0.5 flex-1 ${step > index + 1 ? 'bg-green-500' : 'bg-lodha-steel/20'}`} />
             )}
           </div>
         ))}
@@ -239,24 +239,24 @@ export default function PolicyCreationWizard({ onClose, onPolicyCreated }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-lodha-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-lodha-steel/30 flex items-center justify-between">
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <FileText className="w-5 h-5 text-lodha-gold" />
             Create New Policy
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-lodha-grey/50 hover:text-lodha-grey"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Step Indicator */}
-        <div className="px-6 py-4 bg-gray-50">
+        <div className="px-6 py-4 bg-lodha-sand/40">
           {renderStepIndicator()}
         </div>
 
@@ -266,41 +266,41 @@ export default function PolicyCreationWizard({ onClose, onPolicyCreated }) {
           {step === 1 && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-lodha-grey mb-1">
                   Policy Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={policyName}
                   onChange={(e) => setPolicyName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                  className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                   placeholder="e.g., MEP-21 Water Policy + Policy 25 Occupancy Norms"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-lodha-grey mb-1">
                     Policy Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={policyNumber}
                     onChange={(e) => setPolicyNumber(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                    className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                     placeholder="e.g., MEP-21"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-lodha-grey mb-1">
                     Revision Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={revisionNumber}
                     onChange={(e) => setRevisionNumber(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                    className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                     placeholder="e.g., Rev 5"
                   />
                 </div>
@@ -308,40 +308,40 @@ export default function PolicyCreationWizard({ onClose, onPolicyCreated }) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-lodha-grey mb-1">
                     Effective Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
                     value={effectiveDate}
                     onChange={(e) => setEffectiveDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                    className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-lodha-grey mb-1">
                     Document URL (optional)
                   </label>
                   <input
                     type="url"
                     value={documentUrl}
                     onChange={(e) => setDocumentUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                    className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                     placeholder="https://..."
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-lodha-grey mb-1">
                   Description
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                  className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                   placeholder="Brief description of this policy version..."
                 />
               </div>
@@ -372,9 +372,9 @@ export default function PolicyCreationWizard({ onClose, onPolicyCreated }) {
 
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {waterRates.map((rate, index) => (
-                  <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                  <div key={index} className="border rounded-lg p-4 bg-lodha-sand/40">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="font-medium text-sm text-gray-700">Rate #{index + 1}</span>
+                      <span className="font-medium text-sm text-lodha-grey">Rate #{index + 1}</span>
                       {waterRates.length > 1 && (
                         <button
                           onClick={() => removeWaterRate(index)}
@@ -455,9 +455,9 @@ export default function PolicyCreationWizard({ onClose, onPolicyCreated }) {
 
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {occupancyFactors.map((factor, index) => (
-                  <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                  <div key={index} className="border rounded-lg p-4 bg-lodha-sand/40">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="font-medium text-sm text-gray-700">Factor #{index + 1}</span>
+                      <span className="font-medium text-sm text-lodha-grey">Factor #{index + 1}</span>
                       {occupancyFactors.length > 1 && (
                         <button
                           onClick={() => removeOccupancyFactor(index)}
@@ -539,9 +539,9 @@ export default function PolicyCreationWizard({ onClose, onPolicyCreated }) {
 
               <div className="space-y-3">
                 {calcParams.map((param, index) => (
-                  <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                  <div key={index} className="border rounded-lg p-4 bg-lodha-sand/40">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="font-medium text-sm text-gray-700">Parameter #{index + 1}</span>
+                      <span className="font-medium text-sm text-lodha-grey">Parameter #{index + 1}</span>
                       {calcParams.length > 1 && (
                         <button
                           onClick={() => removeCalcParam(index)}
@@ -600,15 +600,15 @@ export default function PolicyCreationWizard({ onClose, onPolicyCreated }) {
 
               <div>
                 <h4 className="font-semibold mb-2">Policy Information</h4>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+                <div className="bg-lodha-sand/40 rounded-lg p-4 space-y-2 text-sm">
                   <div className="grid grid-cols-2 gap-2">
-                    <span className="text-gray-600">Name:</span>
+                    <span className="text-lodha-grey">Name:</span>
                     <span className="font-medium">{policyName}</span>
-                    <span className="text-gray-600">Policy Number:</span>
+                    <span className="text-lodha-grey">Policy Number:</span>
                     <span className="font-medium">{policyNumber}</span>
-                    <span className="text-gray-600">Revision:</span>
+                    <span className="text-lodha-grey">Revision:</span>
                     <span className="font-medium">{revisionNumber}</span>
-                    <span className="text-gray-600">Effective Date:</span>
+                    <span className="text-lodha-grey">Effective Date:</span>
                     <span className="font-medium">{effectiveDate}</span>
                   </div>
                 </div>
@@ -617,15 +617,15 @@ export default function PolicyCreationWizard({ onClose, onPolicyCreated }) {
               <div className="grid grid-cols-3 gap-4">
                 <div className="bg-blue-50 rounded-lg p-4 text-center">
                   <p className="text-3xl font-bold text-blue-600">{waterRates.length}</p>
-                  <p className="text-sm text-gray-600">Water Rates</p>
+                  <p className="text-sm text-lodha-grey">Water Rates</p>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4 text-center">
                   <p className="text-3xl font-bold text-green-600">{occupancyFactors.length}</p>
-                  <p className="text-sm text-gray-600">Occupancy Factors</p>
+                  <p className="text-sm text-lodha-grey">Occupancy Factors</p>
                 </div>
                 <div className="bg-purple-50 rounded-lg p-4 text-center">
                   <p className="text-3xl font-bold text-purple-600">{calcParams.length}</p>
-                  <p className="text-sm text-gray-600">Calc Parameters</p>
+                  <p className="text-sm text-lodha-grey">Calc Parameters</p>
                 </div>
               </div>
             </div>
@@ -633,10 +633,10 @@ export default function PolicyCreationWizard({ onClose, onPolicyCreated }) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50">
+        <div className="px-6 py-4 border-t border-lodha-steel/30 flex items-center justify-between bg-lodha-sand/40">
           <button
             onClick={step === 1 ? onClose : prevStep}
-            className="px-4 py-2 text-gray-600 hover:text-gray-900"
+            className="px-4 py-2 text-lodha-grey hover:text-lodha-black"
           >
             {step === 1 ? 'Cancel' : '← Previous'}
           </button>

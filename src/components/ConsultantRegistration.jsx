@@ -71,7 +71,7 @@ export default function ConsultantRegistration({ projectId, onSuccess, onClose }
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-lodha-steel/30">
           <div className="flex items-center gap-3">
             <UserPlus className="w-6 h-6 text-lodha-gold" />
             <h2 className="text-2xl font-garamond font-bold text-lodha-gold">
@@ -80,7 +80,7 @@ export default function ConsultantRegistration({ projectId, onSuccess, onClose }
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-lodha-grey/50 hover:text-lodha-grey"
           >
             <X className="w-6 h-6" />
           </button>
@@ -97,7 +97,7 @@ export default function ConsultantRegistration({ projectId, onSuccess, onClose }
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Consultant Name */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-lodha-grey mb-2">
                 Consultant Name <span className="text-red-500">*</span>
               </label>
               <input
@@ -106,14 +106,14 @@ export default function ConsultantRegistration({ projectId, onSuccess, onClose }
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                className="w-full px-4 py-2 border border-lodha-steel rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                 placeholder="Enter consultant's full name"
               />
             </div>
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-lodha-grey mb-2">
                 Email Address <span className="text-red-500">*</span>
               </label>
               <input
@@ -122,14 +122,14 @@ export default function ConsultantRegistration({ projectId, onSuccess, onClose }
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                className="w-full px-4 py-2 border border-lodha-steel rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                 placeholder="consultant@company.com"
               />
             </div>
 
             {/* Contact Number */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-lodha-grey mb-2">
                 Contact Number <span className="text-red-500">*</span>
               </label>
               <input
@@ -138,14 +138,14 @@ export default function ConsultantRegistration({ projectId, onSuccess, onClose }
                 value={formData.contactNumber}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                className="w-full px-4 py-2 border border-lodha-steel rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                 placeholder="+91 98765 43210"
               />
             </div>
 
             {/* Company Name */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-lodha-grey mb-2">
                 Company Name
               </label>
               <input
@@ -153,7 +153,7 @@ export default function ConsultantRegistration({ projectId, onSuccess, onClose }
                 name="companyName"
                 value={formData.companyName}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                className="w-full px-4 py-2 border border-lodha-steel rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                 placeholder="Consulting firm name"
               />
             </div>
@@ -164,7 +164,7 @@ export default function ConsultantRegistration({ projectId, onSuccess, onClose }
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              className="px-6 py-2 border border-lodha-steel text-lodha-grey rounded-md hover:bg-lodha-sand/40"
             >
               Cancel
             </button>

@@ -110,20 +110,20 @@ export default function ConsultantProjectDrawings() {
   return (
     <div className="min-h-screen bg-lodha-sand">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-white shadow-sm border-b border-lodha-steel/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/consultant-dashboard')}
-              className="p-2 hover:bg-gray-100 rounded-md"
+              className="p-2 hover:bg-lodha-sand rounded-md"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-garamond font-bold text-lodha-gold">
+              <h1 className="text-2xl font-garamond font-bold text-lodha-gold tracking-tight">
                 {project?.name || 'Project'} - Drawings
               </h1>
-              <p className="text-sm text-gray-600">View and download project drawings</p>
+              <p className="text-sm text-lodha-grey">View and download project drawings</p>
             </div>
           </div>
         </div>
@@ -138,8 +138,8 @@ export default function ConsultantProjectDrawings() {
 
         {drawings.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No drawings available for this project</p>
+            <FileText className="w-12 h-12 text-lodha-grey/50 mx-auto mb-4" />
+            <p className="text-lodha-grey/70">No drawings available for this project</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -148,13 +148,13 @@ export default function ConsultantProjectDrawings() {
                 <div className="flex items-start gap-3 mb-4">
                   <FileText className="w-6 h-6 text-lodha-gold flex-shrink-0 mt-1" />
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate">
+                    <h3 className="font-semibold text-lodha-black truncate">
                       {drawing.file_name}
                     </h3>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-lodha-grey/70 mt-1">
                       {drawing.drawing_type || 'Drawing'}
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-lodha-grey/50 mt-1">
                       Version: {drawing.version || '1.0'}
                     </p>
                   </div>

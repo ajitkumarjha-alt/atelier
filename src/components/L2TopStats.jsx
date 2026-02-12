@@ -42,15 +42,15 @@ export default function L2TopStats({ userEmail, projectId }) {
   const StatCard = ({ icon: Icon, title, count, color, onClick }) => (
     <div
       onClick={onClick}
-      className={`${color} rounded-lg p-6 cursor-pointer transform hover:scale-105 transition-transform duration-200 shadow-lg border border-gray-200`}
+      className={`${color} rounded-lg p-6 cursor-pointer transform hover:scale-105 transition-transform duration-200 shadow-lg border border-lodha-steel/30`}
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-gray-600 font-jost text-sm mb-1">Pending</p>
+          <p className="text-lodha-grey font-jost text-sm mb-1">Pending</p>
           <p className="text-lodha-black font-garamond text-3xl font-bold">{count}</p>
-          <p className="text-gray-500 font-jost text-xs mt-2">{title}</p>
+          <p className="text-lodha-grey/70 font-jost text-xs mt-2">{title}</p>
         </div>
-        <Icon className="w-12 h-12 text-gray-400" />
+        <Icon className="w-12 h-12 text-lodha-grey/50" />
       </div>
     </div>
   );

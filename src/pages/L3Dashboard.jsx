@@ -47,7 +47,7 @@ export default function L3Dashboard() {
       'Tender': 'bg-yellow-100 text-yellow-800',
       'VFC': 'bg-green-100 text-green-800',
     };
-    return colors[stage] || 'bg-gray-100 text-gray-800';
+    return colors[stage] || 'bg-lodha-sand text-lodha-black';
   };
 
   if (loading) {

@@ -190,7 +190,7 @@ export default function ProjectDetail() {
                 <div className="flex justify-between mb-1">
                   <span className="text-sm text-lodha-grey font-jost">{project.completion_percentage}%</span>
                 </div>
-                <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-3 bg-lodha-steel/20 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-lodha-gold transition-all duration-300"
                     style={{ width: `${project.completion_percentage}%` }}

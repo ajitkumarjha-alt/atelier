@@ -32,10 +32,10 @@ export default function Dashboard() {
     return (
       <Layout>
         <div className="mb-8">
-          <h1 className="text-3xl font-serif font-bold text-lodha-deep mb-2">
+          <h1 className="heading-primary mb-1">
             Project Overview
           </h1>
-          <p className="text-gray-600">Loading projects...</p>
+          <p className="text-lodha-grey font-jost">Loading projects...</p>
         </div>
         <CardGridSkeleton count={6} columns={3} />
       </Layout>
@@ -56,10 +56,10 @@ export default function Dashboard() {
     <Layout>
       {/* Dashboard Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-serif font-bold text-lodha-deep mb-2">
+        <h1 className="heading-primary mb-1">
           Project Overview
         </h1>
-        <p className="text-gray-600">
+        <p className="text-lodha-grey font-jost">
           Monitoring {projects.length} active {projects.length === 1 ? 'project' : 'projects'}. Click on a card to view details.
         </p>
       </div>
@@ -79,8 +79,8 @@ export default function Dashboard() {
 
       {/* Empty State */}
       {projects.length === 0 && !loading && !error && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No projects found.</p>
+        <div className="empty-state">
+          <p className="text-lodha-grey">No projects found.</p>
         </div>
       )}
     </Layout>

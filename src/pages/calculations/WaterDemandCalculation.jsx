@@ -443,13 +443,13 @@ export default function WaterDemandCalculation() {
           <div className="flex items-center space-x-4">
             <button
               onClick={() => navigate(`/design-calculations/${projectId}`)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-lodha-sand rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Water Demand Calculation</h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <h1 className="heading-primary">Water Demand Calculation</h1>
+              <p className="text-sm text-lodha-grey/70 mt-1">
                 {project?.name} - {calculationId === 'new' ? 'New Calculation' : `Calculation ID: ${calculationId}`}
               </p>
             </div>
@@ -461,7 +461,7 @@ export default function WaterDemandCalculation() {
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-lodha-steel/30 disabled:cursor-not-allowed transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>{deleting ? 'Deleting...' : 'Delete'}</span>
@@ -478,10 +478,10 @@ export default function WaterDemandCalculation() {
         )}
 
         {/* Calculation Name and Status */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="mb-6 bg-white rounded-lg shadow-sm border border-lodha-steel/30 p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-lodha-grey mb-2">
                 Calculation Name *
               </label>
               <input
@@ -489,17 +489,17 @@ export default function WaterDemandCalculation() {
                 value={calculationName}
                 onChange={(e) => setCalculationName(e.target.value)}
                 placeholder="e.g., Water Demand - Phase 1 Residential"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-lodha-grey mb-2">
                 Status
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="Draft">Draft</option>
                 <option value="Under Review">Under Review</option>
@@ -511,11 +511,11 @@ export default function WaterDemandCalculation() {
         </div>
 
         {/* Building Selection */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Select Buildings</h2>
+        <div className="mb-6 bg-white rounded-lg shadow-sm border border-lodha-steel/30 p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-lodha-black mb-4">Select Buildings</h2>
           
           {buildings.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-lodha-grey/70">
               <p>No buildings found for this project.</p>
               <p className="text-sm mt-2">Please add buildings to the project first.</p>
             </div>
@@ -528,21 +528,21 @@ export default function WaterDemandCalculation() {
                   className={`p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all ${
                     selectedBuildings.includes(building.id)
                       ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-lodha-steel/30 hover:border-lodha-steel'
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">{building.name}</h3>
-                      <p className="text-sm text-gray-600 mt-1">{building.application_type}</p>
+                      <h3 className="font-semibold text-lodha-black">{building.name}</h3>
+                      <p className="text-sm text-lodha-grey mt-1">{building.application_type}</p>
                       {building.residential_type && (
-                        <p className="text-xs text-gray-500">{building.residential_type}</p>
+                        <p className="text-xs text-lodha-grey/70">{building.residential_type}</p>
                       )}
                       {building.villa_count && (
-                        <p className="text-xs text-gray-500">{building.villa_count} villas</p>
+                        <p className="text-xs text-lodha-grey/70">{building.villa_count} villas</p>
                       )}
                       {building.floors && (
-                        <p className="text-xs text-gray-500 mt-1">{building.floors.length} floors</p>
+                        <p className="text-xs text-lodha-grey/70 mt-1">{building.floors.length} floors</p>
                       )}
                     </div>
                     {selectedBuildings.includes(building.id) && (
@@ -558,7 +558,7 @@ export default function WaterDemandCalculation() {
             <button
               onClick={calculateWaterDemand}
               disabled={selectedBuildings.length === 0}
-              className="flex items-center space-x-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center space-x-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-lodha-steel/30 disabled:cursor-not-allowed transition-colors"
             >
               <Calculator className="w-4 h-4" />
               <span>Calculate Water Demand</span>
@@ -568,25 +568,25 @@ export default function WaterDemandCalculation() {
 
         {/* Calculation Results */}
         {showCalculations && calculationResults.length > 0 && (
-          <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 overflow-visible">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Calculation Results</h2>
+          <div className="mb-6 bg-white rounded-lg shadow-sm border border-lodha-steel/30 p-4 sm:p-6 overflow-visible">
+            <h2 className="text-base sm:text-lg font-semibold text-lodha-black mb-4">Calculation Results</h2>
             
             <div className="space-y-4 sm:space-y-6 overflow-visible">
               {calculationResults.map((result, idx) => (
-                <div key={idx} className="border border-gray-200 rounded-lg p-3 sm:p-4 overflow-visible">
+                <div key={idx} className="border border-lodha-steel/30 rounded-lg p-3 sm:p-4 overflow-visible">
                   <div className="flex flex-col sm:flex-row items-start justify-between mb-3 gap-2">
                     <div>
-                      <h3 className="text-sm sm:text-base font-semibold text-gray-900">{result.buildingName}</h3>
-                      <p className="text-sm text-gray-600">{result.applicationType}</p>
+                      <h3 className="text-sm sm:text-base font-semibold text-lodha-black">{result.buildingName}</h3>
+                      <p className="text-sm text-lodha-grey">{result.applicationType}</p>
                       {result.residentialType && (
-                        <p className="text-xs text-gray-500">{result.residentialType}</p>
+                        <p className="text-xs text-lodha-grey/70">{result.residentialType}</p>
                       )}
                     </div>
                     <div className="text-right">
                       <div className="text-lg sm:text-2xl font-bold text-blue-600">
                         {result.waterDemandPerDay.toLocaleString()} L/day
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-lodha-grey/70">
                         {(result.waterDemandPerDay / 1000).toFixed(2)} KL/day
                       </div>
                     </div>
@@ -596,31 +596,31 @@ export default function WaterDemandCalculation() {
                   {result.applicationType === 'Residential' && result.flatTypeSummary && (
                     <div className="mt-4">
                       <div className="overflow-hidden">
-                        <table className="w-full border-collapse border border-gray-200 text-xs">
-                          <thead className="bg-gray-100">
+                        <table className="w-full border-collapse border border-lodha-steel/30 text-xs">
+                          <thead className="bg-lodha-sand">
                             <tr>
-                              <th className="px-2 py-1.5 text-left text-[10px] sm:text-xs font-semibold text-gray-700 border-b border-r">Flat Type</th>
-                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-gray-700 border-b border-r">Units</th>
-                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-gray-700 border-b border-r">Unit Pop</th>
-                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-gray-700 border-b border-r">Total Pop</th>
-                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-gray-700 border-b border-r">Water per person</th>
-                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-gray-700 border-b border-r">Domestic / person</th>
-                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-gray-700 border-b border-r">Flushing / person</th>
-                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-gray-700 border-b border-r">Total water per day</th>
-                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-gray-700 border-b border-r">Domestic/day</th>
-                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-gray-700 border-b">Flushing / day</th>
+                              <th className="px-2 py-1.5 text-left text-[10px] sm:text-xs font-semibold text-lodha-grey border-b border-r">Flat Type</th>
+                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-lodha-grey border-b border-r">Units</th>
+                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-lodha-grey border-b border-r">Unit Pop</th>
+                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-lodha-grey border-b border-r">Total Pop</th>
+                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-lodha-grey border-b border-r">Water per person</th>
+                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-lodha-grey border-b border-r">Domestic / person</th>
+                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-lodha-grey border-b border-r">Flushing / person</th>
+                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-lodha-grey border-b border-r">Total water per day</th>
+                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-lodha-grey border-b border-r">Domestic/day</th>
+                              <th className="px-2 py-1.5 text-right text-[10px] sm:text-xs font-semibold text-lodha-grey border-b">Flushing / day</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white">
                             {result.flatTypeSummary.map((flatData, fIdx) => (
-                              <tr key={fIdx} className="hover:bg-gray-50">
-                                <td className="px-2 py-1.5 text-gray-900 border-b border-r font-medium">{flatData.flatType}</td>
-                                <td className="px-2 py-1.5 text-right text-gray-900 border-b border-r">{flatData.totalUnits}</td>
-                                <td className="px-2 py-1.5 text-right text-gray-900 border-b border-r">{flatData.unitPopulation}</td>
-                                <td className="px-2 py-1.5 text-right text-gray-900 border-b border-r font-semibold">{flatData.totalPopulation}</td>
-                                <td className="px-2 py-1.5 text-right text-gray-900 border-b border-r">{flatData.perPersonWaterDemand.toFixed(1)}</td>
-                                <td className="px-2 py-1.5 text-right text-gray-900 border-b border-r">{flatData.perPersonDomestic.toFixed(1)}</td>
-                                <td className="px-2 py-1.5 text-right text-gray-900 border-b border-r">{flatData.perPersonFlushing.toFixed(1)}</td>
+                              <tr key={fIdx} className="hover:bg-lodha-sand/40">
+                                <td className="px-2 py-1.5 text-lodha-black border-b border-r font-medium">{flatData.flatType}</td>
+                                <td className="px-2 py-1.5 text-right text-lodha-black border-b border-r">{flatData.totalUnits}</td>
+                                <td className="px-2 py-1.5 text-right text-lodha-black border-b border-r">{flatData.unitPopulation}</td>
+                                <td className="px-2 py-1.5 text-right text-lodha-black border-b border-r font-semibold">{flatData.totalPopulation}</td>
+                                <td className="px-2 py-1.5 text-right text-lodha-black border-b border-r">{flatData.perPersonWaterDemand.toFixed(1)}</td>
+                                <td className="px-2 py-1.5 text-right text-lodha-black border-b border-r">{flatData.perPersonDomestic.toFixed(1)}</td>
+                                <td className="px-2 py-1.5 text-right text-lodha-black border-b border-r">{flatData.perPersonFlushing.toFixed(1)}</td>
                                 <td className="px-2 py-1.5 text-right text-blue-900 border-b border-r font-semibold">{Math.ceil(flatData.totalWaterDemand).toLocaleString()}</td>
                                 <td className="px-2 py-1.5 text-right text-green-900 border-b border-r font-semibold">{Math.ceil(flatData.totalDomestic).toLocaleString()}</td>
                                 <td className="px-2 py-1.5 text-right text-orange-900 border-b font-semibold">{Math.ceil(flatData.totalFlushing).toLocaleString()}</td>
@@ -628,8 +628,8 @@ export default function WaterDemandCalculation() {
                             ))}
                             {/* Building Total Row */}
                             <tr className="bg-blue-50 font-bold">
-                              <td className="px-2 py-1.5 text-gray-900 border-r" colSpan="3">Building Total</td>
-                              <td className="px-2 py-1.5 text-right text-gray-900 border-r">{result.totalOccupancy}</td>
+                              <td className="px-2 py-1.5 text-lodha-black border-r" colSpan="3">Building Total</td>
+                              <td className="px-2 py-1.5 text-right text-lodha-black border-r">{result.totalOccupancy}</td>
                               <td className="px-2 py-1.5 border-r" colSpan="3"></td>
                               <td className="px-2 py-1.5 text-right text-blue-900 border-r">{Math.ceil(result.totalWaterDemand).toLocaleString()}</td>
                               <td className="px-2 py-1.5 text-right text-green-900 border-r">{Math.ceil(result.totalDomestic).toLocaleString()}</td>
@@ -639,17 +639,17 @@ export default function WaterDemandCalculation() {
                         </table>
                       </div>
                       
-                      <div className="mt-3 grid grid-cols-3 gap-4 text-sm bg-gray-50 rounded p-3">
+                      <div className="mt-3 grid grid-cols-3 gap-4 text-sm bg-lodha-sand/40 rounded p-3">
                         <div>
-                          <span className="text-gray-600">LPCD Rate:</span>
+                          <span className="text-lodha-grey">LPCD Rate:</span>
                           <span className="font-semibold ml-2">{result.lpcd.toFixed(1)} L/person/day</span>
                         </div>
                         <div>
-                          <span className="text-gray-600">Drinking:</span>
+                          <span className="text-lodha-grey">Drinking:</span>
                           <span className="font-semibold ml-2">{result.flatTypeSummary?.[0]?.perPersonDomestic?.toFixed(1) || 'N/A'} L/person/day</span>
                         </div>
                         <div>
-                          <span className="text-gray-600">Flushing:</span>
+                          <span className="text-lodha-grey">Flushing:</span>
                           <span className="font-semibold ml-2">{result.flatTypeSummary?.[0]?.perPersonFlushing?.toFixed(1) || 'N/A'} L/person/day</span>
                         </div>
                       </div>
@@ -658,22 +658,22 @@ export default function WaterDemandCalculation() {
 
                   {/* Villa Details */}
                   {result.applicationType === 'Villa' && (
-                    <div className="mt-4 bg-gray-50 rounded p-3">
+                    <div className="mt-4 bg-lodha-sand/40 rounded p-3">
                       <div className="grid grid-cols-4 gap-4 text-sm">
                         <div>
-                          <span className="text-gray-600">Villa Count:</span>
+                          <span className="text-lodha-grey">Villa Count:</span>
                           <span className="font-semibold ml-2">{result.villaCount}</span>
                         </div>
                         <div>
-                          <span className="text-gray-600">Occ/Villa:</span>
+                          <span className="text-lodha-grey">Occ/Villa:</span>
                           <span className="font-semibold ml-2">{result.occupancyPerVilla}</span>
                         </div>
                         <div>
-                          <span className="text-gray-600">Total Occupancy:</span>
+                          <span className="text-lodha-grey">Total Occupancy:</span>
                           <span className="font-semibold ml-2">{result.totalOccupancy} persons</span>
                         </div>
                         <div>
-                          <span className="text-gray-600">LPCD:</span>
+                          <span className="text-lodha-grey">LPCD:</span>
                           <span className="font-semibold ml-2">{result.lpcd.toFixed(0)} L</span>
                         </div>
                       </div>
@@ -682,18 +682,18 @@ export default function WaterDemandCalculation() {
 
                   {/* Non-Residential Details */}
                   {result.applicationType !== 'Residential' && result.applicationType !== 'Villa' && (
-                    <div className="mt-4 bg-gray-50 rounded p-3">
+                    <div className="mt-4 bg-lodha-sand/40 rounded p-3">
                       <div className="grid grid-cols-3 gap-4 text-sm">
                         <div>
-                          <span className="text-gray-600">Capacity:</span>
+                          <span className="text-lodha-grey">Capacity:</span>
                           <span className="font-semibold ml-2">{result.capacity} units</span>
                         </div>
                         <div>
-                          <span className="text-gray-600">Rate/Unit:</span>
+                          <span className="text-lodha-grey">Rate/Unit:</span>
                           <span className="font-semibold ml-2">{result.ratePerUnit} L</span>
                         </div>
                         <div>
-                          <span className="text-gray-600">Type:</span>
+                          <span className="text-lodha-grey">Type:</span>
                           <span className="font-semibold ml-2">{result.applicationType}</span>
                         </div>
                       </div>
@@ -709,18 +709,18 @@ export default function WaterDemandCalculation() {
                 <div className="flex items-center space-x-3">
                   <Droplets className="w-8 h-8 text-blue-600" />
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Total Water Demand</h3>
-                    <p className="text-sm text-gray-600">For {selectedBuildings.length} selected building(s)</p>
+                    <h3 className="text-lg font-semibold text-lodha-black">Total Water Demand</h3>
+                    <p className="text-sm text-lodha-grey">For {selectedBuildings.length} selected building(s)</p>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-3xl font-bold text-blue-600">
                     {Math.ceil(totalWaterDemand).toLocaleString()} L/day
                   </div>
-                  <div className="text-lg text-gray-700">
+                  <div className="text-lg text-lodha-grey">
                     {(Math.ceil(totalWaterDemand) / 1000).toFixed(2)} KL/day
                   </div>
-                  <div className="text-sm text-gray-600 mt-1">
+                  <div className="text-sm text-lodha-grey mt-1">
                     ≈ {((Math.ceil(totalWaterDemand) / 1000) * 30).toFixed(2)} KL/month
                   </div>
                 </div>
@@ -728,13 +728,13 @@ export default function WaterDemandCalculation() {
             </div>
 
             {/* Storage Tank Configuration */}
-            <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Storage Tank Configuration</h2>
+            <div className="mt-6 bg-white rounded-lg shadow-sm border border-lodha-steel/30 p-6">
+              <h2 className="text-lg font-semibold text-lodha-black mb-4">Storage Tank Configuration</h2>
               
               {/* Tank Depth Configuration */}
               <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-lodha-grey mb-1">
                     OHT Depth (meters)
                   </label>
                   <input
@@ -744,11 +744,11 @@ export default function WaterDemandCalculation() {
                     max="5"
                     value={ohtDepth}
                     onChange={(e) => setOhtDepth(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-lodha-steel rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-lodha-grey mb-1">
                     UGR Depth (meters)
                   </label>
                   <input
@@ -758,14 +758,14 @@ export default function WaterDemandCalculation() {
                     max="10"
                     value={ugrDepth}
                     onChange={(e) => setUgrDepth(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-lodha-steel rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-lodha-sand/40 rounded-lg">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-lodha-grey mb-1">
                     OHT Domestic (days)
                   </label>
                   <input
@@ -774,11 +774,11 @@ export default function WaterDemandCalculation() {
                     min="0"
                     value={ohtDomesticDays}
                     onChange={(e) => setOhtDomesticDays(parseFloat(e.target.value) || 0)}
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-2 py-1 text-sm border border-lodha-steel rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-lodha-grey mb-1">
                     OHT Flushing (days)
                   </label>
                   <input
@@ -787,11 +787,11 @@ export default function WaterDemandCalculation() {
                     min="0"
                     value={ohtFlushingDays}
                     onChange={(e) => setOhtFlushingDays(parseFloat(e.target.value) || 0)}
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-2 py-1 text-sm border border-lodha-steel rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-lodha-grey mb-1">
                     UGR Domestic (days)
                   </label>
                   <input
@@ -800,11 +800,11 @@ export default function WaterDemandCalculation() {
                     min="0"
                     value={ugrDomesticDays}
                     onChange={(e) => setUgrDomesticDays(parseFloat(e.target.value) || 0)}
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-2 py-1 text-sm border border-lodha-steel rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-lodha-grey mb-1">
                     UGR Flushing (days)
                   </label>
                   <input
@@ -813,7 +813,7 @@ export default function WaterDemandCalculation() {
                     min="0"
                     value={ugrFlushingDays}
                     onChange={(e) => setUgrFlushingDays(parseFloat(e.target.value) || 0)}
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-2 py-1 text-sm border border-lodha-steel rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -841,11 +841,11 @@ export default function WaterDemandCalculation() {
                   const ugrTotal = resultsInSociety.reduce((sum, r) => sum + (r.totalDomestic * ugrDomesticDays) + (r.totalFlushing * ugrFlushingDays), 0);
                   return (
                     <div key={societyId} className="border-2 border-blue-300 bg-blue-50 rounded-lg p-4 mb-6">
-                      <h3 className="font-semibold text-gray-900 mb-3">
+                      <h3 className="font-semibold text-lodha-black mb-3">
                         UGR for {society ? society.name : 'No Society'}
                       </h3>
                       <div className="bg-blue-100 rounded p-4">
-                        <div className="text-xs text-gray-700 font-medium mb-1">Total UGR Capacity Required</div>
+                        <div className="text-xs text-lodha-grey font-medium mb-1">Total UGR Capacity Required</div>
                         <div className="text-2xl font-bold text-blue-800">
                           {Math.ceil(ugrTotal).toLocaleString()} L
                         </div>
@@ -854,7 +854,7 @@ export default function WaterDemandCalculation() {
                         </div>
                         {ugrDepth > 0 && (
                           <div className="mt-4 pt-4 border-t border-blue-300">
-                            <div className="text-xs text-gray-700 font-medium">Combined Tank Area Required</div>
+                            <div className="text-xs text-lodha-grey font-medium">Combined Tank Area Required</div>
                             <div className="text-xl font-bold text-blue-900 mt-1">
                               {((Math.ceil(ugrTotal) / 1000) / ugrDepth).toFixed(2)} m²
                             </div>
@@ -866,8 +866,8 @@ export default function WaterDemandCalculation() {
                       </div>
                       {/* List buildings in this society */}
                       <div className="mt-4">
-                        <div className="text-xs text-gray-700 font-medium mb-1">Buildings in this society:</div>
-                        <ul className="list-disc list-inside text-sm text-gray-800">
+                        <div className="text-xs text-lodha-grey font-medium mb-1">Buildings in this society:</div>
+                        <ul className="list-disc list-inside text-sm text-lodha-black">
                           {resultsInSociety.map(r => (
                             <li key={r.buildingId}>{r.buildingName}</li>
                           ))}
@@ -882,8 +882,8 @@ export default function WaterDemandCalculation() {
         )}
 
         {/* Remarks */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="mb-6 bg-white rounded-lg shadow-sm border border-lodha-steel/30 p-6">
+          <label className="block text-sm font-medium text-lodha-grey mb-2">
             Remarks / Notes
           </label>
           <textarea
@@ -891,7 +891,7 @@ export default function WaterDemandCalculation() {
             onChange={(e) => setRemarks(e.target.value)}
             rows={4}
             placeholder="Add any additional notes or assumptions..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
 
@@ -899,7 +899,7 @@ export default function WaterDemandCalculation() {
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate(`/project/${projectId}`)}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 border border-lodha-steel text-lodha-grey rounded-lg hover:bg-lodha-sand/40 transition-colors"
           >
             Cancel
           </button>
@@ -907,7 +907,7 @@ export default function WaterDemandCalculation() {
           <button
             onClick={handleSave}
             disabled={saving || !showCalculations}
-            className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-lodha-steel/30 disabled:cursor-not-allowed transition-colors"
           >
             <Save className="w-4 h-4" />
             <span>{saving ? 'Saving...' : 'Confirm and Save'}</span>

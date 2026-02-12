@@ -115,7 +115,7 @@ export default function ConsultantLogin() {
       {/* Right Side - Login Section */}
       <div className="w-full lg:w-1/2 flex items-center justify-center bg-lodha-sand p-8">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-lg shadow-2xl p-8 space-y-8">
+          <div className="bg-white rounded-xl shadow-elevated p-8 space-y-8">
             {/* Logo and Title */}
             <div className="text-center">
               <h1 className="text-5xl font-garamond font-bold text-lodha-gold mb-2">
@@ -136,17 +136,17 @@ export default function ConsultantLogin() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey mb-2">
                       Email Address
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-lodha-grey/50" />
                       <input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                        className="w-full pl-10 pr-4 py-3 border border-lodha-steel rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
                         placeholder="consultant@company.com"
                       />
                     </div>
@@ -157,7 +157,7 @@ export default function ConsultantLogin() {
                     disabled={isLoading}
                     className="w-full flex items-center justify-center gap-3 px-4 py-3 
                              border border-transparent text-sm font-medium rounded-md 
-                             text-white bg-lodha-gold hover:bg-lodha-black 
+                             text-white bg-lodha-gold hover:bg-lodha-deep 
                              focus:outline-none focus:ring-2 focus:ring-offset-2 
                              focus:ring-lodha-gold transition-colors duration-200
                              disabled:opacity-50 disabled:cursor-not-allowed
@@ -179,18 +179,18 @@ export default function ConsultantLogin() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey mb-2">
                       One-Time Password
                     </label>
                     <div className="relative">
-                      <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-lodha-grey/50" />
                       <input
                         type="text"
                         value={otp}
                         onChange={(e) => setOtp(e.target.value)}
                         required
                         maxLength={6}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent text-center text-2xl tracking-widest"
+                        className="w-full pl-10 pr-4 py-3 border border-lodha-steel rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent text-center text-2xl tracking-widest"
                         placeholder="000000"
                       />
                     </div>
@@ -201,7 +201,7 @@ export default function ConsultantLogin() {
                     disabled={isLoading}
                     className="w-full flex items-center justify-center gap-3 px-4 py-3 
                              border border-transparent text-sm font-medium rounded-md 
-                             text-white bg-lodha-gold hover:bg-lodha-black 
+                             text-white bg-lodha-gold hover:bg-lodha-deep 
                              focus:outline-none focus:ring-2 focus:ring-offset-2 
                              focus:ring-lodha-gold transition-colors duration-200
                              disabled:opacity-50 disabled:cursor-not-allowed

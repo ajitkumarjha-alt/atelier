@@ -101,7 +101,7 @@ export default function ConsultantRFIDetail() {
     return (
       <div className="min-h-screen bg-lodha-sand flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-500">RFI not found</p>
+          <p className="text-lodha-grey/70">RFI not found</p>
           <button
             onClick={() => navigate('/consultant-dashboard')}
             className="mt-4 text-lodha-gold hover:text-lodha-deep"
@@ -116,20 +116,20 @@ export default function ConsultantRFIDetail() {
   return (
     <div className="min-h-screen bg-lodha-sand">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-white shadow-sm border-b border-lodha-steel/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/consultant-dashboard')}
-              className="p-2 hover:bg-gray-100 rounded-md"
+              className="p-2 hover:bg-lodha-sand rounded-md"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-garamond font-bold text-lodha-gold">
+              <h1 className="text-2xl font-garamond font-bold text-lodha-gold tracking-tight">
                 Request for Information
               </h1>
-              <p className="text-sm text-gray-600">Review and respond</p>
+              <p className="text-sm text-lodha-grey">Review and respond</p>
             </div>
           </div>
         </div>
@@ -148,7 +148,7 @@ export default function ConsultantRFIDetail() {
             <h2 className="text-xl font-garamond font-bold text-lodha-gold mb-2">
               {rfi.title}
             </h2>
-            <div className="flex items-center gap-4 text-sm text-gray-500">
+            <div className="flex items-center gap-4 text-sm text-lodha-grey/70">
               <span>Project: {rfi.project_name}</span>
               <span>•</span>
               <span>Raised by: {rfi.raised_by_name}</span>
@@ -164,24 +164,24 @@ export default function ConsultantRFIDetail() {
           </div>
 
           <div className="border-t pt-6">
-            <p className="text-sm text-gray-500 mb-2">Description</p>
-            <p className="text-gray-900 whitespace-pre-wrap">{rfi.description}</p>
+            <p className="text-sm text-lodha-grey/70 mb-2">Description</p>
+            <p className="text-lodha-black whitespace-pre-wrap">{rfi.description}</p>
           </div>
 
           {rfi.location && (
             <div className="mt-4 pt-4 border-t">
-              <p className="text-sm text-gray-500 mb-2">Location</p>
-              <p className="text-gray-900">{rfi.location}</p>
+              <p className="text-sm text-lodha-grey/70 mb-2">Location</p>
+              <p className="text-lodha-black">{rfi.location}</p>
             </div>
           )}
 
           {rfi.priority && (
             <div className="mt-4 pt-4 border-t">
-              <p className="text-sm text-gray-500 mb-2">Priority</p>
+              <p className="text-sm text-lodha-grey/70 mb-2">Priority</p>
               <span className={`inline-block px-2 py-1 text-xs rounded ${
                 rfi.priority === 'high' ? 'bg-red-100 text-red-800' :
                 rfi.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-gray-100 text-gray-800'
+                'bg-lodha-sand text-lodha-black'
               }`}>
                 {rfi.priority}
               </span>
@@ -193,7 +193,7 @@ export default function ConsultantRFIDetail() {
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center gap-2 mb-4">
             <MessageSquare className="w-5 h-5 text-lodha-gold" />
-            <h2 className="text-lg font-semibold text-gray-900">Your Response</h2>
+            <h2 className="text-lg font-semibold text-lodha-black">Your Response</h2>
             {rfi.consultant_replied_at && (
               <CheckCircle className="w-5 h-5 text-green-500 ml-auto" />
             )}
@@ -210,7 +210,7 @@ export default function ConsultantRFIDetail() {
               value={reply}
               onChange={(e) => setReply(e.target.value)}
               rows={6}
-              className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+              className="w-full px-4 py-3 border border-lodha-steel rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
               placeholder="Enter your response, clarifications, or technical recommendations..."
               required
             />

@@ -101,15 +101,15 @@ export default function FileUpload({
 
   return (
     <div className="space-y-4">
-      <label className="block text-sm font-medium text-gray-700">
+      <label className="block text-sm font-medium text-lodha-grey">
         {label}
       </label>
 
       {/* Upload Button */}
       <div>
-        <label className="flex items-center justify-center gap-2 px-4 py-3 bg-white border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-lodha-gold hover:bg-gray-50 transition-colors">
-          <Upload className="w-5 h-5 text-gray-400" />
-          <span className="text-sm text-gray-600">
+        <label className="flex items-center justify-center gap-2 px-4 py-3 bg-white border-2 border-dashed border-lodha-steel rounded-lg cursor-pointer hover:border-lodha-gold hover:bg-lodha-sand/40 transition-colors">
+          <Upload className="w-5 h-5 text-lodha-grey/50" />
+          <span className="text-sm text-lodha-grey">
             {uploading ? 'Uploading...' : `Choose files (max ${maxFiles})`}
           </span>
           <input
@@ -121,7 +121,7 @@ export default function FileUpload({
             className="hidden"
           />
         </label>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-lodha-grey/70 mt-1">
           Supported: PDF, Images, Office documents, ZIP (max 50MB per file)
         </p>
       </div>
@@ -136,23 +136,23 @@ export default function FileUpload({
       {/* File List */}
       {files.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-gray-700">
+          <p className="text-sm font-medium text-lodha-grey">
             Uploaded Files ({files.length})
           </p>
           <div className="space-y-2">
             {files.map((file, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-3"
+                className="flex items-center justify-between bg-lodha-sand/40 border border-lodha-steel/30 rounded-lg p-3"
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   {getFileIcon(file.mimetype)}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-700 truncate">
+                    <p className="text-sm font-medium text-lodha-grey truncate">
                       {file.originalName || 'Uploaded file'}
                     </p>
                     {file.size && (
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-lodha-grey/70">
                         {formatFileSize(file.size)}
                       </p>
                     )}

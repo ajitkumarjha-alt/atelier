@@ -15,13 +15,13 @@ export default function DownTakeDesign() {
           <div className="flex items-center space-x-4">
             <button
               onClick={() => navigate(`/projects/${projectId}/design-calculations`)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-lodha-sand rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Down Take Design</h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <h1 className="heading-primary">Down Take Design</h1>
+              <p className="text-sm text-lodha-grey/70 mt-1">
                 Calculation ID: {calculationId || 'New'}
               </p>
             </div>

@@ -87,7 +87,7 @@ export default function L1Dashboard() {
           <L1ProjectTable userEmail={user?.email} userLevel={userLevel} />
         </div>
         {/* Scroll indicator for mobile */}
-        <div className="lg:hidden text-center py-2 text-xs text-lodha-grey border-t border-gray-200">
+        <div className="lg:hidden text-center py-2 text-xs text-lodha-grey border-t border-lodha-steel/30">
           ← Scroll to see all columns →
         </div>
       </div>

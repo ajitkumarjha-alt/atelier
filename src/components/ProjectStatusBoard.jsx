@@ -72,19 +72,19 @@ export default function ProjectStatusBoard({ userEmail }) {
         case 'at_risk':
           return 'bg-yellow-100 text-yellow-800 border-yellow-200';
         default:
-          return 'bg-gray-100 text-gray-800 border-gray-200';
+          return 'bg-lodha-sand text-lodha-black border-lodha-steel/30';
       }
     };
 
     return (
-      <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-200 border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-200 border border-lodha-steel/30 overflow-hidden">
         {/* Header with Status */}
         <div 
-          className="p-5 pb-4 border-b border-gray-100 cursor-pointer"
+          className="p-5 pb-4 border-b border-lodha-steel/15 cursor-pointer"
           onClick={() => navigate(`/project/${project.id}`)}
         >
           <div className="flex justify-between items-start mb-3 gap-3">
-            <h3 className="text-xl font-serif font-bold text-lodha-deep flex-1 leading-tight hover:text-lodha-gold transition-colors">
+            <h3 className="text-xl font-garamond font-bold text-lodha-deep flex-1 leading-tight hover:text-lodha-gold transition-colors">
               {project.name}
             </h3>
             {project.status && ['on_track', 'delayed', 'at_risk'].includes(project.status) && (
@@ -96,12 +96,12 @@ export default function ProjectStatusBoard({ userEmail }) {
           
           {/* Project Summary */}
           {project.description && (
-            <p className="text-sm text-gray-600 line-clamp-2 mb-3">{project.description}</p>
+            <p className="text-sm text-lodha-grey line-clamp-2 mb-3">{project.description}</p>
           )}
 
           {/* Lifecycle Stage */}
           {project.lifecycle_stage && (
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-lodha-grey/70">
               <span className="font-medium">Stage:</span> {project.lifecycle_stage}
             </div>
           )}
@@ -112,10 +112,10 @@ export default function ProjectStatusBoard({ userEmail }) {
           {/* Progress Bar */}
           <div className="mb-4">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-700">Overall Progress</span>
+              <span className="text-sm font-medium text-lodha-grey">Overall Progress</span>
               <span className="text-sm font-bold text-lodha-gold">{project.completion_percentage}%</span>
             </div>
-            <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-2.5 bg-lodha-sand rounded-full overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-lodha-gold to-yellow-500 transition-all duration-500 ease-out"
                 style={{ width: `${project.completion_percentage}%` }}
@@ -126,13 +126,13 @@ export default function ProjectStatusBoard({ userEmail }) {
           {/* Floor Progress */}
           <div className="flex items-center gap-2 text-sm">
             <Building2 className="w-4 h-4 text-lodha-deep" />
-            <span className="text-gray-600">Floors:</span>
-            <span className="font-semibold text-gray-900">{project.floors_completed}/{project.total_floors} completed</span>
+            <span className="text-lodha-grey">Floors:</span>
+            <span className="font-semibold text-lodha-black">{project.floors_completed}/{project.total_floors} completed</span>
           </div>
 
           {/* Critical Flags Section - Placeholder for future implementation */}
           {project.critical_flags && project.critical_flags.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="mt-4 pt-4 border-t border-lodha-steel/15">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
                 <div className="text-xs text-red-600 font-medium">
@@ -191,7 +191,7 @@ export default function ProjectStatusBoard({ userEmail }) {
           {showArchive && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-75">
               {archivedProjects.map(project => (
-                <div key={project.id} className="bg-gray-100 rounded-lg p-6">
+                <div key={project.id} className="bg-lodha-sand rounded-lg p-6">
                   <h3 className="text-lg font-garamond font-bold text-lodha-black mb-2">
                     {project.name}
                   </h3>

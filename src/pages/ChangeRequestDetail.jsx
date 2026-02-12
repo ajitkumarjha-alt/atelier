@@ -206,7 +206,7 @@ export default function ChangeRequestDetail() {
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lodha-gold mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading change request...</p>
+            <p className="text-lodha-grey font-jost">Loading change request...</p>
           </div>
         </div>
       </Layout>
@@ -216,8 +216,8 @@ export default function ChangeRequestDetail() {
   if (!changeRequest) {
     return (
       <Layout>
-        <div className="text-center py-12">
-          <p className="text-gray-600">Change request not found</p>
+        <div className="empty-state">
+          <p className="text-lodha-grey">Change request not found</p>
           <button
             onClick={() => navigate(-1)}
             className="mt-4 text-lodha-gold hover:text-lodha-gold/80"
@@ -241,7 +241,7 @@ export default function ChangeRequestDetail() {
       <div className="mb-8">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center text-gray-600 hover:text-lodha-gold mb-4 transition-colors"
+          className="flex items-center text-lodha-grey hover:text-lodha-gold mb-4 transition-colors font-jost"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
@@ -254,7 +254,7 @@ export default function ChangeRequestDetail() {
           <div className="flex items-center gap-4">
             {getPriorityIcon(changeRequest.priority)}
             <div className="text-right">
-              <p className="text-sm text-gray-500">Final Status</p>
+              <p className="text-sm text-lodha-grey/70">Final Status</p>
               {getStatusBadge(changeRequest.final_status)}
             </div>
             {changeRequest.implemented && (
@@ -272,32 +272,32 @@ export default function ChangeRequestDetail() {
         {/* Left Column - Change Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Change Information */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4">
+          <div className="section-card p-6">
+            <h2 className="heading-tertiary mb-4">
               Change Details
             </h2>
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-gray-500">Change Type</p>
+                <p className="text-sm text-lodha-grey/70 font-jost">Change Type</p>
                 <p className="font-medium text-lodha-black">{changeRequest.change_type}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Category</p>
-                <p className="font-medium text-lodha-black">{changeRequest.change_category}</p>
+                <p className="text-sm text-lodha-grey/70 font-jost">Category</p>
+                <p className="font-medium text-lodha-black font-jost">{changeRequest.change_category}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Description</p>
+                <p className="text-sm text-lodha-grey/70 font-jost">Description</p>
                 <p className="text-lodha-black whitespace-pre-wrap">{changeRequest.change_description}</p>
               </div>
               {changeRequest.justification && (
                 <div>
-                  <p className="text-sm text-gray-500">Justification</p>
+                  <p className="text-sm text-lodha-grey/70">Justification</p>
                   <p className="text-lodha-black whitespace-pre-wrap">{changeRequest.justification}</p>
                 </div>
               )}
               {changeRequest.impact_assessment && (
                 <div>
-                  <p className="text-sm text-gray-500">Impact Assessment</p>
+                  <p className="text-sm text-lodha-grey/70">Impact Assessment</p>
                   <p className="text-lodha-black whitespace-pre-wrap">{changeRequest.impact_assessment}</p>
                 </div>
               )}
@@ -305,9 +305,9 @@ export default function ChangeRequestDetail() {
           </div>
 
           {/* L2 Review Section */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+          <div className="section-card p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-garamond font-semibold text-lodha-black flex items-center">
+              <h2 className="heading-tertiary flex items-center">
                 <User className="w-5 h-5 mr-2 text-lodha-gold" />
                 L2 Review (GM/AGM/DGM)
               </h2>
@@ -315,18 +315,18 @@ export default function ChangeRequestDetail() {
             </div>
             
             {changeRequest.l2_status !== 'Pending' && (
-              <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+              <div className="space-y-3 bg-lodha-sand/40 p-5 rounded-xl">
                 <div>
-                  <p className="text-sm text-gray-500">Reviewed By</p>
+                  <p className="text-sm text-lodha-grey/70">Reviewed By</p>
                   <p className="font-medium text-lodha-black">{changeRequest.l2_reviewed_by || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Review Date</p>
+                  <p className="text-sm text-lodha-grey/70">Review Date</p>
                   <p className="font-medium text-lodha-black">{formatDate(changeRequest.l2_reviewed_at)}</p>
                 </div>
                 {changeRequest.l2_comments && (
                   <div>
-                    <p className="text-sm text-gray-500">Comments</p>
+                    <p className="text-sm text-lodha-grey/70">Comments</p>
                     <p className="font-medium text-lodha-black">{changeRequest.l2_comments}</p>
                   </div>
                 )}
@@ -343,15 +343,15 @@ export default function ChangeRequestDetail() {
                     Submit L2 Review
                   </button>
                 ) : (
-                  <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                  <div className="space-y-4 bg-lodha-sand/40 p-5 rounded-xl">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                         Review Decision *
                       </label>
                       <select
                         value={l2Status}
                         onChange={(e) => setL2Status(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                        className="input-field"
                       >
                         <option value="">Select Decision</option>
                         <option value="Approved">Approve</option>
@@ -359,14 +359,14 @@ export default function ChangeRequestDetail() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                         Comments
                       </label>
                       <textarea
                         value={l2Comments}
                         onChange={(e) => setL2Comments(e.target.value)}
                         rows={4}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                        className="input-field"
                         placeholder="Add your review comments..."
                       />
                     </div>
@@ -384,7 +384,7 @@ export default function ChangeRequestDetail() {
                           setL2Status('');
                           setL2Comments('');
                         }}
-                        className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                        className="btn-cancel"
                       >
                         Cancel
                       </button>
@@ -396,9 +396,9 @@ export default function ChangeRequestDetail() {
           </div>
 
           {/* L1 Review Section */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+          <div className="section-card p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-garamond font-semibold text-lodha-black flex items-center">
+              <h2 className="heading-tertiary flex items-center">
                 <User className="w-5 h-5 mr-2 text-lodha-gold" />
                 L1 Review (AVP)
               </h2>
@@ -406,18 +406,18 @@ export default function ChangeRequestDetail() {
             </div>
             
             {changeRequest.l1_status !== 'Pending' && (
-              <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+              <div className="space-y-3 bg-lodha-sand/40 p-5 rounded-xl">
                 <div>
-                  <p className="text-sm text-gray-500">Reviewed By</p>
+                  <p className="text-sm text-lodha-grey/70">Reviewed By</p>
                   <p className="font-medium text-lodha-black">{changeRequest.l1_reviewed_by || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Review Date</p>
+                  <p className="text-sm text-lodha-grey/70">Review Date</p>
                   <p className="font-medium text-lodha-black">{formatDate(changeRequest.l1_reviewed_at)}</p>
                 </div>
                 {changeRequest.l1_comments && (
                   <div>
-                    <p className="text-sm text-gray-500">Comments</p>
+                    <p className="text-sm text-lodha-grey/70">Comments</p>
                     <p className="font-medium text-lodha-black">{changeRequest.l1_comments}</p>
                   </div>
                 )}
@@ -434,15 +434,15 @@ export default function ChangeRequestDetail() {
                     Submit L1 Review
                   </button>
                 ) : (
-                  <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                  <div className="space-y-4 bg-lodha-sand/40 p-5 rounded-xl">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                         Review Decision *
                       </label>
                       <select
                         value={l1Status}
                         onChange={(e) => setL1Status(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                        className="input-field"
                       >
                         <option value="">Select Decision</option>
                         <option value="Approved">Approve</option>
@@ -450,14 +450,14 @@ export default function ChangeRequestDetail() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                         Comments
                       </label>
                       <textarea
                         value={l1Comments}
                         onChange={(e) => setL1Comments(e.target.value)}
                         rows={4}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                        className="input-field"
                         placeholder="Add your review comments..."
                       />
                     </div>
@@ -475,7 +475,7 @@ export default function ChangeRequestDetail() {
                           setL1Status('');
                           setL1Comments('');
                         }}
-                        className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                        className="btn-cancel"
                       >
                         Cancel
                       </button>
@@ -497,11 +497,11 @@ export default function ChangeRequestDetail() {
 
           {/* Implementation Section */}
           {canImplement && (
-            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-              <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4">
+            <div className="section-card p-6">
+              <h2 className="heading-tertiary mb-4">
                 Implementation
               </h2>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-lodha-grey mb-4">
                 This change request has been approved. Mark it as implemented once the changes have been applied to the project.
               </p>
               <button
@@ -531,8 +531,8 @@ export default function ChangeRequestDetail() {
         {/* Right Column - Metadata & Workflow */}
         <div className="space-y-6">
           {/* Approval Workflow */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4">
+          <div className="section-card p-6">
+            <h2 className="heading-tertiary mb-4">
               Approval Workflow
             </h2>
             <div className="space-y-4">
@@ -548,12 +548,12 @@ export default function ChangeRequestDetail() {
                 </div>
                 <div className="flex-grow">
                   <p className="font-medium text-lodha-black">L2 Review</p>
-                  <p className="text-sm text-gray-500">GM/AGM/DGM</p>
+                  <p className="text-sm text-lodha-grey/70">GM/AGM/DGM</p>
                   <div className="mt-1">{getStatusBadge(changeRequest.l2_status)}</div>
                 </div>
               </div>
 
-              <div className="border-l-2 border-gray-300 ml-3 h-8"></div>
+              <div className="border-l-2 border-lodha-steel/40 ml-3 h-6"></div>
 
               <div className="flex items-start">
                 <div className="flex-shrink-0 mr-3">
@@ -567,12 +567,12 @@ export default function ChangeRequestDetail() {
                 </div>
                 <div className="flex-grow">
                   <p className="font-medium text-lodha-black">L1 Review</p>
-                  <p className="text-sm text-gray-500">AVP</p>
+                  <p className="text-sm text-lodha-grey/70">AVP</p>
                   <div className="mt-1">{getStatusBadge(changeRequest.l1_status)}</div>
                 </div>
               </div>
 
-              <div className="border-l-2 border-gray-300 ml-3 h-8"></div>
+              <div className="border-l-2 border-lodha-steel/40 ml-3 h-6"></div>
 
               <div className="flex items-start">
                 <div className="flex-shrink-0 mr-3">
@@ -586,7 +586,7 @@ export default function ChangeRequestDetail() {
                 </div>
                 <div className="flex-grow">
                   <p className="font-medium text-lodha-black">Final Status</p>
-                  <p className="text-sm text-gray-500">Overall Decision</p>
+                  <p className="text-sm text-lodha-grey/70">Overall Decision</p>
                   <div className="mt-1">{getStatusBadge(changeRequest.final_status)}</div>
                 </div>
               </div>
@@ -594,26 +594,26 @@ export default function ChangeRequestDetail() {
           </div>
 
           {/* Request Metadata */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4 flex items-center">
+          <div className="section-card p-6">
+            <h2 className="heading-tertiary mb-4 flex items-center">
               <FileText className="w-5 h-5 mr-2 text-lodha-gold" />
               Request Information
             </h2>
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-gray-500">Requested By</p>
+                <p className="text-sm text-lodha-grey/70">Requested By</p>
                 <p className="font-medium text-lodha-black">{changeRequest.requested_by}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Request Date</p>
+                <p className="text-sm text-lodha-grey/70">Request Date</p>
                 <p className="font-medium text-lodha-black">{formatDate(changeRequest.created_at)}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Last Updated</p>
+                <p className="text-sm text-lodha-grey/70">Last Updated</p>
                 <p className="font-medium text-lodha-black">{formatDate(changeRequest.updated_at)}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Priority</p>
+                <p className="text-sm text-lodha-grey/70">Priority</p>
                 <div className="flex items-center gap-2 mt-1">
                   {getPriorityIcon(changeRequest.priority)}
                   <p className="font-medium text-lodha-black">{changeRequest.priority}</p>

@@ -133,20 +133,20 @@ export default function ConsultantDashboard() {
   return (
     <div className="min-h-screen bg-lodha-sand">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-white shadow-sm border-b border-lodha-steel/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-garamond font-bold text-lodha-gold">
+              <h1 className="text-3xl font-garamond font-bold text-lodha-gold tracking-tight">
                 Atelier - MEP Consultant Portal
               </h1>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-lodha-grey mt-1">
                 Welcome, {consultant?.name || 'Consultant'}
               </p>
             </div>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              className="px-4 py-2 text-sm border border-lodha-steel text-lodha-grey rounded-md hover:bg-lodha-sand/40"
             >
               Logout
             </button>
@@ -174,7 +174,7 @@ export default function ConsultantDashboard() {
                 <div className="bg-white rounded-lg shadow-sm p-6">
                   <div className="flex items-center gap-2 mb-4">
                     <FileText className="w-5 h-5 text-lodha-gold" />
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-lodha-black">
                       Material Approval Sheets ({referredItems.mas.length})
                     </h3>
                   </div>
@@ -183,14 +183,14 @@ export default function ConsultantDashboard() {
                       <div
                         key={mas.id}
                         className={`p-3 border rounded-md cursor-pointer hover:bg-lodha-sand ${
-                          !mas.consultant_replied_at ? 'border-orange-400 bg-orange-50' : 'border-gray-200'
+                          !mas.consultant_replied_at ? 'border-orange-400 bg-orange-50' : 'border-lodha-steel/30'
                         }`}
                         onClick={() => handleViewMAS(mas.id)}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900">{mas.material_name}</p>
-                            <p className="text-sm text-gray-500">{mas.project_name}</p>
+                            <p className="font-medium text-lodha-black">{mas.material_name}</p>
+                            <p className="text-sm text-lodha-grey/70">{mas.project_name}</p>
                           </div>
                           {!mas.consultant_replied_at && (
                             <AlertCircle className="w-5 h-5 text-orange-500" />
@@ -207,7 +207,7 @@ export default function ConsultantDashboard() {
                 <div className="bg-white rounded-lg shadow-sm p-6">
                   <div className="flex items-center gap-2 mb-4">
                     <MessageSquare className="w-5 h-5 text-lodha-gold" />
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-lodha-black">
                       Requests for Information ({referredItems.rfi.length})
                     </h3>
                   </div>
@@ -216,14 +216,14 @@ export default function ConsultantDashboard() {
                       <div
                         key={rfi.id}
                         className={`p-3 border rounded-md cursor-pointer hover:bg-lodha-sand ${
-                          !rfi.consultant_replied_at ? 'border-orange-400 bg-orange-50' : 'border-gray-200'
+                          !rfi.consultant_replied_at ? 'border-orange-400 bg-orange-50' : 'border-lodha-steel/30'
                         }`}
                         onClick={() => handleViewRFI(rfi.id)}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900">{rfi.title}</p>
-                            <p className="text-sm text-gray-500">{rfi.project_name}</p>
+                            <p className="font-medium text-lodha-black">{rfi.title}</p>
+                            <p className="text-sm text-lodha-grey/70">{rfi.project_name}</p>
                           </div>
                           {!rfi.consultant_replied_at && (
                             <AlertCircle className="w-5 h-5 text-orange-500" />
@@ -246,8 +246,8 @@ export default function ConsultantDashboard() {
           
           {projects.length === 0 ? (
             <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No projects assigned yet</p>
+              <FileText className="w-12 h-12 text-lodha-grey/50 mx-auto mb-4" />
+              <p className="text-lodha-grey/70">No projects assigned yet</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -257,11 +257,11 @@ export default function ConsultantDashboard() {
                     <h3 className="text-xl font-garamond font-bold text-lodha-gold mb-2">
                       {project.name}
                     </h3>
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                    <p className="text-sm text-lodha-grey mb-4 line-clamp-2">
                       {project.description}
                     </p>
                     
-                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+                    <div className="flex items-center gap-2 text-sm text-lodha-grey/70 mb-4">
                       <span className="px-2 py-1 bg-lodha-sand rounded">
                         {project.lifecycle_stage}
                       </span>
@@ -273,7 +273,7 @@ export default function ConsultantDashboard() {
                     <div className="space-y-2">
                       <button
                         onClick={() => handleViewDrawings(project.id)}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-lodha-steel text-lodha-grey rounded-md hover:bg-lodha-sand/40"
                       >
                         <Eye className="w-4 h-4" />
                         View Drawings

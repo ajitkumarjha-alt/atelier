@@ -44,7 +44,7 @@ const Breadcrumbs = ({ customCrumbs = null }) => {
           <li>
             <Link
               to="/dashboard"
-              className="flex items-center text-gray-500 hover:text-lodha-gold transition-colors"
+              className="flex items-center text-lodha-grey/70 hover:text-lodha-gold transition-colors"
               aria-label="Home"
             >
               <Home className="w-4 h-4" />
@@ -52,16 +52,16 @@ const Breadcrumbs = ({ customCrumbs = null }) => {
           </li>
           {customCrumbs.map((crumb, index) => (
             <li key={index} className="flex items-center gap-2">
-              <ChevronRight className="w-4 h-4 text-gray-400" aria-hidden="true" />
+              <ChevronRight className="w-4 h-4 text-lodha-grey/50" aria-hidden="true" />
               {crumb.href ? (
                 <Link
                   to={crumb.href}
-                  className="text-gray-500 hover:text-lodha-gold transition-colors"
+                  className="text-lodha-grey/70 hover:text-lodha-gold transition-colors"
                 >
                   {crumb.label}
                 </Link>
               ) : (
-                <span className="text-gray-900 font-medium" aria-current="page">
+                <span className="text-lodha-black font-medium" aria-current="page">
                   {crumb.label}
                 </span>
               )}
@@ -91,7 +91,7 @@ const Breadcrumbs = ({ customCrumbs = null }) => {
         <li>
           <Link
             to="/dashboard"
-            className="flex items-center text-gray-500 hover:text-lodha-gold transition-colors"
+            className="flex items-center text-lodha-grey/70 hover:text-lodha-gold transition-colors"
             aria-label="Home"
           >
             <Home className="w-4 h-4" />
@@ -113,10 +113,10 @@ const Breadcrumbs = ({ customCrumbs = null }) => {
 
           return (
             <li key={path} className="flex items-center gap-2">
-              <ChevronRight className="w-4 h-4 text-gray-400" aria-hidden="true" />
+              <ChevronRight className="w-4 h-4 text-lodha-grey/50" aria-hidden="true" />
               {isLast ? (
                 <span
-                  className="text-gray-900 font-medium capitalize"
+                  className="text-lodha-black font-medium capitalize"
                   aria-current="page"
                 >
                   {label}
@@ -124,7 +124,7 @@ const Breadcrumbs = ({ customCrumbs = null }) => {
               ) : (
                 <Link
                   to={path}
-                  className="text-gray-500 hover:text-lodha-gold transition-colors capitalize"
+                  className="text-lodha-grey/70 hover:text-lodha-gold transition-colors capitalize"
                 >
                   {label}
                 </Link>

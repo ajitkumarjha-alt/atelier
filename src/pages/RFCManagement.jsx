@@ -143,8 +143,8 @@ export default function RFCManagement() {
       <div className="mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-garamond font-bold text-lodha-grey">Request for Change</h1>
-            <p className="text-sm text-lodha-grey/60 font-jost mt-1">Track and manage design change requests</p>
+            <h1 className="heading-primary">Request for Change</h1>
+            <p className="page-subtitle">Track and manage design change requests</p>
           </div>
           {['L2', 'L3', 'SUPER_ADMIN'].includes(userLevel) && (
             <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 px-5 py-2.5 bg-lodha-gold text-white rounded-lg text-sm font-jost font-semibold hover:bg-lodha-grey transition-colors">

@@ -127,7 +127,7 @@ export default function PolicyManagement() {
     const statusStyles = {
       active: 'bg-green-100 text-green-800 border-green-200',
       draft: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      archived: 'bg-gray-100 text-gray-800 border-gray-200'
+      archived: 'bg-lodha-sand text-lodha-black border-lodha-steel/30'
     };
 
     const statusIcons = {
@@ -150,7 +150,7 @@ export default function PolicyManagement() {
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lodha-gold mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading policies...</p>
+            <p className="text-lodha-grey">Loading policies...</p>
           </div>
         </div>
       </Layout>
@@ -164,8 +164,8 @@ export default function PolicyManagement() {
         <div className="mb-6">
           <div className="flex flex-col gap-4 mb-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Policy Management</h1>
-              <p className="text-sm md:text-base text-gray-600 mt-1">
+              <h1 className="heading-primary">Policy Management</h1>
+              <p className="page-subtitle">
                 Manage calculation parameters, water consumption rates, and occupancy factors
               </p>
             </div>
@@ -194,8 +194,8 @@ export default function PolicyManagement() {
             <div className="bg-white rounded-lg shadow p-3 md:p-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Total Policies</p>
-                  <p className="text-xl md:text-2xl font-bold text-gray-900">{policies.length}</p>
+                  <p className="text-xs md:text-sm text-lodha-grey">Total Policies</p>
+                  <p className="text-xl md:text-2xl font-bold text-lodha-black">{policies.length}</p>
                 </div>
                 <FileText className="w-6 h-6 md:w-8 md:h-8 text-blue-500" />
               </div>
@@ -203,7 +203,7 @@ export default function PolicyManagement() {
             <div className="bg-white rounded-lg shadow p-3 md:p-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Active Policies</p>
+                  <p className="text-xs md:text-sm text-lodha-grey">Active Policies</p>
                   <p className="text-xl md:text-2xl font-bold text-green-600">
                     {policies.filter(p => p.status === 'active').length}
                   </p>
@@ -214,7 +214,7 @@ export default function PolicyManagement() {
             <div className="bg-white rounded-lg shadow p-3 md:p-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Draft Policies</p>
+                  <p className="text-xs md:text-sm text-lodha-grey">Draft Policies</p>
                   <p className="text-xl md:text-2xl font-bold text-yellow-600">
                     {policies.filter(p => p.status === 'draft').length}
                   </p>
@@ -225,12 +225,12 @@ export default function PolicyManagement() {
             <div className="bg-white rounded-lg shadow p-3 md:p-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Archived</p>
-                  <p className="text-xl md:text-2xl font-bold text-gray-600">
+                  <p className="text-xs md:text-sm text-lodha-grey">Archived</p>
+                  <p className="text-xl md:text-2xl font-bold text-lodha-grey">
                     {policies.filter(p => p.status === 'archived').length}
                   </p>
                 </div>
-                <Archive className="w-6 h-6 md:w-8 md:h-8 text-gray-500" />
+                <Archive className="w-6 h-6 md:w-8 md:h-8 text-lodha-grey/70" />
               </div>
             </div>
           </div>
@@ -239,40 +239,40 @@ export default function PolicyManagement() {
         {/* Tab Content */}
         {activeTab === 'list' && (
           <div className="bg-white rounded-lg shadow w-full overflow-hidden">
-            <div className="px-3 md:px-6 py-3 md:py-4 border-b border-gray-200">
+            <div className="px-3 md:px-6 py-3 md:py-4 border-b border-lodha-steel/30">
               <h2 className="text-lg md:text-xl font-semibold">Policy Versions</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-lodha-sand/40">
                   <tr>
-                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">
                       Policy
                     </th>
-                    <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">
                       Policy Number
                     </th>
-                    <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">
                       Effective Date
                     </th>
-                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">
                       Parameters
                     </th>
-                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-lodha-steel/20">
                   {policies.map((policy) => (
-                    <tr key={policy.id} className="hover:bg-gray-50">
+                    <tr key={policy.id} className="hover:bg-lodha-sand/40">
                       <td className="px-3 md:px-6 py-3 md:py-4">
                         <div className="flex items-start">
                           <div className="min-w-0">
-                            <div className="text-xs md:text-sm font-medium text-gray-900 break-words">
+                            <div className="text-xs md:text-sm font-medium text-lodha-black break-words">
                               {policy.name}
                               {policy.is_default && (
                                 <span className="ml-1 md:ml-2 px-1.5 md:px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
@@ -280,25 +280,25 @@ export default function PolicyManagement() {
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs md:text-sm text-gray-500">Rev {policy.revision_number}</div>
+                            <div className="text-xs md:text-sm text-lodha-grey/70">Rev {policy.revision_number}</div>
                             {/* Show on mobile what's hidden */}
                             <div className="md:hidden mt-1 space-y-1">
-                              <div className="text-xs text-gray-500">{policy.policy_number}</div>
-                              <div className="text-xs text-gray-500">{new Date(policy.effective_date).toLocaleDateString()}</div>
+                              <div className="text-xs text-lodha-grey/70">{policy.policy_number}</div>
+                              <div className="text-xs text-lodha-grey/70">{new Date(policy.effective_date).toLocaleDateString()}</div>
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="hidden md:table-cell px-6 py-4 text-sm text-gray-500">
+                      <td className="hidden md:table-cell px-6 py-4 text-sm text-lodha-grey/70">
                         {policy.policy_number}
                       </td>
-                      <td className="hidden lg:table-cell px-6 py-4 text-sm text-gray-500">
+                      <td className="hidden lg:table-cell px-6 py-4 text-sm text-lodha-grey/70">
                         {new Date(policy.effective_date).toLocaleDateString()}
                       </td>
                       <td className="px-3 md:px-6 py-3 md:py-4">
                         {getStatusBadge(policy.status)}
                       </td>
-                      <td className="hidden lg:table-cell px-6 py-4 text-sm text-gray-500">
+                      <td className="hidden lg:table-cell px-6 py-4 text-sm text-lodha-grey/70">
                         <div className="flex flex-col gap-1">
                           <span className="text-xs">💧 {policy.water_rates_count} rates</span>
                           <span className="text-xs">👥 {policy.occupancy_factors_count} factors</span>
@@ -326,7 +326,7 @@ export default function PolicyManagement() {
                           {policy.status === 'active' && !policy.is_default && ['SUPER_ADMIN', 'L0', 'L1'].includes(userLevel) && (
                             <button
                               onClick={() => archivePolicy(policy.id)}
-                              className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50"
+                              className="text-lodha-grey hover:text-lodha-black p-1 rounded hover:bg-lodha-sand/40"
                               title="Archive"
                             >
                               <Archive className="w-4 h-4" />
@@ -344,14 +344,14 @@ export default function PolicyManagement() {
 
         {activeTab === 'view' && selectedPolicy && (
           <div className="bg-white rounded-lg shadow w-full overflow-hidden">
-            <div className="px-3 md:px-6 py-3 md:py-4 border-b border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="px-3 md:px-6 py-3 md:py-4 border-b border-lodha-steel/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <h2 className="text-lg md:text-xl font-semibold break-words">{selectedPolicy.name}</h2>
-                <p className="text-xs md:text-sm text-gray-600 mt-1 break-words">{selectedPolicy.description}</p>
+                <p className="text-xs md:text-sm text-lodha-grey mt-1 break-words">{selectedPolicy.description}</p>
               </div>
               <button
                 onClick={() => setActiveTab('list')}
-                className="px-3 md:px-4 py-2 text-sm md:text-base text-gray-600 hover:text-gray-900 whitespace-nowrap"
+                className="px-3 md:px-4 py-2 text-sm md:text-base text-lodha-grey hover:text-lodha-black whitespace-nowrap"
               >
                 ← Back
               </button>
@@ -361,19 +361,19 @@ export default function PolicyManagement() {
               {/* Policy Info */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Policy Number</p>
+                  <p className="text-xs md:text-sm text-lodha-grey">Policy Number</p>
                   <p className="text-sm md:text-base font-medium break-words">{selectedPolicy.policy_number}</p>
                 </div>
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Revision</p>
+                  <p className="text-xs md:text-sm text-lodha-grey">Revision</p>
                   <p className="text-sm md:text-base font-medium">{selectedPolicy.revision_number}</p>
                 </div>
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Effective Date</p>
+                  <p className="text-xs md:text-sm text-lodha-grey">Effective Date</p>
                   <p className="text-sm md:text-base font-medium">{new Date(selectedPolicy.effective_date).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Status</p>
+                  <p className="text-xs md:text-sm text-lodha-grey">Status</p>
                   <div className="mt-1">{getStatusBadge(selectedPolicy.status)}</div>
                 </div>
               </div>
@@ -386,7 +386,7 @@ export default function PolicyManagement() {
                 </h3>
                 <div className="overflow-x-auto -mx-3 md:mx-0">
                   <table className="w-full text-xs md:text-sm min-w-full">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-lodha-sand/40">
                       <tr>
                         <th className="px-2 md:px-4 py-2 text-left">Project Type</th>
                         <th className="px-2 md:px-4 py-2 text-left">Sub Type</th>
@@ -397,12 +397,12 @@ export default function PolicyManagement() {
                     </thead>
                     <tbody className="divide-y">
                       {selectedPolicy.water_rates?.map((rate, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50">
+                        <tr key={idx} className="hover:bg-lodha-sand/40">
                           <td className="px-2 md:px-4 py-2">{rate.project_type}</td>
                           <td className="px-2 md:px-4 py-2">{rate.sub_type}</td>
                           <td className="px-2 md:px-4 py-2">{rate.usage_category}</td>
                           <td className="px-2 md:px-4 py-2 text-right font-medium">{rate.rate_value}</td>
-                          <td className="hidden sm:table-cell px-2 md:px-4 py-2 text-gray-600">{rate.unit}</td>
+                          <td className="hidden sm:table-cell px-2 md:px-4 py-2 text-lodha-grey">{rate.unit}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -418,7 +418,7 @@ export default function PolicyManagement() {
                 </h3>
                 <div className="overflow-x-auto -mx-3 md:mx-0">
                   <table className="w-full text-xs md:text-sm min-w-full">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-lodha-sand/40">
                       <tr>
                         <th className="px-2 md:px-4 py-2 text-left">Project</th>
                         <th className="px-2 md:px-4 py-2 text-left">Sub Type</th>
@@ -429,7 +429,7 @@ export default function PolicyManagement() {
                     </thead>
                     <tbody className="divide-y">
                       {selectedPolicy.occupancy_factors?.map((factor, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50">
+                        <tr key={idx} className="hover:bg-lodha-sand/40">
                           <td className="px-2 md:px-4 py-2">{factor.project_type}</td>
                           <td className="px-2 md:px-4 py-2">{factor.sub_type}</td>
                           <td className="hidden sm:table-cell px-2 md:px-4 py-2">{factor.unit_type || '-'}</td>
@@ -451,12 +451,12 @@ export default function PolicyManagement() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                   {selectedPolicy.calculation_parameters?.map((param, idx) => (
                     <div key={idx} className="border rounded-lg p-3 md:p-4">
-                      <p className="text-xs md:text-sm font-medium text-gray-900 break-words">{param.parameter_name}</p>
+                      <p className="text-xs md:text-sm font-medium text-lodha-black break-words">{param.parameter_name}</p>
                       <p className="text-xl md:text-2xl font-bold text-lodha-gold mt-1">
-                        {param.parameter_value} <span className="text-xs md:text-sm text-gray-600">{param.unit}</span>
+                        {param.parameter_value} <span className="text-xs md:text-sm text-lodha-grey">{param.unit}</span>
                       </p>
                       {param.description && (
-                        <p className="text-xs md:text-sm text-gray-600 mt-2 break-words">{param.description}</p>
+                        <p className="text-xs md:text-sm text-lodha-grey mt-2 break-words">{param.description}</p>
                       )}
                     </div>
                   ))}
@@ -469,13 +469,13 @@ export default function PolicyManagement() {
         {activeTab === 'upload' && (
           <div className="bg-white rounded-lg shadow p-4 md:p-6 w-full">
             <h2 className="text-lg md:text-xl font-semibold mb-3 md:mb-4">Upload New Policy Document</h2>
-            <p className="text-sm md:text-base text-gray-600 mb-4 md:mb-6">
+            <p className="text-sm md:text-base text-lodha-grey mb-4 md:mb-6">
               Upload a policy PDF document. Our AI will extract water consumption rates, occupancy factors, and calculation parameters for your review.
             </p>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 md:p-8 text-center">
-              <Upload className="w-10 h-10 md:w-12 md:h-12 text-gray-400 mx-auto mb-3 md:mb-4" />
-              <p className="text-sm md:text-base text-gray-600 mb-2">Drag and drop a PDF file here, or click to browse</p>
-              <p className="text-xs md:text-sm text-gray-500">Coming soon: AI-powered policy extraction</p>
+            <div className="border-2 border-dashed border-lodha-steel rounded-lg p-6 md:p-8 text-center">
+              <Upload className="w-10 h-10 md:w-12 md:h-12 text-lodha-grey/50 mx-auto mb-3 md:mb-4" />
+              <p className="text-sm md:text-base text-lodha-grey mb-2">Drag and drop a PDF file here, or click to browse</p>
+              <p className="text-xs md:text-sm text-lodha-grey/70">Coming soon: AI-powered policy extraction</p>
             </div>
           </div>
         )}

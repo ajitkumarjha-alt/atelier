@@ -223,7 +223,7 @@ export default function ChangeRequestsPage() {
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lodha-gold mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading change requests...</p>
+            <p className="text-lodha-grey">Loading change requests...</p>
           </div>
         </div>
       </Layout>
@@ -236,7 +236,7 @@ export default function ChangeRequestsPage() {
       <div className="mb-8">
         <button
           onClick={() => navigate('/l2-dashboard')}
-          className="flex items-center text-gray-600 hover:text-lodha-gold mb-4 transition-colors"
+          className="flex items-center text-lodha-grey hover:text-lodha-gold mb-4 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to L2 Dashboard
@@ -262,8 +262,8 @@ export default function ChangeRequestsPage() {
       {/* Statistics Cards */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4">
-            <p className="text-sm text-gray-500">Total Requests</p>
+          <div className="section-card p-4">
+            <p className="text-sm text-lodha-grey/70">Total Requests</p>
             <p className="text-2xl font-garamond font-bold text-lodha-black">{stats.total}</p>
           </div>
           <div className="bg-orange-50 rounded-lg shadow-md border border-orange-200 p-4">
@@ -290,14 +290,14 @@ export default function ChangeRequestsPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
+      <div className="section-card p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
+            <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">Filter by Status</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+              className="input-field"
             >
               <option value="All">All Statuses</option>
               <option value="Pending">Pending</option>
@@ -306,11 +306,11 @@ export default function ChangeRequestsPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Type</label>
+            <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">Filter by Type</label>
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+              className="input-field"
             >
               <option value="All">All Types</option>
               {changeTypes.map(t => <option key={t} value={t}>{t}</option>)}
@@ -320,40 +320,40 @@ export default function ChangeRequestsPage() {
       </div>
 
       {/* Change Requests Table */}
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+      <div className="section-card overflow-hidden">
         <div className="w-full overflow-x-auto">
           <table className="w-full min-w-max">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-lodha-sand/40 border-b border-lodha-steel/30">
               <tr>
-                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Ref No</th>
-                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Description</th>
-                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Type</th>
-                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Category</th>
-                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Requested By</th>
-                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Date</th>
-                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">L2 Status</th>
-                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">L1 Status</th>
-                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Final Status</th>
-                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Priority</th>
-                <th className="py-2 md:py-3 px-[2%] pr-[3%] text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider whitespace-nowrap">Ref No</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider whitespace-nowrap">Description</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider whitespace-nowrap">Type</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider whitespace-nowrap">Category</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider whitespace-nowrap">Requested By</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider whitespace-nowrap">Date</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider whitespace-nowrap">L2 Status</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider whitespace-nowrap">L1 Status</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider whitespace-nowrap">Final Status</th>
+                <th className="py-2 md:py-3 px-[2%] text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider whitespace-nowrap">Priority</th>
+                <th className="py-2 md:py-3 px-[2%] pr-[3%] text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider whitespace-nowrap">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-lodha-steel/20">
               {filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan="11" className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan="11" className="px-4 py-8 text-center text-lodha-grey/70">
                     No change requests found. Click "Request Change" to create one.
                   </td>
                 </tr>
               ) : (
                 filteredRequests.map((cr) => (
-                  <tr key={cr.id} className="hover:bg-gray-50">
+                  <tr key={cr.id} className="hover:bg-lodha-sand/40">
                     <td className="px-4 py-3 text-sm font-medium text-lodha-black">{cr.change_ref_no}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700 max-w-xs truncate">{cr.change_description}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{cr.change_type}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{cr.change_category}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{cr.requested_by}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{formatDate(cr.created_at)}</td>
+                    <td className="px-4 py-3 text-sm text-lodha-grey max-w-xs truncate">{cr.change_description}</td>
+                    <td className="px-4 py-3 text-sm text-lodha-grey">{cr.change_type}</td>
+                    <td className="px-4 py-3 text-sm text-lodha-grey">{cr.change_category}</td>
+                    <td className="px-4 py-3 text-sm text-lodha-grey">{cr.requested_by}</td>
+                    <td className="px-4 py-3 text-sm text-lodha-grey">{formatDate(cr.created_at)}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(cr.l2_status)}`}>
                         {cr.l2_status}
@@ -375,7 +375,7 @@ export default function ChangeRequestsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className={`w-3 h-3 rounded-full ${getPriorityColor(cr.priority)}`}></div>
-                        <span className="text-sm text-gray-600">{cr.priority}</span>
+                        <span className="text-sm text-lodha-grey">{cr.priority}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -396,8 +396,8 @@ export default function ChangeRequestsPage() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 modal-overlay">
+          <div className="modal-card max-w-3xl">
             <div className="p-6">
               <h2 className="text-2xl font-garamond font-bold text-lodha-black mb-6">
                 Create Change Request
@@ -406,13 +406,13 @@ export default function ChangeRequestsPage() {
               <form onSubmit={handleCreateChange}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Change Type *
                     </label>
                     <select
                       value={formData.changeType}
                       onChange={(e) => setFormData({ ...formData, changeType: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                       required
                     >
                       {changeTypes.map(t => <option key={t} value={t}>{t}</option>)}
@@ -420,66 +420,66 @@ export default function ChangeRequestsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Change Category
                     </label>
                     <select
                       value={formData.changeCategory}
                       onChange={(e) => setFormData({ ...formData, changeCategory: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                     >
                       {changeCategories.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Change Description *
                     </label>
                     <textarea
                       value={formData.changeDescription}
                       onChange={(e) => setFormData({ ...formData, changeDescription: e.target.value })}
                       rows={4}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                       placeholder="Describe the proposed change in detail..."
                       required
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Justification
                     </label>
                     <textarea
                       value={formData.justification}
                       onChange={(e) => setFormData({ ...formData, justification: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                       placeholder="Why is this change necessary?"
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Impact Assessment
                     </label>
                     <textarea
                       value={formData.impactAssessment}
                       onChange={(e) => setFormData({ ...formData, impactAssessment: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                       placeholder="What is the impact on schedule, cost, resources, etc.?"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Priority
                     </label>
                     <select
                       value={formData.priority}
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                     >
                       {priorities.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
@@ -499,7 +499,7 @@ export default function ChangeRequestsPage() {
                       setShowCreateModal(false);
                       resetForm();
                     }}
-                    className="flex-1 bg-gray-200 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                    className="btn-cancel"
                   >
                     Cancel
                   </button>

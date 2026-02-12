@@ -523,7 +523,7 @@ export default function ProjectInputEnhanced() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-serif font-bold text-lodha-gold">
+            <h1 className="heading-primary text-lodha-gold">
               {isEditing ? 'Edit Project' : 'Create New Project'}
             </h1>
             <p className="text-sm text-lodha-grey mt-1">
@@ -546,7 +546,7 @@ export default function ProjectInputEnhanced() {
 
         {/* ===== PROJECT INFO SECTION ===== */}
         <div className="bg-white rounded-xl shadow-sm border border-lodha-steel/30 p-6 mb-6">
-          <h2 className="text-lg font-serif font-semibold text-lodha-gold mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-garamond font-semibold text-lodha-gold mb-4 flex items-center gap-2">
             <Landmark className="w-5 h-5" /> Project Information
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1219,7 +1219,7 @@ export default function ProjectInputEnhanced() {
         {/* ===== SUMMARY TAB ===== */}
         {activeTab === 'summary' && (
           <div className="bg-white rounded-xl shadow-sm border border-lodha-steel/30 p-6">
-            <h2 className="text-lg font-serif font-semibold text-lodha-gold mb-4">Project Summary</h2>
+            <h2 className="text-lg font-garamond font-semibold text-lodha-gold mb-4">Project Summary</h2>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-lodha-cream/50 p-3 rounded-lg text-center">

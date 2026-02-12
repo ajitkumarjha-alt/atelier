@@ -304,7 +304,7 @@ export default function RFICreate() {
                         type="checkbox"
                         checked={formData.disciplines[key]}
                         onChange={() => handleDisciplineChange(key)}
-                        className="w-4 h-4 text-lodha-gold focus:ring-lodha-gold border-gray-300 rounded"
+                        className="w-4 h-4 text-lodha-gold focus:ring-lodha-gold border-lodha-steel rounded"
                       />
                       <span className="font-jost text-sm text-lodha-black">{label}</span>
                     </label>
@@ -317,7 +317,7 @@ export default function RFICreate() {
                       type="checkbox"
                       checked={formData.disciplines.others}
                       onChange={() => handleDisciplineChange('others')}
-                      className="w-4 h-4 text-lodha-gold focus:ring-lodha-gold border-gray-300 rounded"
+                      className="w-4 h-4 text-lodha-gold focus:ring-lodha-gold border-lodha-steel rounded"
                     />
                     <span className="font-jost text-sm text-lodha-black">Others (Specify)</span>
                   </label>
@@ -397,12 +397,12 @@ export default function RFICreate() {
                 
                 <div>
                   <label className="label">List of Attachments</label>
-                  <p className="text-xs text-gray-500 mb-2 font-jost">
+                  <p className="text-xs text-lodha-grey/70 mb-2 font-jost">
                     (Tick all provided attachments)
                   </p>
                   
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <div className="border-2 border-dashed border-lodha-steel rounded-lg p-6 text-center">
+                    <Upload className="w-12 h-12 text-lodha-grey/50 mx-auto mb-3" />
                     <label className="cursor-pointer">
                       <span className="text-lodha-gold font-jost font-semibold hover:text-lodha-black">
                         Click to upload files
@@ -415,7 +415,7 @@ export default function RFICreate() {
                         accept=".pdf,.doc,.docx,.dwg,.jpg,.jpeg,.png"
                       />
                     </label>
-                    <p className="text-xs text-gray-500 mt-2 font-jost">
+                    <p className="text-xs text-lodha-grey/70 mt-2 font-jost">
                       Revised Dwg., Snap, or other documents
                     </p>
                   </div>
@@ -425,7 +425,7 @@ export default function RFICreate() {
                       {attachmentFiles.map((file, index) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between bg-gray-50 p-3 rounded-lg"
+                          className="flex items-center justify-between bg-lodha-sand/40 p-3 rounded-lg"
                         >
                           <span className="font-jost text-sm text-lodha-black">
                             {index + 1}. {file.name}
@@ -476,73 +476,73 @@ export default function RFICreate() {
                 </div>
                 
                 <div className="overflow-x-auto">
-                  <table className="min-w-full border border-gray-300">
-                    <thead className="bg-gray-100">
+                  <table className="min-w-full border border-lodha-steel">
+                    <thead className="bg-lodha-sand">
                       <tr>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-jost font-bold text-sm">
+                        <th className="border border-lodha-steel px-4 py-2 text-left font-jost font-bold text-sm">
                           Name
                         </th>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-jost font-bold text-sm">
+                        <th className="border border-lodha-steel px-4 py-2 text-left font-jost font-bold text-sm">
                           Designation
                         </th>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-jost font-bold text-sm">
+                        <th className="border border-lodha-steel px-4 py-2 text-left font-jost font-bold text-sm">
                           Organization
                         </th>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-jost font-bold text-sm">
+                        <th className="border border-lodha-steel px-4 py-2 text-left font-jost font-bold text-sm">
                           Signature
                         </th>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-jost font-bold text-sm">
+                        <th className="border border-lodha-steel px-4 py-2 text-left font-jost font-bold text-sm">
                           Date
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="border border-gray-300 px-4 py-2 text-sm font-jost text-gray-500">
+                        <td className="border border-lodha-steel px-4 py-2 text-sm font-jost text-lodha-grey/70">
                           To be filled by project team
                         </td>
-                        <td className="border border-gray-300 px-4 py-2 text-sm font-jost text-gray-500">
+                        <td className="border border-lodha-steel px-4 py-2 text-sm font-jost text-lodha-grey/70">
                           Design – Structure team (For structural scope)
                         </td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
                       </tr>
                       <tr>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2 text-sm font-jost text-gray-500">
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2 text-sm font-jost text-lodha-grey/70">
                           Architect (For Finishing Scope)
                         </td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
                       </tr>
                       <tr>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2 text-sm font-jost text-gray-500">
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2 text-sm font-jost text-lodha-grey/70">
                           Project MEP Manager (For MEP scope)
                         </td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
                       </tr>
                       <tr>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2 text-sm font-jost text-gray-500">
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2 text-sm font-jost text-lodha-grey/70">
                           Project Façade Manager (For Façade scope)
                         </td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
                       </tr>
                       <tr>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2 text-sm font-jost text-gray-500">
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2 text-sm font-jost text-lodha-grey/70">
                           Project Head
                         </td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
                       </tr>
                     </tbody>
                   </table>
@@ -566,48 +566,48 @@ export default function RFICreate() {
                 </div>
                 
                 <div className="overflow-x-auto">
-                  <table className="min-w-full border border-gray-300">
-                    <thead className="bg-gray-100">
+                  <table className="min-w-full border border-lodha-steel">
+                    <thead className="bg-lodha-sand">
                       <tr>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-jost font-bold text-sm">
+                        <th className="border border-lodha-steel px-4 py-2 text-left font-jost font-bold text-sm">
                           Name
                         </th>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-jost font-bold text-sm">
+                        <th className="border border-lodha-steel px-4 py-2 text-left font-jost font-bold text-sm">
                           Designation
                         </th>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-jost font-bold text-sm">
+                        <th className="border border-lodha-steel px-4 py-2 text-left font-jost font-bold text-sm">
                           Organization
                         </th>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-jost font-bold text-sm">
+                        <th className="border border-lodha-steel px-4 py-2 text-left font-jost font-bold text-sm">
                           Signature
                         </th>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-jost font-bold text-sm">
+                        <th className="border border-lodha-steel px-4 py-2 text-left font-jost font-bold text-sm">
                           Date
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="border border-gray-300 px-4 py-2 text-sm font-jost text-gray-500">
+                        <td className="border border-lodha-steel px-4 py-2 text-sm font-jost text-lodha-grey/70">
                           To be filled by design team
                         </td>
-                        <td className="border border-gray-300 px-4 py-2 text-sm font-jost text-gray-500">
+                        <td className="border border-lodha-steel px-4 py-2 text-sm font-jost text-lodha-grey/70">
                           Design Consultant (Structural/Architectural/ Landscape/Design/Façade/MEP/ID)
                         </td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
                       </tr>
                       <tr>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2 text-sm font-jost text-gray-500">
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2 text-sm font-jost text-lodha-grey/70">
                           Co-Design (Structural/Architectural/ Landscape/Design/Façade/MEP/ID)
                         </td>
-                        <td className="border border-gray-300 px-4 py-2 text-sm font-jost text-gray-500">
+                        <td className="border border-lodha-steel px-4 py-2 text-sm font-jost text-lodha-grey/70">
                           Lodha
                         </td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
+                        <td className="border border-lodha-steel px-4 py-2"></td>
                       </tr>
                     </tbody>
                   </table>
@@ -616,7 +616,7 @@ export default function RFICreate() {
             </div>
 
             {/* Footer with template reference */}
-            <div className="text-center text-sm text-gray-500 font-jost">
+            <div className="text-center text-sm text-lodha-grey/70 font-jost">
               Template Ref.: CO-LOD-GENE-QU-CN-TMT-033, Rev- R1, Date: 09-09-2023
             </div>
 

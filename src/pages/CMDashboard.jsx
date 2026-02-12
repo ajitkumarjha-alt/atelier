@@ -111,13 +111,13 @@ export default function CMDashboard() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-4 mb-6 border-b border-gray-200">
+      <div className="flex gap-4 mb-6 border-b border-lodha-steel/30">
         <button
           onClick={() => setFilter('All')}
           className={`px-4 py-2 font-jost font-semibold transition-colors ${
             filter === 'All'
               ? 'text-lodha-gold border-b-2 border-lodha-gold'
-              : 'text-gray-500 hover:text-lodha-black'
+              : 'text-lodha-grey/70 hover:text-lodha-black'
           }`}
         >
           All ({rfis.length})
@@ -127,7 +127,7 @@ export default function CMDashboard() {
           className={`px-4 py-2 font-jost font-semibold transition-colors ${
             filter === 'Pending'
               ? 'text-lodha-gold border-b-2 border-lodha-gold'
-              : 'text-gray-500 hover:text-lodha-black'
+              : 'text-lodha-grey/70 hover:text-lodha-black'
           }`}
         >
           Pending ({pendingCount})
@@ -137,7 +137,7 @@ export default function CMDashboard() {
           className={`px-4 py-2 font-jost font-semibold transition-colors ${
             filter === 'Approved'
               ? 'text-lodha-gold border-b-2 border-lodha-gold'
-              : 'text-gray-500 hover:text-lodha-black'
+              : 'text-lodha-grey/70 hover:text-lodha-black'
           }`}
         >
           Approved ({approvedCount})
@@ -147,12 +147,12 @@ export default function CMDashboard() {
       {/* RFI List */}
       {loading ? (
         <div className="bg-white rounded-lg shadow-lg p-12 text-center">
-          <p className="text-gray-500 font-jost">Loading RFIs...</p>
+          <p className="text-lodha-grey/70 font-jost">Loading RFIs...</p>
         </div>
       ) : (
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
         <div className="w-full overflow-x-auto">
-        <table className="w-full min-w-max divide-y divide-gray-200">
+        <table className="w-full min-w-max divide-y divide-lodha-steel/20">
           <thead className="bg-lodha-gold/10">
             <tr>
               <th className="py-2 md:py-3 px-[2%] text-left text-xs font-jost font-bold text-lodha-black uppercase tracking-wider whitespace-nowrap">
@@ -175,10 +175,10 @@ export default function CMDashboard() {
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-lodha-steel/20">
             {filteredRfis.length === 0 ? (
               <tr>
-                <td colSpan="6" className="py-4 md:py-8 px-[2%] text-center text-gray-500 font-jost">
+                <td colSpan="6" className="py-4 md:py-8 px-[2%] text-center text-lodha-grey/70 font-jost">
                   No RFIs found
                 </td>
               </tr>
@@ -186,7 +186,7 @@ export default function CMDashboard() {
               filteredRfis.map((rfi) => (
                 <tr
                   key={rfi.id}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="hover:bg-lodha-sand/40 cursor-pointer transition-colors"
                   onClick={() => navigate(`/rfi/${rfi.id}`)}
                 >
                   <td className="py-2 md:py-4 px-[2%] whitespace-nowrap text-sm font-jost font-semibold text-lodha-gold">
@@ -198,10 +198,10 @@ export default function CMDashboard() {
                   <td className="py-2 md:py-4 px-[2%] text-sm font-jost text-lodha-black">
                     <div className="truncate max-w-[200px]">{rfi.subject}</div>
                   </td>
-                  <td className="py-2 md:py-4 px-[2%] text-sm font-jost text-gray-600">
+                  <td className="py-2 md:py-4 px-[2%] text-sm font-jost text-lodha-grey">
                     <div className="truncate max-w-[120px]">{rfi.discipline}</div>
                   </td>
-                  <td className="py-2 md:py-4 px-[2%] whitespace-nowrap text-sm font-jost text-gray-600">
+                  <td className="py-2 md:py-4 px-[2%] whitespace-nowrap text-sm font-jost text-lodha-grey">
                     {new Date(rfi.raisedDate).toLocaleDateString()}
                   </td>
                   <td className="py-2 md:py-4 px-[2%] pr-[3%] whitespace-nowrap">

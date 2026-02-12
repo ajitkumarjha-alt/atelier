@@ -293,13 +293,13 @@ export default function DesignCalculations() {
 
   const getStatusColor = (status) => {
     const colors = {
-      'Draft': 'bg-gray-100 text-gray-800',
-      'Under Review': 'bg-blue-100 text-blue-800',
-      'Approved': 'bg-green-100 text-green-800',
-      'Rejected': 'bg-red-100 text-red-800',
-      'Revised': 'bg-yellow-100 text-yellow-800',
+      'Draft': 'bg-lodha-steel/20 text-lodha-grey',
+      'Under Review': 'bg-blue-50 text-blue-700 border border-blue-200',
+      'Approved': 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+      'Rejected': 'bg-red-50 text-red-700 border border-red-200',
+      'Revised': 'bg-amber-50 text-amber-700 border border-amber-200',
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || 'bg-lodha-steel/20 text-lodha-grey';
   };
 
   const getCalculationUrlSlug = (calculationType) => {
@@ -401,7 +401,7 @@ export default function DesignCalculations() {
           
           <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
             <div className="w-full sm:w-auto">
-              <h1 className="text-2xl sm:text-3xl font-garamond font-bold text-lodha-black mb-2">
+              <h1 className="heading-primary">
                 Design Calculations
               </h1>
               <p className="text-sm sm:text-base text-lodha-grey">{project?.name}</p>
@@ -430,29 +430,29 @@ export default function DesignCalculations() {
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6 lg:mb-8">
-            <div className="bg-white p-3 sm:p-4 rounded-lg shadow border border-lodha-sand">
-              <div className="text-xs sm:text-sm text-lodha-grey mb-1">Total Calculations</div>
-              <div className="text-xl sm:text-2xl font-bold text-lodha-black">{stats.total || 0}</div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 lg:mb-8">
+            <div className="stat-card">
+              <div className="text-xs sm:text-sm text-lodha-grey font-jost mb-1">Total Calculations</div>
+              <div className="stat-value">{stats.total || 0}</div>
             </div>
-            <div className="bg-white p-3 sm:p-4 rounded-lg shadow border border-lodha-sand">
-              <div className="text-xs sm:text-sm text-lodha-grey mb-1">Approved</div>
-              <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.approved || 0}</div>
+            <div className="stat-card">
+              <div className="text-xs sm:text-sm text-lodha-grey font-jost mb-1">Approved</div>
+              <div className="text-2xl sm:text-3xl font-garamond font-bold text-emerald-600">{stats.approved || 0}</div>
             </div>
-            <div className="bg-white p-3 sm:p-4 rounded-lg shadow border border-lodha-sand">
-              <div className="text-xs sm:text-sm text-lodha-grey mb-1">Under Review</div>
-              <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.underReview || 0}</div>
+            <div className="stat-card">
+              <div className="text-xs sm:text-sm text-lodha-grey font-jost mb-1">Under Review</div>
+              <div className="text-2xl sm:text-3xl font-garamond font-bold text-blue-600">{stats.underReview || 0}</div>
             </div>
-            <div className="bg-white p-3 sm:p-4 rounded-lg shadow border border-lodha-sand">
-              <div className="text-xs sm:text-sm text-lodha-grey mb-1">Draft</div>
-              <div className="text-xl sm:text-2xl font-bold text-gray-600">{stats.draft || 0}</div>
+            <div className="stat-card">
+              <div className="text-xs sm:text-sm text-lodha-grey font-jost mb-1">Draft</div>
+              <div className="text-2xl sm:text-3xl font-garamond font-bold text-lodha-grey">{stats.draft || 0}</div>
             </div>
           </div>
         )}
 
         {/* Quick Calculators */}
         {canCreateEdit() && (
-          <div className="bg-gradient-to-r from-lodha-sand to-white p-4 sm:p-6 rounded-lg shadow mb-4 sm:mb-6 border-2 border-lodha-gold">
+          <div className="section-card p-4 sm:p-6 mb-6 border-l-4 border-l-lodha-gold">
             <div className="flex items-center gap-2 mb-3 sm:mb-4">
               <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-lodha-gold" />
               <h3 className="font-garamond font-bold text-lodha-black text-base sm:text-lg">Quick Calculators & Design Links</h3>
@@ -483,7 +483,7 @@ export default function DesignCalculations() {
 
               <button
                 onClick={() => alert('HVAC Load Calculator - Coming Soon!')}
-                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition group opacity-60 cursor-not-allowed"
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border border-lodha-steel/30 rounded-xl hover:bg-lodha-sand/40 hover:border-lodha-gold/30 transition-all group cursor-not-allowed opacity-60"
                 disabled
               >
                 <Calculator className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 group-hover:scale-110 transition flex-shrink-0" />
@@ -531,18 +531,18 @@ export default function DesignCalculations() {
         )}
 
         {/* Filters */}
-        <div className="bg-white p-3 sm:p-4 rounded-lg shadow mb-4 sm:mb-6 border border-lodha-sand">
+        <div className="section-card p-3 sm:p-4 mb-6">
           <div className="flex items-center gap-2 mb-3 sm:mb-4">
             <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-lodha-gold" />
             <h3 className="font-garamond font-bold text-lodha-black text-sm sm:text-base">Filters</h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <div>
-              <label className="block text-sm font-medium text-lodha-grey mb-1">Calculation Type</label>
+              <label className="block text-sm font-medium text-lodha-grey font-jost mb-1">Calculation Type</label>
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                className="select-field w-full"
               >
                 <option value="All">All Types</option>
                 {calculationTypes.map(type => (
@@ -551,11 +551,11 @@ export default function DesignCalculations() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-lodha-grey mb-1">Status</label>
+              <label className="block text-sm font-medium text-lodha-grey font-jost mb-1">Status</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                className="select-field w-full"
               >
                 <option value="All">All Statuses</option>
                 {statuses.map(status => (
@@ -564,11 +564,11 @@ export default function DesignCalculations() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-lodha-grey mb-1">Building</label>
+              <label className="block text-sm font-medium text-lodha-grey font-jost mb-1">Building</label>
               <select
                 value={buildingFilter}
                 onChange={(e) => setBuildingFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                className="select-field w-full"
               >
                 <option value="All">All Buildings</option>
                 {buildings.map(building => (
@@ -580,34 +580,34 @@ export default function DesignCalculations() {
         </div>
 
         {/* Calculations List */}
-        <div className="bg-white rounded-lg shadow border border-lodha-sand overflow-hidden -mx-2 sm:mx-0">
+        <div className="section-card overflow-hidden -mx-2 sm:mx-0">
           {loading ? (
-            <div className="p-8 text-center text-lodha-grey">Loading calculations...</div>
+            <div className="empty-state">Loading calculations...</div>
           ) : filteredCalculations.length === 0 ? (
-            <div className="p-8 text-center">
-              <Calculator className="w-16 h-16 text-lodha-sand mx-auto mb-4" />
+            <div className="empty-state">
+              <Calculator className="w-16 h-16 text-lodha-steel mx-auto mb-4" />
               <p className="text-lodha-grey text-sm sm:text-base">No calculations found. Click "Add Calculation" to create one.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-lodha-sand">
+                <thead className="table-header">
                   <tr>
-                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap">Type</th>
-                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap">Title</th>
-                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap hidden lg:table-cell">Building/Floor</th>
-                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap hidden md:table-cell">Calculated By</th>
-                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap hidden xl:table-cell">Verified By</th>
-                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap">Status</th>
-                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap hidden sm:table-cell">File</th>
-                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-garamond font-bold text-lodha-black whitespace-nowrap">Actions</th>
+                    <th className="px-2 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-jost font-semibold text-lodha-grey uppercase tracking-wider whitespace-nowrap">Type</th>
+                    <th className="px-2 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-jost font-semibold text-lodha-grey uppercase tracking-wider whitespace-nowrap">Title</th>
+                    <th className="px-2 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-jost font-semibold text-lodha-grey uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">Building/Floor</th>
+                    <th className="px-2 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-jost font-semibold text-lodha-grey uppercase tracking-wider whitespace-nowrap hidden md:table-cell">Calculated By</th>
+                    <th className="px-2 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-jost font-semibold text-lodha-grey uppercase tracking-wider whitespace-nowrap hidden xl:table-cell">Verified By</th>
+                    <th className="px-2 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-jost font-semibold text-lodha-grey uppercase tracking-wider whitespace-nowrap">Status</th>
+                    <th className="px-2 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-jost font-semibold text-lodha-grey uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">File</th>
+                    <th className="px-2 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-jost font-semibold text-lodha-grey uppercase tracking-wider whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-lodha-steel/15">
                   {filteredCalculations.map((calc) => (
                     <tr 
                       key={calc.id} 
-                      className="hover:bg-lodha-sand transition cursor-pointer"
+                      className="table-row cursor-pointer"
                       onClick={() => handleViewCalculation(calc)}
                     >
                       <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-lodha-black">{calc.calculation_type}</td>
@@ -672,8 +672,8 @@ export default function DesignCalculations() {
 
         {/* Create/Edit Modal */}
         {showCreateModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="modal-overlay">
+            <div className="modal-card">
               <div className="p-6">
                 <h2 className="text-2xl font-garamond font-bold text-lodha-black mb-6">
                   {editingCalculation ? 'Edit Calculation' : 'Add New Calculation'}
@@ -689,7 +689,7 @@ export default function DesignCalculations() {
                         required
                         value={formData.calculationType}
                         onChange={(e) => setFormData({ ...formData, calculationType: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                        className="input-field"
                       >
                         {calculationTypes.map(type => (
                           <option key={type} value={type}>{type}</option>
@@ -702,7 +702,7 @@ export default function DesignCalculations() {
                       <select
                         value={formData.building_id}
                         onChange={(e) => setFormData({ ...formData, building_id: e.target.value, floor_id: '' })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                        className="input-field"
                       >
                         <option value="">Select Building</option>
                         {buildings.map(building => (
@@ -721,7 +721,7 @@ export default function DesignCalculations() {
                       required
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                      className="input-field"
                       placeholder="e.g., Wing A - Ground Floor Electrical Load"
                     />
                   </div>
@@ -732,7 +732,7 @@ export default function DesignCalculations() {
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       rows="3"
-                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                      className="input-field"
                       placeholder="Brief description of the calculation"
                     ></textarea>
                   </div>
@@ -747,10 +747,10 @@ export default function DesignCalculations() {
                         required
                         value={formData.calculatedBy}
                         disabled
-                        className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-gray-700 cursor-not-allowed"
+                        className="w-full px-3 py-2 border border-lodha-steel rounded bg-lodha-sand text-lodha-grey cursor-not-allowed"
                         placeholder="Auto-populated from logged-in user"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Auto-populated from your account</p>
+                      <p className="text-xs text-lodha-grey/70 mt-1">Auto-populated from your account</p>
                     </div>
 
                     <div>
@@ -759,7 +759,7 @@ export default function DesignCalculations() {
                         type="text"
                         value={formData.verifiedBy}
                         onChange={(e) => setFormData({ ...formData, verifiedBy: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                        className="input-field"
                         placeholder="Checker/Approver name"
                       />
                     </div>
@@ -770,7 +770,7 @@ export default function DesignCalculations() {
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                      className="input-field"
                     >
                       {statuses.map(status => (
                         <option key={status} value={status}>{status}</option>
@@ -784,7 +784,7 @@ export default function DesignCalculations() {
                       value={formData.remarks}
                       onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
                       rows="2"
-                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                      className="input-field"
                       placeholder="Any additional remarks"
                     ></textarea>
                   </div>
@@ -797,7 +797,7 @@ export default function DesignCalculations() {
                       type="file"
                       accept=".xlsx,.xls,.pdf,.doc,.docx"
                       onChange={(e) => setFormData({ ...formData, calculationFile: e.target.files[0] })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                      className="input-field"
                     />
                     {editingCalculation?.file_name && (
                       <p className="text-sm text-lodha-grey mt-1">

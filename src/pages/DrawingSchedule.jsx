@@ -242,7 +242,7 @@ export default function DrawingSchedule() {
 
   const getStatusColor = (status) => {
     const colors = {
-      'Planned': 'bg-gray-100 text-gray-700 border-gray-200',
+      'Planned': 'bg-lodha-sand text-lodha-grey border-lodha-steel/30',
       'In Progress': 'bg-blue-100 text-blue-700 border-blue-200',
       'Submitted': 'bg-purple-100 text-purple-700 border-purple-200',
       'Approved': 'bg-green-100 text-green-700 border-green-200',
@@ -276,7 +276,7 @@ export default function DrawingSchedule() {
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lodha-gold mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading drawing schedules...</p>
+            <p className="text-lodha-grey">Loading drawing schedules...</p>
           </div>
         </div>
       </Layout>
@@ -289,7 +289,7 @@ export default function DrawingSchedule() {
       <div className="mb-8">
         <button
           onClick={() => navigate('/l2-dashboard')}
-          className="flex items-center text-gray-600 hover:text-lodha-gold mb-4 transition-colors"
+          className="flex items-center text-lodha-grey hover:text-lodha-gold mb-4 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to L2 Dashboard
@@ -315,13 +315,13 @@ export default function DrawingSchedule() {
       {/* Statistics Cards */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4">
-            <p className="text-sm text-gray-500">Total</p>
+          <div className="section-card p-4">
+            <p className="text-sm text-lodha-grey/70">Total</p>
             <p className="text-2xl font-garamond font-bold text-lodha-black">{stats.total}</p>
           </div>
-          <div className="bg-gray-50 rounded-lg shadow-md border border-gray-200 p-4">
-            <p className="text-sm text-gray-500">Planned</p>
-            <p className="text-2xl font-garamond font-bold text-gray-700">{stats.planned}</p>
+          <div className="bg-lodha-sand/40 rounded-lg shadow-md border border-lodha-steel/30 p-4">
+            <p className="text-sm text-lodha-grey/70">Planned</p>
+            <p className="text-2xl font-garamond font-bold text-lodha-grey">{stats.planned}</p>
           </div>
           <div className="bg-blue-50 rounded-lg shadow-md border border-blue-200 p-4">
             <p className="text-sm text-blue-600">In Progress</p>
@@ -347,40 +347,40 @@ export default function DrawingSchedule() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
+      <div className="section-card p-6 mb-6">
         <div className="flex items-center gap-2 mb-4">
           <Filter className="w-5 h-5 text-lodha-gold" />
           <h2 className="text-lg font-garamond font-semibold">Filters</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Discipline</label>
+            <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">Discipline</label>
             <select
               value={disciplineFilter}
               onChange={(e) => setDisciplineFilter(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+              className="input-field"
             >
               <option value="All">All Disciplines</option>
               {disciplines.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+            <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">Status</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+              className="input-field"
             >
               <option value="All">All Statuses</option>
               {statuses.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+            <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">Priority</label>
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+              className="input-field"
             >
               <option value="All">All Priorities</option>
               {priorities.map(p => <option key={p} value={p}>{p}</option>)}
@@ -390,40 +390,40 @@ export default function DrawingSchedule() {
       </div>
 
       {/* Drawings Table */}
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+      <div className="section-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-lodha-sand/40 border-b border-lodha-steel/30">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ref No</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Drawing Title</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Discipline</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rev</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Planned Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actual Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">Ref No</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">Drawing Title</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">Discipline</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">Rev</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">Planned Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">Actual Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">Priority</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-lodha-steel/20">
               {filteredDrawings.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan="10" className="px-4 py-8 text-center text-lodha-grey/70">
                     No drawings found. Click "Add Drawing" to create one.
                   </td>
                 </tr>
               ) : (
                 filteredDrawings.map((drawing) => (
-                  <tr key={drawing.id} className="hover:bg-gray-50">
+                  <tr key={drawing.id} className="hover:bg-lodha-sand/40">
                     <td className="px-4 py-3 text-sm font-medium text-lodha-black">{drawing.drawing_ref_no}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{drawing.drawing_title}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{drawing.discipline}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{drawing.drawing_type}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{drawing.revision}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{formatDate(drawing.planned_submission_date)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{formatDate(drawing.actual_submission_date)}</td>
+                    <td className="px-4 py-3 text-sm text-lodha-grey">{drawing.drawing_title}</td>
+                    <td className="px-4 py-3 text-sm text-lodha-grey">{drawing.discipline}</td>
+                    <td className="px-4 py-3 text-sm text-lodha-grey">{drawing.drawing_type}</td>
+                    <td className="px-4 py-3 text-sm text-lodha-grey">{drawing.revision}</td>
+                    <td className="px-4 py-3 text-sm text-lodha-grey">{formatDate(drawing.planned_submission_date)}</td>
+                    <td className="px-4 py-3 text-sm text-lodha-grey">{formatDate(drawing.actual_submission_date)}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(drawing.status)}`}>
                         {drawing.status}
@@ -432,7 +432,7 @@ export default function DrawingSchedule() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className={`w-3 h-3 rounded-full ${getPriorityColor(drawing.priority)}`}></div>
-                        <span className="text-sm text-gray-600">{drawing.priority}</span>
+                        <span className="text-sm text-lodha-grey">{drawing.priority}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -461,8 +461,8 @@ export default function DrawingSchedule() {
 
       {/* Create/Edit Modal */}
       {(showCreateModal || editingDrawing) && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 modal-overlay">
+          <div className="modal-card max-w-3xl">
             <div className="p-6">
               <h2 className="text-2xl font-garamond font-bold text-lodha-black mb-6">
                 {editingDrawing ? 'Edit Drawing Schedule' : 'Add New Drawing'}
@@ -471,7 +471,7 @@ export default function DrawingSchedule() {
               <form onSubmit={editingDrawing ? handleUpdateDrawing : handleCreateDrawing}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Drawing Ref No *
                     </label>
                     <input
@@ -479,20 +479,20 @@ export default function DrawingSchedule() {
                       value={formData.drawingRefNo}
                       onChange={(e) => setFormData({ ...formData, drawingRefNo: e.target.value })}
                       disabled={!!editingDrawing}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent disabled:bg-gray-100"
+                      className="input-field disabled:bg-lodha-sand"
                       placeholder="e.g., EL-LP-01"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Discipline *
                     </label>
                     <select
                       value={formData.discipline}
                       onChange={(e) => setFormData({ ...formData, discipline: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                       required
                     >
                       {disciplines.map(d => <option key={d} value={d}>{d}</option>)}
@@ -500,117 +500,117 @@ export default function DrawingSchedule() {
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Drawing Title *
                     </label>
                     <input
                       type="text"
                       value={formData.drawingTitle}
                       onChange={(e) => setFormData({ ...formData, drawingTitle: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                       placeholder="e.g., Ground Floor Electrical Layout"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Drawing Type
                     </label>
                     <select
                       value={formData.drawingType}
                       onChange={(e) => setFormData({ ...formData, drawingType: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                     >
                       {drawingTypes.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Revision
                     </label>
                     <input
                       type="text"
                       value={formData.revision}
                       onChange={(e) => setFormData({ ...formData, revision: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                       placeholder="R0"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Planned Submission Date
                     </label>
                     <input
                       type="date"
                       value={formData.plannedSubmissionDate}
                       onChange={(e) => setFormData({ ...formData, plannedSubmissionDate: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Actual Submission Date
                     </label>
                     <input
                       type="date"
                       value={formData.actualSubmissionDate}
                       onChange={(e) => setFormData({ ...formData, actualSubmissionDate: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Status
                     </label>
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                     >
                       {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Priority
                     </label>
                     <select
                       value={formData.priority}
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                     >
                       {priorities.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Assigned To
                     </label>
                     <input
                       type="text"
                       value={formData.assignedTo}
                       onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                       placeholder="Team member or consultant name"
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Remarks
                     </label>
                     <textarea
                       value={formData.remarks}
                       onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                       placeholder="Additional notes or comments..."
                     />
                   </div>
@@ -630,7 +630,7 @@ export default function DrawingSchedule() {
                       setEditingDrawing(null);
                       resetForm();
                     }}
-                    className="flex-1 bg-gray-200 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                    className="btn-cancel"
                   >
                     Cancel
                   </button>

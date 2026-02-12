@@ -98,7 +98,7 @@ export default function AIReports() {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+    <div className="bg-white rounded-lg shadow-md border border-lodha-steel/30 p-6">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-lodha-gold/10 rounded-lg">
           <Sparkles className="w-6 h-6 text-lodha-gold" />
@@ -107,7 +107,7 @@ export default function AIReports() {
           <h2 className="text-xl font-garamond font-bold text-lodha-black">
             AI-Powered Reports
           </h2>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-lodha-grey">
             Ask questions in natural language to generate custom reports
           </p>
         </div>
@@ -115,7 +115,7 @@ export default function AIReports() {
 
       {/* Query Input */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-lodha-grey mb-2">
           What would you like to know?
         </label>
         <div className="flex gap-2">
@@ -125,7 +125,7 @@ export default function AIReports() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleQuery()}
             placeholder="e.g., Show me projects with most delayed MAS..."
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+            className="flex-1 px-4 py-3 border border-lodha-steel rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
             disabled={loading}
           />
           <button
@@ -150,13 +150,13 @@ export default function AIReports() {
 
       {/* Example Queries */}
       <div className="mb-6">
-        <p className="text-sm font-medium text-gray-700 mb-2">Try these examples:</p>
+        <p className="text-sm font-medium text-lodha-grey mb-2">Try these examples:</p>
         <div className="flex flex-wrap gap-2">
           {exampleQueries.map((example, index) => (
             <button
               key={index}
               onClick={() => setQuery(example)}
-              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors"
+              className="px-3 py-1 text-sm bg-lodha-sand hover:bg-lodha-steel/20 text-lodha-grey rounded-full transition-colors"
             >
               {example}
             </button>
@@ -179,7 +179,7 @@ export default function AIReports() {
               <h3 className="text-lg font-semibold text-lodha-black">
                 Results ({results.rowCount} rows)
               </h3>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-lodha-grey mt-1">
                 Visualization: {results.visualization?.type || 'table'}
               </p>
             </div>
@@ -203,7 +203,7 @@ export default function AIReports() {
 
           {/* SQL Query (Collapsible) */}
           <details className="mb-4">
-            <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800">
+            <summary className="cursor-pointer text-sm text-lodha-grey hover:text-lodha-black">
               View Generated SQL Query
             </summary>
             <pre className="mt-2 p-3 bg-gray-900 text-green-400 rounded-lg text-xs overflow-x-auto">
@@ -215,23 +215,23 @@ export default function AIReports() {
           {results.data.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
-                <thead className="bg-gray-50">
+                <thead className="bg-lodha-sand/40">
                   <tr>
                     {Object.keys(results.data[0]).map((header) => (
                       <th
                         key={header}
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200"
+                        className="px-4 py-3 text-left text-xs font-medium text-lodha-grey/70 uppercase tracking-wider border-b border-lodha-steel/30"
                       >
                         {header.replace(/_/g, ' ')}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-lodha-steel/20">
                   {results.data.map((row, rowIndex) => (
-                    <tr key={rowIndex} className="hover:bg-gray-50">
+                    <tr key={rowIndex} className="hover:bg-lodha-sand/40">
                       {Object.values(row).map((value, colIndex) => (
-                        <td key={colIndex} className="px-4 py-3 text-sm text-gray-700">
+                        <td key={colIndex} className="px-4 py-3 text-sm text-lodha-grey">
                           {value !== null && value !== undefined 
                             ? String(value) 
                             : '-'}
@@ -243,7 +243,7 @@ export default function AIReports() {
               </table>
             </div>
           ) : (
-            <p className="text-center text-gray-500 py-8">No data found</p>
+            <p className="text-center text-lodha-grey/70 py-8">No data found</p>
           )}
         </div>
       )}

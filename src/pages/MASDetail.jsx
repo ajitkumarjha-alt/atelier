@@ -228,7 +228,7 @@ export default function MASDetail() {
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lodha-gold mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading MAS details...</p>
+            <p className="text-lodha-grey">Loading MAS details...</p>
           </div>
         </div>
       </Layout>
@@ -239,7 +239,7 @@ export default function MASDetail() {
     return (
       <Layout>
         <div className="text-center py-12">
-          <p className="text-gray-600">MAS not found</p>
+          <p className="text-lodha-grey">MAS not found</p>
           <button
             onClick={() => navigate('/mas')}
             className="mt-4 text-lodha-gold hover:text-lodha-gold/80"
@@ -260,7 +260,7 @@ export default function MASDetail() {
       <div className="mb-8">
         <button
           onClick={() => navigate('/mas')}
-          className="flex items-center text-gray-600 hover:text-lodha-gold mb-4 transition-colors"
+          className="flex items-center text-lodha-grey hover:text-lodha-gold mb-4 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to MAS List
@@ -272,7 +272,7 @@ export default function MASDetail() {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-sm text-gray-500">Final Status</p>
+              <p className="text-sm text-lodha-grey/70">Final Status</p>
               {getStatusBadge(mas.final_status)}
             </div>
           </div>
@@ -284,65 +284,65 @@ export default function MASDetail() {
         {/* Left Column - Main Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Material Information */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4 flex items-center">
+          <div className="section-card p-6">
+            <h2 className="heading-tertiary mb-4 flex items-center">
               <Package className="w-5 h-5 mr-2 text-lodha-gold" />
               Material Information
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Material Name</p>
+                <p className="text-sm text-lodha-grey/70">Material Name</p>
                 <p className="font-medium text-lodha-black">{mas.material_name || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Category</p>
+                <p className="text-sm text-lodha-grey/70">Category</p>
                 <p className="font-medium text-lodha-black">{mas.material_category || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Manufacturer</p>
+                <p className="text-sm text-lodha-grey/70">Manufacturer</p>
                 <p className="font-medium text-lodha-black">{mas.manufacturer || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Model/Specification</p>
+                <p className="text-sm text-lodha-grey/70">Model/Specification</p>
                 <p className="font-medium text-lodha-black">{mas.model_specification || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Quantity</p>
+                <p className="text-sm text-lodha-grey/70">Quantity</p>
                 <p className="font-medium text-lodha-black">{mas.quantity || 'N/A'} {mas.unit || ''}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Submitted Date</p>
+                <p className="text-sm text-lodha-grey/70">Submitted Date</p>
                 <p className="font-medium text-lodha-black">{formatDate(mas.created_at)}</p>
               </div>
             </div>
           </div>
 
           {/* Project & Vendor Information */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4 flex items-center">
+          <div className="section-card p-6">
+            <h2 className="heading-tertiary mb-4 flex items-center">
               <Building className="w-5 h-5 mr-2 text-lodha-gold" />
               Project & Vendor Details
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Project</p>
+                <p className="text-sm text-lodha-grey/70">Project</p>
                 <p className="font-medium text-lodha-black">{mas.project_name || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Submitted By (Vendor)</p>
+                <p className="text-sm text-lodha-grey/70">Submitted By (Vendor)</p>
                 <p className="font-medium text-lodha-black">{mas.submitted_by_vendor || 'N/A'}</p>
               </div>
               <div className="col-span-2">
-                <p className="text-sm text-gray-500">Vendor Email</p>
+                <p className="text-sm text-lodha-grey/70">Vendor Email</p>
                 <p className="font-medium text-lodha-black">{mas.vendor_email || 'N/A'}</p>
               </div>
             </div>
           </div>
 
           {/* L2 Review Section */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+          <div className="section-card p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-garamond font-semibold text-lodha-black flex items-center">
+              <h2 className="heading-tertiary flex items-center">
                 <User className="w-5 h-5 mr-2 text-lodha-gold" />
                 L2 Review (GM/AGM/DGM)
               </h2>
@@ -350,18 +350,18 @@ export default function MASDetail() {
             </div>
             
             {mas.l2_status !== 'Pending' && (
-              <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+              <div className="space-y-3 bg-lodha-sand/40 p-5 rounded-xl">
                 <div>
-                  <p className="text-sm text-gray-500">Reviewed By</p>
+                  <p className="text-sm text-lodha-grey/70">Reviewed By</p>
                   <p className="font-medium text-lodha-black">{mas.l2_reviewed_by || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Review Date</p>
+                  <p className="text-sm text-lodha-grey/70">Review Date</p>
                   <p className="font-medium text-lodha-black">{formatDate(mas.l2_reviewed_at)}</p>
                 </div>
                 {mas.l2_comments && (
                   <div>
-                    <p className="text-sm text-gray-500">Comments</p>
+                    <p className="text-sm text-lodha-grey/70">Comments</p>
                     <p className="font-medium text-lodha-black">{mas.l2_comments}</p>
                   </div>
                 )}
@@ -378,15 +378,15 @@ export default function MASDetail() {
                     Submit L2 Review
                   </button>
                 ) : (
-                  <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                  <div className="space-y-4 bg-lodha-sand/40 p-5 rounded-xl">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                         Review Status *
                       </label>
                       <select
                         value={l2Status}
                         onChange={(e) => setL2Status(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                        className="input-field"
                       >
                         <option value="">Select Status</option>
                         <option value="Approved">Approve</option>
@@ -394,14 +394,14 @@ export default function MASDetail() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                         Comments
                       </label>
                       <textarea
                         value={l2Comments}
                         onChange={(e) => setL2Comments(e.target.value)}
                         rows={4}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                        className="input-field"
                         placeholder="Add your review comments..."
                       />
                     </div>
@@ -419,7 +419,7 @@ export default function MASDetail() {
                           setL2Status('');
                           setL2Comments('');
                         }}
-                        className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                        className="btn-cancel"
                       >
                         Cancel
                       </button>
@@ -431,9 +431,9 @@ export default function MASDetail() {
           </div>
 
           {/* L1 Review Section */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+          <div className="section-card p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-garamond font-semibold text-lodha-black flex items-center">
+              <h2 className="heading-tertiary flex items-center">
                 <User className="w-5 h-5 mr-2 text-lodha-gold" />
                 L1 Review (AVP)
               </h2>
@@ -441,18 +441,18 @@ export default function MASDetail() {
             </div>
             
             {mas.l1_status !== 'Pending' && (
-              <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+              <div className="space-y-3 bg-lodha-sand/40 p-5 rounded-xl">
                 <div>
-                  <p className="text-sm text-gray-500">Reviewed By</p>
+                  <p className="text-sm text-lodha-grey/70">Reviewed By</p>
                   <p className="font-medium text-lodha-black">{mas.l1_reviewed_by || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Review Date</p>
+                  <p className="text-sm text-lodha-grey/70">Review Date</p>
                   <p className="font-medium text-lodha-black">{formatDate(mas.l1_reviewed_at)}</p>
                 </div>
                 {mas.l1_comments && (
                   <div>
-                    <p className="text-sm text-gray-500">Comments</p>
+                    <p className="text-sm text-lodha-grey/70">Comments</p>
                     <p className="font-medium text-lodha-black">{mas.l1_comments}</p>
                   </div>
                 )}
@@ -469,15 +469,15 @@ export default function MASDetail() {
                     Submit L1 Review
                   </button>
                 ) : (
-                  <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                  <div className="space-y-4 bg-lodha-sand/40 p-5 rounded-xl">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                         Review Status *
                       </label>
                       <select
                         value={l1Status}
                         onChange={(e) => setL1Status(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                        className="input-field"
                       >
                         <option value="">Select Status</option>
                         <option value="Approved">Approve</option>
@@ -485,14 +485,14 @@ export default function MASDetail() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                         Comments
                       </label>
                       <textarea
                         value={l1Comments}
                         onChange={(e) => setL1Comments(e.target.value)}
                         rows={4}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                        className="input-field"
                         placeholder="Add your review comments..."
                       />
                     </div>
@@ -510,7 +510,7 @@ export default function MASDetail() {
                           setL1Status('');
                           setL1Comments('');
                         }}
-                        className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                        className="btn-cancel"
                       >
                         Cancel
                       </button>
@@ -532,9 +532,9 @@ export default function MASDetail() {
 
           {/* Consultant Referral Section */}
           {(userLevel === 'L1' || userLevel === 'L2') && (
-            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+            <div className="section-card p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-garamond font-semibold text-lodha-black flex items-center">
+                <h2 className="heading-tertiary flex items-center">
                   <UserPlus className="w-5 h-5 mr-2 text-lodha-gold" />
                   MEP Consultant Review
                 </h2>
@@ -552,9 +552,9 @@ export default function MASDetail() {
                   </p>
                   {mas.consultant_reply && (
                     <div className="mt-3 p-3 bg-white rounded border border-blue-200">
-                      <p className="text-sm font-medium text-gray-700 mb-2">Consultant Response:</p>
-                      <p className="text-gray-900 whitespace-pre-wrap">{mas.consultant_reply}</p>
-                      <p className="text-xs text-gray-500 mt-2">
+                      <p className="text-sm font-medium text-lodha-grey mb-2">Consultant Response:</p>
+                      <p className="text-lodha-black whitespace-pre-wrap">{mas.consultant_reply}</p>
+                      <p className="text-xs text-lodha-grey/70 mt-2">
                         Replied on: {formatDate(mas.consultant_replied_at)}
                       </p>
                     </div>
@@ -573,15 +573,15 @@ export default function MASDetail() {
                       Refer to Consultant
                     </button>
                   ) : (
-                    <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                    <div className="space-y-4 bg-lodha-sand/40 p-5 rounded-xl">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                           Select Consultant *
                         </label>
                         <select
                           value={selectedConsultantId}
                           onChange={(e) => setSelectedConsultantId(e.target.value)}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                          className="input-field"
                         >
                           <option value="">Choose a consultant</option>
                           {consultants.map(consultant => (
@@ -604,7 +604,7 @@ export default function MASDetail() {
                             setShowConsultantReferral(false);
                             setSelectedConsultantId('');
                           }}
-                          className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                          className="btn-cancel"
                         >
                           Cancel
                         </button>
@@ -620,8 +620,8 @@ export default function MASDetail() {
         {/* Right Column - Status Summary */}
         <div className="space-y-6">
           {/* Approval Workflow */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4">
+          <div className="section-card p-6">
+            <h2 className="heading-tertiary mb-4">
               Approval Workflow
             </h2>
             <div className="space-y-4">
@@ -637,12 +637,12 @@ export default function MASDetail() {
                 </div>
                 <div className="flex-grow">
                   <p className="font-medium text-lodha-black">L2 Review</p>
-                  <p className="text-sm text-gray-500">GM/AGM/DGM</p>
+                  <p className="text-sm text-lodha-grey/70">GM/AGM/DGM</p>
                   <div className="mt-1">{getStatusBadge(mas.l2_status)}</div>
                 </div>
               </div>
 
-              <div className="border-l-2 border-gray-300 ml-3 h-8"></div>
+              <div className="border-l-2 border-lodha-steel ml-3 h-8"></div>
 
               <div className="flex items-start">
                 <div className="flex-shrink-0 mr-3">
@@ -656,12 +656,12 @@ export default function MASDetail() {
                 </div>
                 <div className="flex-grow">
                   <p className="font-medium text-lodha-black">L1 Review</p>
-                  <p className="text-sm text-gray-500">AVP</p>
+                  <p className="text-sm text-lodha-grey/70">AVP</p>
                   <div className="mt-1">{getStatusBadge(mas.l1_status)}</div>
                 </div>
               </div>
 
-              <div className="border-l-2 border-gray-300 ml-3 h-8"></div>
+              <div className="border-l-2 border-lodha-steel ml-3 h-8"></div>
 
               <div className="flex items-start">
                 <div className="flex-shrink-0 mr-3">
@@ -675,7 +675,7 @@ export default function MASDetail() {
                 </div>
                 <div className="flex-grow">
                   <p className="font-medium text-lodha-black">Final Status</p>
-                  <p className="text-sm text-gray-500">Overall Decision</p>
+                  <p className="text-sm text-lodha-grey/70">Overall Decision</p>
                   <div className="mt-1">{getStatusBadge(mas.final_status)}</div>
                 </div>
               </div>
@@ -684,8 +684,8 @@ export default function MASDetail() {
 
           {/* Attachments */}
           {mas.attachment_urls && mas.attachment_urls.length > 0 && (
-            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-              <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4 flex items-center">
+            <div className="section-card p-6">
+              <h2 className="heading-tertiary mb-4 flex items-center">
                 <FileText className="w-5 h-5 mr-2 text-lodha-gold" />
                 Attachments
               </h2>
@@ -696,7 +696,7 @@ export default function MASDetail() {
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="block p-3 bg-lodha-sand/40 rounded-lg hover:bg-lodha-sand transition-colors"
                   >
                     <p className="text-sm text-lodha-black truncate">{url}</p>
                   </a>

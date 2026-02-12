@@ -146,7 +146,7 @@ export default function CreateMAS({ onClose, onSave }) {
                       name={field.name}
                       value={formData[field.name]}
                       onChange={handleInputChange}
-                      className="w-full px-2 py-1 border border-gray-300 rounded text-sm font-jost"
+                      className="w-full px-2 py-1 border border-lodha-steel rounded text-sm font-jost"
                       required={field.req}
                     />
                   </div>
@@ -157,7 +157,7 @@ export default function CreateMAS({ onClose, onSave }) {
             {/* Part B */}
             <section className="border-2 border-lodha-gold rounded-lg p-4">
               <h3 className="text-lg font-garamond font-bold text-lodha-black bg-lodha-sand px-3 py-2 mb-4 rounded">Part B: Material Approval Submittal Discipline</h3>
-              <p className="text-sm text-gray-600 font-jost mb-3">(One item only per submittal)</p>
+              <p className="text-sm text-lodha-grey font-jost mb-3">(One item only per submittal)</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
                   { id: 'structuralCivil', label: 'Structural /Civil' },
@@ -189,11 +189,11 @@ export default function CreateMAS({ onClose, onSave }) {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-lodha-black mb-2 font-jost">As per Specification <span className="text-red-500">*</span></label>
-                  <textarea name="asPerSpecification" value={formData.asPerSpecification} onChange={handleInputChange} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-jost" placeholder="Material as per specification..." required />
+                  <textarea name="asPerSpecification" value={formData.asPerSpecification} onChange={handleInputChange} rows={4} className="w-full px-3 py-2 border border-lodha-steel rounded text-sm font-jost" placeholder="Material as per specification..." required />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-lodha-black mb-2 font-jost">Alternate material submission</label>
-                  <textarea name="alternateSubmission" value={formData.alternateSubmission} onChange={handleInputChange} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-jost" placeholder="Alternate material details..." />
+                  <textarea name="alternateSubmission" value={formData.alternateSubmission} onChange={handleInputChange} rows={4} className="w-full px-3 py-2 border border-lodha-steel rounded text-sm font-jost" placeholder="Alternate material details..." />
                 </div>
               </div>
             </section>
@@ -202,20 +202,20 @@ export default function CreateMAS({ onClose, onSave }) {
             <section className="border-2 border-lodha-gold rounded-lg p-4">
               <h3 className="text-lg font-garamond font-bold text-lodha-black bg-lodha-sand px-3 py-2 mb-4 rounded">Part D: Material Details</h3>
               <div className="space-y-4">
-                <div className="border border-gray-300 rounded p-3">
+                <div className="border border-lodha-steel rounded p-3">
                   <label className="block text-sm font-semibold text-lodha-black mb-2 font-jost">Specified Material - Meeting requirements in Spec's</label>
-                  <select name="materialMeetsSpec" value={formData.materialMeetsSpec} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-jost">
+                  <select name="materialMeetsSpec" value={formData.materialMeetsSpec} onChange={handleInputChange} className="w-full px-3 py-2 border border-lodha-steel rounded text-sm font-jost">
                     <option value="">Select...</option>
                     <option value="yes">Yes</option>
                     <option value="no">No</option>
                   </select>
                 </div>
 
-                <div className="border border-gray-300 rounded p-3">
+                <div className="border border-lodha-steel rounded p-3">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-lodha-black mb-2 font-jost">Material meeting BOQ requirements (Yes/No)</label>
-                      <select name="boqCompliance" value={formData.boqCompliance} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-jost">
+                      <select name="boqCompliance" value={formData.boqCompliance} onChange={handleInputChange} className="w-full px-3 py-2 border border-lodha-steel rounded text-sm font-jost">
                         <option value="">Select...</option>
                         <option value="yes">Yes</option>
                         <option value="no">No</option>
@@ -223,7 +223,7 @@ export default function CreateMAS({ onClose, onSave }) {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-lodha-black mb-2 font-jost">If No, specify reason</label>
-                      <textarea name="boqComplianceReason" value={formData.boqComplianceReason} onChange={handleInputChange} rows={1} placeholder="Reason..." className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-jost" />
+                      <textarea name="boqComplianceReason" value={formData.boqComplianceReason} onChange={handleInputChange} rows={1} placeholder="Reason..." className="w-full px-3 py-2 border border-lodha-steel rounded text-sm font-jost" />
                     </div>
                   </div>
                 </div>
@@ -232,12 +232,12 @@ export default function CreateMAS({ onClose, onSave }) {
                   const fieldNames = ['manufacturerBrand', 'sizeThicknessColor', 'manufacturerDetails', 'igbcCompliance', 'applicableStandards', 'warrantyGuarantee', 'proposedMaterial', 'alternativeMaterialJustification', 'otherDetails'];
                   const isMultiline = idx > 1;
                   return (
-                    <div key={label} className="border border-gray-300 rounded p-3">
+                    <div key={label} className="border border-lodha-steel rounded p-3">
                       <label className="block text-sm font-semibold text-lodha-black mb-2 font-jost">{label}</label>
                       {isMultiline ? (
-                        <textarea name={fieldNames[idx]} value={formData[fieldNames[idx]]} onChange={handleInputChange} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-jost" />
+                        <textarea name={fieldNames[idx]} value={formData[fieldNames[idx]]} onChange={handleInputChange} rows={2} className="w-full px-3 py-2 border border-lodha-steel rounded text-sm font-jost" />
                       ) : (
-                        <input type="text" name={fieldNames[idx]} value={formData[fieldNames[idx]]} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-jost" />
+                        <input type="text" name={fieldNames[idx]} value={formData[fieldNames[idx]]} onChange={handleInputChange} className="w-full px-3 py-2 border border-lodha-steel rounded text-sm font-jost" />
                       )}
                     </div>
                   );
@@ -247,9 +247,9 @@ export default function CreateMAS({ onClose, onSave }) {
                   { name: 'previouslyUsedInLodha', label: 'Is this material submitted / approved in Lodha projects?' },
                   { name: 'usedByOtherDevelopers', label: 'Is this material used by other Developers / clients?' },
                 ].map(field => (
-                  <div key={field.name} className="border border-gray-300 rounded p-3">
+                  <div key={field.name} className="border border-lodha-steel rounded p-3">
                     <label className="block text-sm font-semibold text-lodha-black mb-2 font-jost">{field.label}</label>
-                    <select name={field.name} value={formData[field.name]} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-jost">
+                    <select name={field.name} value={formData[field.name]} onChange={handleInputChange} className="w-full px-3 py-2 border border-lodha-steel rounded text-sm font-jost">
                       <option value="">Select...</option>
                       <option value="yes">Yes</option>
                       <option value="no">No</option>
@@ -274,7 +274,7 @@ export default function CreateMAS({ onClose, onSave }) {
                   { id: 'relatedDrawings', label: 'Copy of the related drawings (if applicable)' },
                   { id: 'concreteMixDesign', label: 'Concrete Mix Design (Applicable only for Concrete Submittal)' },
                 ].map(item => (
-                  <div key={item.id} className="flex items-start gap-3 p-3 border border-gray-300 rounded">
+                  <div key={item.id} className="flex items-start gap-3 p-3 border border-lodha-steel rounded">
                     <div className="flex-1">
                       <label className="block text-sm font-jost text-lodha-black mb-2">{item.label}</label>
                       <input type="file" id={item.id} onChange={(e) => handleFileUpload(e, item.id)} className="hidden" />
@@ -309,12 +309,12 @@ export default function CreateMAS({ onClose, onSave }) {
                   </thead>
                   <tbody>
                     {formData.contractorReviewRows.map((row, index) => (
-                      <tr key={index} className="border-b border-gray-300">
+                      <tr key={index} className="border-b border-lodha-steel">
                         <td className="px-2 py-1 font-jost text-center">{index + 1}</td>
-                        <td className="px-2 py-1"><input type="text" value={row.description} onChange={(e) => updateContractorReviewRow(index, 'description', e.target.value)} className="w-full px-1 py-0 border border-gray-300 rounded text-xs font-jost" /></td>
-                        <td className="px-2 py-1"><input type="text" value={row.name} onChange={(e) => updateContractorReviewRow(index, 'name', e.target.value)} className="w-full px-1 py-0 border border-gray-300 rounded text-xs font-jost" /></td>
-                        <td className="px-2 py-1"><input type="text" value={row.signature} onChange={(e) => updateContractorReviewRow(index, 'signature', e.target.value)} className="w-full px-1 py-0 border border-gray-300 rounded text-xs font-jost" /></td>
-                        <td className="px-2 py-1"><input type="date" value={row.date} onChange={(e) => updateContractorReviewRow(index, 'date', e.target.value)} className="w-full px-1 py-0 border border-gray-300 rounded text-xs font-jost" /></td>
+                        <td className="px-2 py-1"><input type="text" value={row.description} onChange={(e) => updateContractorReviewRow(index, 'description', e.target.value)} className="w-full px-1 py-0 border border-lodha-steel rounded text-xs font-jost" /></td>
+                        <td className="px-2 py-1"><input type="text" value={row.name} onChange={(e) => updateContractorReviewRow(index, 'name', e.target.value)} className="w-full px-1 py-0 border border-lodha-steel rounded text-xs font-jost" /></td>
+                        <td className="px-2 py-1"><input type="text" value={row.signature} onChange={(e) => updateContractorReviewRow(index, 'signature', e.target.value)} className="w-full px-1 py-0 border border-lodha-steel rounded text-xs font-jost" /></td>
+                        <td className="px-2 py-1"><input type="date" value={row.date} onChange={(e) => updateContractorReviewRow(index, 'date', e.target.value)} className="w-full px-1 py-0 border border-lodha-steel rounded text-xs font-jost" /></td>
                         <td className="px-2 py-1 text-center">{formData.contractorReviewRows.length > 1 && (<button type="button" onClick={() => removeContractorReviewRow(index)} className="text-red-500 hover:text-red-700"><Trash2 className="w-3 h-3" /></button>)}</td>
                       </tr>
                     ))}
@@ -327,7 +327,7 @@ export default function CreateMAS({ onClose, onSave }) {
             {/* Part F */}
             <section className="border-2 border-lodha-gold rounded-lg p-4">
               <h3 className="text-lg font-garamond font-bold text-lodha-black bg-lodha-sand px-3 py-2 mb-4 rounded">Part F: Lodha/PMC/ Design consultant Review / Approval</h3>
-              <div className="mb-4 p-3 bg-gray-50 border border-gray-300 rounded text-xs font-jost text-gray-600">
+              <div className="mb-4 p-3 bg-lodha-sand/40 border border-lodha-steel rounded text-xs font-jost text-lodha-grey">
                 <strong>Approval Status Codes:</strong><br/>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
                   <div><strong>Code 1:</strong> Work may proceed</div>
@@ -351,13 +351,13 @@ export default function CreateMAS({ onClose, onSave }) {
                   </thead>
                   <tbody>
                     {formData.lodhaReviewRows.map((row, index) => (
-                      <tr key={index} className="border-b border-gray-300">
+                      <tr key={index} className="border-b border-lodha-steel">
                         <td className="px-2 py-1 font-jost text-center">{index + 1}</td>
-                        <td className="px-2 py-1"><input type="text" value={row.description} onChange={(e) => updateLodhaReviewRow(index, 'description', e.target.value)} className="w-full px-1 py-0 border border-gray-300 rounded text-xs font-jost" /></td>
-                        <td className="px-2 py-1"><input type="text" value={row.name} onChange={(e) => updateLodhaReviewRow(index, 'name', e.target.value)} className="w-full px-1 py-0 border border-gray-300 rounded text-xs font-jost" /></td>
-                        <td className="px-2 py-1"><select value={row.approvalStatus} onChange={(e) => updateLodhaReviewRow(index, 'approvalStatus', e.target.value)} className="w-full px-1 py-0 border border-gray-300 rounded text-xs font-jost"><option value="">Select...</option><option value="1">Code 1</option><option value="2">Code 2</option><option value="3">Code 3</option><option value="4">Code 4</option></select></td>
-                        <td className="px-2 py-1"><input type="text" value={row.signature} onChange={(e) => updateLodhaReviewRow(index, 'signature', e.target.value)} className="w-full px-1 py-0 border border-gray-300 rounded text-xs font-jost" /></td>
-                        <td className="px-2 py-1"><input type="date" value={row.date} onChange={(e) => updateLodhaReviewRow(index, 'date', e.target.value)} className="w-full px-1 py-0 border border-gray-300 rounded text-xs font-jost" /></td>
+                        <td className="px-2 py-1"><input type="text" value={row.description} onChange={(e) => updateLodhaReviewRow(index, 'description', e.target.value)} className="w-full px-1 py-0 border border-lodha-steel rounded text-xs font-jost" /></td>
+                        <td className="px-2 py-1"><input type="text" value={row.name} onChange={(e) => updateLodhaReviewRow(index, 'name', e.target.value)} className="w-full px-1 py-0 border border-lodha-steel rounded text-xs font-jost" /></td>
+                        <td className="px-2 py-1"><select value={row.approvalStatus} onChange={(e) => updateLodhaReviewRow(index, 'approvalStatus', e.target.value)} className="w-full px-1 py-0 border border-lodha-steel rounded text-xs font-jost"><option value="">Select...</option><option value="1">Code 1</option><option value="2">Code 2</option><option value="3">Code 3</option><option value="4">Code 4</option></select></td>
+                        <td className="px-2 py-1"><input type="text" value={row.signature} onChange={(e) => updateLodhaReviewRow(index, 'signature', e.target.value)} className="w-full px-1 py-0 border border-lodha-steel rounded text-xs font-jost" /></td>
+                        <td className="px-2 py-1"><input type="date" value={row.date} onChange={(e) => updateLodhaReviewRow(index, 'date', e.target.value)} className="w-full px-1 py-0 border border-lodha-steel rounded text-xs font-jost" /></td>
                         <td className="px-2 py-1 text-center">{formData.lodhaReviewRows.length > 1 && (<button type="button" onClick={() => removeLodhaReviewRow(index)} className="text-red-500 hover:text-red-700"><Trash2 className="w-3 h-3" /></button>)}</td>
                       </tr>
                     ))}
@@ -376,7 +376,7 @@ export default function CreateMAS({ onClose, onSave }) {
           </div>
 
           {/* Footer */}
-          <div className="border-t-2 border-gray-200 px-6 py-4 bg-gray-50 flex items-center justify-between sticky bottom-0">
+          <div className="border-t-2 border-lodha-steel/30 px-6 py-4 bg-lodha-sand/40 flex items-center justify-between sticky bottom-0">
             <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
             <div className="flex gap-3">
               <button type="button" className="px-6 py-2 border-2 border-lodha-gold text-lodha-black rounded-lg hover:bg-lodha-sand transition-colors font-jost font-semibold">Save as Draft</button>

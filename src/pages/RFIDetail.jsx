@@ -162,7 +162,7 @@ export default function RFIDetail() {
       Rejected: 'bg-red-100 text-red-700 border-red-200',
       'In Progress': 'bg-blue-100 text-blue-700 border-blue-200',
       Pending: 'bg-orange-100 text-orange-700 border-orange-200',
-      Closed: 'bg-gray-100 text-gray-700 border-gray-200',
+      Closed: 'bg-lodha-sand text-lodha-grey border-lodha-steel/30',
     };
     return (
       <span className={`px-3 py-1 rounded-full text-sm font-medium border ${styles[status] || styles.Pending}`}>
@@ -195,7 +195,7 @@ export default function RFIDetail() {
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lodha-gold mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading RFI details...</p>
+            <p className="text-lodha-grey">Loading RFI details...</p>
           </div>
         </div>
       </Layout>
@@ -206,7 +206,7 @@ export default function RFIDetail() {
     return (
       <Layout>
         <div className="text-center py-12">
-          <p className="text-gray-600">RFI not found</p>
+          <p className="text-lodha-grey">RFI not found</p>
           <button
             onClick={() => navigate('/cm-dashboard')}
             className="mt-4 text-lodha-gold hover:text-lodha-gold/80"
@@ -227,7 +227,7 @@ export default function RFIDetail() {
       <div className="mb-8">
         <button
           onClick={() => navigate('/cm-dashboard')}
-          className="flex items-center text-gray-600 hover:text-lodha-gold mb-4 transition-colors"
+          className="flex items-center text-lodha-grey hover:text-lodha-gold mb-4 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to CM Dashboard
@@ -239,7 +239,7 @@ export default function RFIDetail() {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-sm text-gray-500">Status</p>
+              <p className="text-sm text-lodha-grey/70">Status</p>
               {getStatusBadge(rfi.status)}
             </div>
           </div>
@@ -251,34 +251,34 @@ export default function RFIDetail() {
         {/* Left Column - Main Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Part A - General Information */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4 flex items-center">
+          <div className="section-card p-6">
+            <h2 className="heading-tertiary mb-4 flex items-center">
               <Building className="w-5 h-5 mr-2 text-lodha-gold" />
               Part A - General Information
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Project Name</p>
+                <p className="text-sm text-lodha-grey/70">Project Name</p>
                 <p className="font-medium text-lodha-black">{rfi.project_name || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Record No</p>
+                <p className="text-sm text-lodha-grey/70">Record No</p>
                 <p className="font-medium text-lodha-black">{rfi.record_no || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Revision</p>
+                <p className="text-sm text-lodha-grey/70">Revision</p>
                 <p className="font-medium text-lodha-black">{rfi.revision || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Date Raised</p>
+                <p className="text-sm text-lodha-grey/70">Date Raised</p>
                 <p className="font-medium text-lodha-black">{formatDate(rfi.date_raised)}</p>
               </div>
             </div>
           </div>
 
           {/* Part B - Disciplines */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4">
+          <div className="section-card p-6">
+            <h2 className="heading-tertiary mb-4">
               Part B - Disciplines
             </h2>
             <div className="flex flex-wrap gap-2">
@@ -292,60 +292,60 @@ export default function RFIDetail() {
                   </span>
                 ))
               ) : (
-                <p className="text-gray-500">No disciplines specified</p>
+                <p className="text-lodha-grey/70">No disciplines specified</p>
               )}
             </div>
           </div>
 
           {/* Part C - RFI Subject and Description */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4 flex items-center">
+          <div className="section-card p-6">
+            <h2 className="heading-tertiary mb-4 flex items-center">
               <MessageSquare className="w-5 h-5 mr-2 text-lodha-gold" />
               Part C - RFI Subject & Description
             </h2>
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-gray-500 mb-2">RFI Subject</p>
+                <p className="text-sm text-lodha-grey/70 mb-2">RFI Subject</p>
                 <p className="font-medium text-lodha-black">{rfi.rfi_subject || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500 mb-2">RFI Description</p>
+                <p className="text-sm text-lodha-grey/70 mb-2">RFI Description</p>
                 <p className="text-lodha-black whitespace-pre-wrap">{rfi.rfi_description || 'N/A'}</p>
               </div>
             </div>
           </div>
 
           {/* Part D - Responses */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4">
+          <div className="section-card p-6">
+            <h2 className="heading-tertiary mb-4">
               Part D - Project Team Response
             </h2>
-            <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="bg-lodha-sand/40 p-4 rounded-lg">
               {rfi.project_team_response ? (
                 <p className="text-lodha-black whitespace-pre-wrap">{rfi.project_team_response}</p>
               ) : (
-                <p className="text-gray-500 italic">No response yet</p>
+                <p className="text-lodha-grey/70 italic">No response yet</p>
               )}
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4">
+          <div className="section-card p-6">
+            <h2 className="heading-tertiary mb-4">
               Part E - Design Team Response
             </h2>
-            <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="bg-lodha-sand/40 p-4 rounded-lg">
               {rfi.design_team_response ? (
                 <p className="text-lodha-black whitespace-pre-wrap">{rfi.design_team_response}</p>
               ) : (
-                <p className="text-gray-500 italic">No response yet</p>
+                <p className="text-lodha-grey/70 italic">No response yet</p>
               )}
             </div>
           </div>
 
           {/* Status Update Section */}
           {canUpdate && (
-            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-              <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4">
+            <div className="section-card p-6">
+              <h2 className="heading-tertiary mb-4">
                 Update Status
               </h2>
               
@@ -357,15 +357,15 @@ export default function RFIDetail() {
                   Update RFI Status
                 </button>
               ) : (
-                <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                <div className="space-y-4 bg-lodha-sand/40 p-5 rounded-xl">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       New Status *
                     </label>
                     <select
                       value={newStatus}
                       onChange={(e) => setNewStatus(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                     >
                       <option value="">Select Status</option>
                       <option value="Pending">Pending</option>
@@ -376,14 +376,14 @@ export default function RFIDetail() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                       Response/Comments
                     </label>
                     <textarea
                       value={responseText}
                       onChange={(e) => setResponseText(e.target.value)}
                       rows={6}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                      className="input-field"
                       placeholder="Add your response or comments..."
                     />
                   </div>
@@ -401,7 +401,7 @@ export default function RFIDetail() {
                         setNewStatus('');
                         setResponseText('');
                       }}
-                      className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                      className="btn-cancel"
                     >
                       Cancel
                     </button>
@@ -413,9 +413,9 @@ export default function RFIDetail() {
 
           {/* Consultant Referral Section */}
           {(userLevel === 'L1' || userLevel === 'L2' || userLevel === 'CM') && (
-            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+            <div className="section-card p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-garamond font-semibold text-lodha-black flex items-center">
+                <h2 className="heading-tertiary flex items-center">
                   <UserPlus className="w-5 h-5 mr-2 text-lodha-gold" />
                   MEP Consultant Review
                 </h2>
@@ -433,9 +433,9 @@ export default function RFIDetail() {
                   </p>
                   {rfi.consultant_reply && (
                     <div className="mt-3 p-3 bg-white rounded border border-blue-200">
-                      <p className="text-sm font-medium text-gray-700 mb-2">Consultant Response:</p>
-                      <p className="text-gray-900 whitespace-pre-wrap">{rfi.consultant_reply}</p>
-                      <p className="text-xs text-gray-500 mt-2">
+                      <p className="text-sm font-medium text-lodha-grey mb-2">Consultant Response:</p>
+                      <p className="text-lodha-black whitespace-pre-wrap">{rfi.consultant_reply}</p>
+                      <p className="text-xs text-lodha-grey/70 mt-2">
                         Replied on: {formatDate(rfi.consultant_replied_at)}
                       </p>
                     </div>
@@ -454,15 +454,15 @@ export default function RFIDetail() {
                       Refer to Consultant
                     </button>
                   ) : (
-                    <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                    <div className="space-y-4 bg-lodha-sand/40 p-5 rounded-xl">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
                           Select Consultant *
                         </label>
                         <select
                           value={selectedConsultantId}
                           onChange={(e) => setSelectedConsultantId(e.target.value)}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+                          className="input-field"
                         >
                           <option value="">Choose a consultant</option>
                           {consultants.map(consultant => (
@@ -485,7 +485,7 @@ export default function RFIDetail() {
                             setShowConsultantReferral(false);
                             setSelectedConsultantId('');
                           }}
-                          className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                          className="btn-cancel"
                         >
                           Cancel
                         </button>
@@ -501,36 +501,36 @@ export default function RFIDetail() {
         {/* Right Column - Metadata */}
         <div className="space-y-6">
           {/* Raised By */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4 flex items-center">
+          <div className="section-card p-6">
+            <h2 className="heading-tertiary mb-4 flex items-center">
               <User className="w-5 h-5 mr-2 text-lodha-gold" />
               Raised By
             </h2>
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-gray-500">Name</p>
+                <p className="text-sm text-lodha-grey/70">Name</p>
                 <p className="font-medium text-lodha-black">{rfi.raised_by || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Email</p>
+                <p className="text-sm text-lodha-grey/70">Email</p>
                 <p className="font-medium text-lodha-black break-all">{rfi.raised_by_email || 'N/A'}</p>
               </div>
             </div>
           </div>
 
           {/* Timeline */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4 flex items-center">
+          <div className="section-card p-6">
+            <h2 className="heading-tertiary mb-4 flex items-center">
               <Calendar className="w-5 h-5 mr-2 text-lodha-gold" />
               Timeline
             </h2>
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-gray-500">Created</p>
+                <p className="text-sm text-lodha-grey/70">Created</p>
                 <p className="font-medium text-lodha-black">{formatDate(rfi.created_at)}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Last Updated</p>
+                <p className="text-sm text-lodha-grey/70">Last Updated</p>
                 <p className="font-medium text-lodha-black">{formatDate(rfi.updated_at)}</p>
               </div>
             </div>
@@ -538,8 +538,8 @@ export default function RFIDetail() {
 
           {/* Attachments */}
           {rfi.attachment_urls && rfi.attachment_urls.length > 0 && (
-            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-              <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4 flex items-center">
+            <div className="section-card p-6">
+              <h2 className="heading-tertiary mb-4 flex items-center">
                 <FileText className="w-5 h-5 mr-2 text-lodha-gold" />
                 Attachments
               </h2>
@@ -550,7 +550,7 @@ export default function RFIDetail() {
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="block p-3 bg-lodha-sand/40 rounded-lg hover:bg-lodha-sand transition-colors"
                   >
                     <p className="text-sm text-lodha-black truncate">{url}</p>
                   </a>
@@ -560,8 +560,8 @@ export default function RFIDetail() {
           )}
 
           {/* Status History */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-            <h2 className="text-xl font-garamond font-semibold text-lodha-black mb-4">
+          <div className="section-card p-6">
+            <h2 className="heading-tertiary mb-4">
               Current Status
             </h2>
             <div className="flex items-center justify-center p-4">

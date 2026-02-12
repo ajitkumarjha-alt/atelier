@@ -101,7 +101,7 @@ export default function ConsultantMASDetail() {
     return (
       <div className="min-h-screen bg-lodha-sand flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-500">MAS not found</p>
+          <p className="text-lodha-grey/70">MAS not found</p>
           <button
             onClick={() => navigate('/consultant-dashboard')}
             className="mt-4 text-lodha-gold hover:text-lodha-deep"
@@ -116,20 +116,20 @@ export default function ConsultantMASDetail() {
   return (
     <div className="min-h-screen bg-lodha-sand">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-white shadow-sm border-b border-lodha-steel/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/consultant-dashboard')}
-              className="p-2 hover:bg-gray-100 rounded-md"
+              className="p-2 hover:bg-lodha-sand rounded-md"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-garamond font-bold text-lodha-gold">
+              <h1 className="text-2xl font-garamond font-bold text-lodha-gold tracking-tight">
                 Material Approval Sheet
               </h1>
-              <p className="text-sm text-gray-600">Review and respond</p>
+              <p className="text-sm text-lodha-grey">Review and respond</p>
             </div>
           </div>
         </div>
@@ -146,11 +146,11 @@ export default function ConsultantMASDetail() {
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <p className="text-sm text-gray-500">Project</p>
-              <p className="font-medium text-gray-900">{mas.project_name}</p>
+              <p className="text-sm text-lodha-grey/70">Project</p>
+              <p className="font-medium text-lodha-black">{mas.project_name}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Status</p>
+              <p className="text-sm text-lodha-grey/70">Status</p>
               <span className={`inline-block px-2 py-1 text-xs rounded ${
                 mas.status === 'approved' ? 'bg-green-100 text-green-800' :
                 mas.status === 'rejected' ? 'bg-red-100 text-red-800' :
@@ -160,27 +160,27 @@ export default function ConsultantMASDetail() {
               </span>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Material Name</p>
-              <p className="font-medium text-gray-900">{mas.material_name}</p>
+              <p className="text-sm text-lodha-grey/70">Material Name</p>
+              <p className="font-medium text-lodha-black">{mas.material_name}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Manufacturer</p>
-              <p className="font-medium text-gray-900">{mas.manufacturer || 'N/A'}</p>
+              <p className="text-sm text-lodha-grey/70">Manufacturer</p>
+              <p className="font-medium text-lodha-black">{mas.manufacturer || 'N/A'}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Model/Specification</p>
-              <p className="font-medium text-gray-900">{mas.model_specification || 'N/A'}</p>
+              <p className="text-sm text-lodha-grey/70">Model/Specification</p>
+              <p className="font-medium text-lodha-black">{mas.model_specification || 'N/A'}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Quantity</p>
-              <p className="font-medium text-gray-900">{mas.quantity} {mas.unit || ''}</p>
+              <p className="text-sm text-lodha-grey/70">Quantity</p>
+              <p className="font-medium text-lodha-black">{mas.quantity} {mas.unit || ''}</p>
             </div>
           </div>
 
           {mas.notes && (
             <div className="mt-6 pt-6 border-t">
-              <p className="text-sm text-gray-500 mb-2">Notes</p>
-              <p className="text-gray-900">{mas.notes}</p>
+              <p className="text-sm text-lodha-grey/70 mb-2">Notes</p>
+              <p className="text-lodha-black">{mas.notes}</p>
             </div>
           )}
         </div>
@@ -189,7 +189,7 @@ export default function ConsultantMASDetail() {
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center gap-2 mb-4">
             <FileText className="w-5 h-5 text-lodha-gold" />
-            <h2 className="text-lg font-semibold text-gray-900">Your Response</h2>
+            <h2 className="text-lg font-semibold text-lodha-black">Your Response</h2>
             {mas.consultant_replied_at && (
               <CheckCircle className="w-5 h-5 text-green-500 ml-auto" />
             )}
@@ -206,7 +206,7 @@ export default function ConsultantMASDetail() {
               value={reply}
               onChange={(e) => setReply(e.target.value)}
               rows={6}
-              className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
+              className="w-full px-4 py-3 border border-lodha-steel rounded-md focus:ring-2 focus:ring-lodha-gold focus:border-transparent"
               placeholder="Enter your response, recommendations, or approval comments..."
               required
             />

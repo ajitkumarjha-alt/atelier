@@ -151,13 +151,13 @@ export default function WelcomePage() {
                   <div className="space-y-4">
                     <button
                       onClick={handleEmployeeLogin}
-                      className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white hover:bg-gray-50 text-lodha-black rounded-xl transition-all duration-300 font-semibold shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
+                      className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white hover:bg-lodha-sand/40 text-lodha-black rounded-xl transition-all duration-300 font-semibold shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
                     >
                       <Chrome className="w-5 h-5" />
                       Sign in with Google
                     </button>
                     
-                    <div className="flex items-center gap-2 text-xs text-gray-400 justify-center">
+                    <div className="flex items-center gap-2 text-xs text-lodha-grey/50 justify-center">
                       <Shield className="w-4 h-4 text-lodha-gold" />
                       <span className="text-lodha-gold font-semibold">@lodhagroup.com</span>
                     </div>
@@ -197,7 +197,7 @@ export default function WelcomePage() {
                       Login with OTP
                     </button>
                     
-                    <div className="flex items-center gap-2 text-xs text-gray-400 justify-center">
+                    <div className="flex items-center gap-2 text-xs text-lodha-grey/50 justify-center">
                       <Clock className="w-4 h-4 text-teal-400" />
                       <span className="text-teal-300">Secure One-Time Password</span>
                     </div>
@@ -237,7 +237,7 @@ export default function WelcomePage() {
                       Login with OTP
                     </button>
                     
-                    <div className="flex items-center gap-2 text-xs text-gray-400 justify-center">
+                    <div className="flex items-center gap-2 text-xs text-lodha-grey/50 justify-center">
                       <Clock className="w-4 h-4 text-orange-400" />
                       <span className="text-orange-300">Secure One-Time Password</span>
                     </div>
@@ -269,10 +269,10 @@ export default function WelcomePage() {
 
             {/* Contact Info */}
             <div className="pt-6 border-t border-gray-700/50">
-              <p className="text-gray-400 text-sm mb-2">
+              <p className="text-lodha-grey/50 text-sm mb-2">
                 Need access? Contact your project manager or system administrator
               </p>
-              <p className="text-gray-500 text-xs">
+              <p className="text-lodha-grey/70 text-xs">
                 © {new Date().getFullYear()} Lodha Group. All rights reserved.
               </p>
             </div>

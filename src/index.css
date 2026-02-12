@@ -1,9 +1,9 @@
+/* Accessibility utilities */
+@import './styles/accessibility.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Accessibility utilities */
-@import './styles/accessibility.css';
 
 /* Base styles */
 @layer base {
@@ -34,38 +34,144 @@
 /* Utility classes */
 @layer components {
   .heading-primary {
-    @apply text-4xl md:text-5xl font-bold text-lodha-black font-garamond;
+    @apply text-3xl md:text-4xl font-bold text-lodha-black font-garamond tracking-tight;
   }
 
   .heading-secondary {
-    @apply text-2xl md:text-3xl font-bold text-lodha-black font-garamond;
+    @apply text-xl md:text-2xl font-bold text-lodha-black font-garamond;
   }
 
   .heading-tertiary {
-    @apply text-xl md:text-2xl font-bold text-lodha-black font-garamond;
+    @apply text-lg md:text-xl font-bold text-lodha-black font-garamond;
   }
 
   .text-body {
     @apply text-base text-lodha-grey font-jost;
   }
 
+  .text-caption {
+    @apply text-sm text-lodha-grey/70 font-jost;
+  }
+
   .btn-primary {
-    @apply px-6 py-2 bg-lodha-gold text-white font-semibold rounded-lg hover:bg-lodha-black transition-colors duration-200;
+    @apply px-5 py-2.5 bg-lodha-gold text-white font-jost font-semibold rounded-lg
+           hover:bg-lodha-deep transition-all duration-200 shadow-sm hover:shadow-md
+           focus:outline-none focus:ring-2 focus:ring-lodha-gold/40 focus:ring-offset-1;
   }
 
   .btn-secondary {
-    @apply px-6 py-2 border-2 border-lodha-gold text-lodha-gold font-semibold rounded-lg hover:bg-lodha-gold hover:text-white transition-colors duration-200;
+    @apply px-5 py-2.5 border border-lodha-gold text-lodha-gold font-jost font-semibold rounded-lg
+           hover:bg-lodha-gold hover:text-white transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-lodha-gold/40;
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 text-lodha-grey font-jost font-medium rounded-lg
+           hover:bg-lodha-sand transition-colors duration-150;
+  }
+
+  .btn-cancel {
+    @apply px-5 py-2.5 bg-lodha-steel/20 text-lodha-grey font-jost font-medium rounded-lg
+           hover:bg-lodha-steel/30 transition-colors duration-150;
   }
 
   .card {
-    @apply bg-white rounded-lg shadow-lg p-6;
+    @apply bg-white rounded-xl shadow-card border border-lodha-steel/30 p-6
+           transition-shadow duration-200;
+  }
+
+  .card-hover {
+    @apply bg-white rounded-xl shadow-card border border-lodha-steel/30 p-6
+           transition-all duration-200 hover:shadow-card-hover hover:border-lodha-gold/20;
+  }
+
+  .input-field {
+    @apply w-full px-3.5 py-2.5 border border-lodha-steel rounded-lg text-sm font-jost
+           text-lodha-black placeholder:text-lodha-grey/50
+           focus:outline-none focus:ring-2 focus:ring-lodha-gold/30 focus:border-lodha-gold
+           transition-colors duration-150;
+  }
+
+  .select-field {
+    @apply px-3.5 py-2.5 border border-lodha-steel rounded-lg text-sm font-jost
+           text-lodha-black bg-white
+           focus:outline-none focus:ring-2 focus:ring-lodha-gold/30 focus:border-lodha-gold
+           transition-colors duration-150;
+  }
+
+  .table-header {
+    @apply bg-lodha-cream/60 text-lodha-grey text-xs font-jost font-semibold uppercase tracking-wider;
+  }
+
+  .table-row {
+    @apply border-b border-lodha-steel/15 hover:bg-lodha-sand/40 transition-colors duration-100;
+  }
+
+  .table-cell {
+    @apply py-3 px-4 text-sm font-jost text-lodha-black;
   }
 
   .badge-primary {
-    @apply inline-block px-3 py-1 bg-lodha-gold text-white text-sm font-semibold rounded-full;
+    @apply inline-flex items-center px-2.5 py-0.5 bg-lodha-gold/10 text-lodha-gold text-xs font-jost font-semibold rounded-full;
   }
 
   .badge-secondary {
-    @apply inline-block px-3 py-1 bg-lodha-sand text-lodha-black text-sm font-semibold rounded-full;
+    @apply inline-flex items-center px-2.5 py-0.5 bg-lodha-sand text-lodha-black text-xs font-jost font-semibold rounded-full;
+  }
+
+  .badge-success {
+    @apply inline-flex items-center px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-full border border-emerald-200;
+  }
+
+  .badge-warning {
+    @apply inline-flex items-center px-2.5 py-0.5 bg-amber-50 text-amber-700 text-xs font-semibold rounded-full border border-amber-200;
+  }
+
+  .badge-danger {
+    @apply inline-flex items-center px-2.5 py-0.5 bg-red-50 text-red-700 text-xs font-semibold rounded-full border border-red-200;
+  }
+
+  .badge-neutral {
+    @apply inline-flex items-center px-2.5 py-0.5 bg-lodha-steel/20 text-lodha-grey text-xs font-semibold rounded-full;
+  }
+
+  .stat-card {
+    @apply bg-white rounded-xl border border-lodha-steel/30 p-5 shadow-card;
+  }
+
+  .stat-value {
+    @apply text-2xl md:text-3xl font-garamond font-bold text-lodha-black;
+  }
+
+  .stat-label {
+    @apply text-sm font-jost text-lodha-grey mt-1;
+  }
+
+  .page-subtitle {
+    @apply text-lodha-grey font-jost mt-1;
+  }
+
+  .section-card {
+    @apply bg-white rounded-xl shadow-card border border-lodha-steel/30;
+  }
+
+  .section-header {
+    @apply flex flex-wrap justify-between items-center gap-3 px-6 py-4 border-b border-lodha-steel/20;
+  }
+
+  .section-body {
+    @apply p-6;
+  }
+
+  .modal-overlay {
+    @apply fixed inset-0 bg-lodha-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4;
+  }
+
+  .modal-card {
+    @apply bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto;
+  }
+
+  .empty-state {
+    @apply py-12 text-center text-lodha-grey font-jost;
   }
 }
