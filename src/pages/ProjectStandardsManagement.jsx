@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Layout from '../components/Layout';
-import { Plus, Trash2, Edit2, Check, X, Upload, FileText, Download, Calculator, Settings } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Upload, FileText, Download, Calculator, Settings, Search, Filter, XCircle } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 export default function ProjectStandardsManagement() {
@@ -33,6 +33,20 @@ export default function ProjectStandardsManagement() {
   const [electricalFactors, setElectricalFactors] = useState([]);
   const [guidelines, setGuidelines] = useState([]);
   const [selectedGuideline, setSelectedGuideline] = useState('MSEDCL 2016');
+
+  // PHE Policy Data state
+  const [pheWaterRates, setPheWaterRates] = useState([]);
+  const [pheOccupancy, setPheOccupancy] = useState([]);
+  const [pheCalcParams, setPheCalcParams] = useState([]);
+  const [phePolicyName, setPhePolicyName] = useState('');
+  const [pheLoading, setPheLoading] = useState(false);
+
+  // PHE Search & Filter state
+  const [pheSearch, setPheSearch] = useState('');
+  const [pheFilterProjectType, setPheFilterProjectType] = useState('');
+  const [pheFilterSubType, setPheFilterSubType] = useState('');
+  const [pheFilterUsage, setPheFilterUsage] = useState('');
+  const [pheFilterFactorType, setPheFilterFactorType] = useState('');
   const [editingFactorId, setEditingFactorId] = useState(null);
   const [showAddFactorModal, setShowAddFactorModal] = useState(false);
   const [factorFormData, setFactorFormData] = useState({
@@ -69,13 +83,17 @@ export default function ProjectStandardsManagement() {
     fetchDocuments();
     fetchElectricalFactors();
     fetchGuidelines();
+    fetchPhePolicyData();
   }, []);
   
   useEffect(() => {
     if (activeTab === 'calculations' && selectedSubModule === 'Electrical Load') {
       fetchElectricalFactors();
     }
-  }, [activeTab, selectedSubModule, selectedGuideline]);
+    if (activeTab === 'calculations' && selectedMainCategory === 'PHE') {
+      fetchPhePolicyData();
+    }
+  }, [activeTab, selectedSubModule, selectedGuideline, selectedMainCategory]);
 
   const fetchAllStandards = async () => {
     try {
@@ -115,6 +133,139 @@ export default function ProjectStandardsManagement() {
     } catch (err) { console.error(err); }
   };
   
+  // --- PHE Filtering Logic ---
+  const pheHasActiveFilters = pheSearch || pheFilterProjectType || pheFilterSubType || pheFilterUsage || pheFilterFactorType;
+
+  const clearPheFilters = () => {
+    setPheSearch(''); setPheFilterProjectType(''); setPheFilterSubType('');
+    setPheFilterUsage(''); setPheFilterFactorType('');
+  };
+
+  // Reset filters when switching PHE sub-module
+  useEffect(() => {
+    if (selectedMainCategory === 'PHE') clearPheFilters();
+  }, [selectedSubModule]);
+
+  // Unique filter options extracted from data
+  const pheWaterProjectTypes = useMemo(() => [...new Set(pheWaterRates.map(r => r.project_type).filter(Boolean))].sort(), [pheWaterRates]);
+  const pheWaterSubTypes = useMemo(() => {
+    const src = pheFilterProjectType ? pheWaterRates.filter(r => r.project_type === pheFilterProjectType) : pheWaterRates;
+    return [...new Set(src.map(r => r.sub_type).filter(Boolean))].sort();
+  }, [pheWaterRates, pheFilterProjectType]);
+  const pheWaterUsages = useMemo(() => {
+    let src = pheWaterRates;
+    if (pheFilterProjectType) src = src.filter(r => r.project_type === pheFilterProjectType);
+    if (pheFilterSubType) src = src.filter(r => r.sub_type === pheFilterSubType);
+    return [...new Set(src.map(r => r.usage_category).filter(Boolean))].sort();
+  }, [pheWaterRates, pheFilterProjectType, pheFilterSubType]);
+
+  const pheOccProjectTypes = useMemo(() => [...new Set(pheOccupancy.map(f => f.project_type).filter(Boolean))].sort(), [pheOccupancy]);
+  const pheOccUnitTypes = useMemo(() => {
+    const src = pheFilterProjectType ? pheOccupancy.filter(f => f.project_type === pheFilterProjectType) : pheOccupancy;
+    return [...new Set(src.map(f => f.unit_type).filter(Boolean))].sort();
+  }, [pheOccupancy, pheFilterProjectType]);
+  const pheOccFactorTypes = useMemo(() => {
+    let src = pheOccupancy;
+    if (pheFilterProjectType) src = src.filter(f => f.project_type === pheFilterProjectType);
+    return [...new Set(src.map(f => f.factor_type).filter(Boolean))].sort();
+  }, [pheOccupancy, pheFilterProjectType]);
+
+  // Filtered datasets
+  const filteredWaterRates = useMemo(() => {
+    let data = pheWaterRates;
+    if (pheFilterProjectType) data = data.filter(r => r.project_type === pheFilterProjectType);
+    if (pheFilterSubType) data = data.filter(r => r.sub_type === pheFilterSubType);
+    if (pheFilterUsage) data = data.filter(r => r.usage_category === pheFilterUsage);
+    if (pheSearch) {
+      const q = pheSearch.toLowerCase();
+      data = data.filter(r =>
+        (r.project_type || '').toLowerCase().includes(q) ||
+        (r.sub_type || '').toLowerCase().includes(q) ||
+        (r.usage_category || '').toLowerCase().includes(q) ||
+        String(r.rate_value).includes(q) ||
+        (r.unit || '').toLowerCase().includes(q)
+      );
+    }
+    return data;
+  }, [pheWaterRates, pheFilterProjectType, pheFilterSubType, pheFilterUsage, pheSearch]);
+
+  const filteredOccupancy = useMemo(() => {
+    let data = pheOccupancy;
+    if (pheFilterProjectType) data = data.filter(f => f.project_type === pheFilterProjectType);
+    if (pheFilterSubType) data = data.filter(f => f.sub_type === pheFilterSubType);
+    if (pheFilterFactorType) data = data.filter(f => f.factor_type === pheFilterFactorType);
+    if (pheSearch) {
+      const q = pheSearch.toLowerCase();
+      data = data.filter(f =>
+        (f.project_type || '').toLowerCase().includes(q) ||
+        (f.unit_type || '').toLowerCase().includes(q) ||
+        (f.sub_type || '').toLowerCase().includes(q) ||
+        (f.factor_type || '').toLowerCase().includes(q) ||
+        String(f.factor_value).includes(q)
+      );
+    }
+    return data;
+  }, [pheOccupancy, pheFilterProjectType, pheFilterSubType, pheFilterFactorType, pheSearch]);
+
+  const filteredCalcParams = useMemo(() => {
+    if (!pheSearch) return pheCalcParams;
+    const q = pheSearch.toLowerCase();
+    return pheCalcParams.filter(p =>
+      (p.parameter_name || '').toLowerCase().includes(q) ||
+      String(p.parameter_value).includes(q) ||
+      (p.unit || '').toLowerCase().includes(q) ||
+      (p.description || '').toLowerCase().includes(q)
+    );
+  }, [pheCalcParams, pheSearch]);
+
+  // Highlight matching text helper
+  const highlightMatch = (text, search) => {
+    if (!search || !text) return text || '—';
+    const idx = String(text).toLowerCase().indexOf(search.toLowerCase());
+    if (idx === -1) return text;
+    const str = String(text);
+    return (
+      <>
+        {str.slice(0, idx)}
+        <mark className="bg-yellow-200 text-lodha-black rounded px-0.5">{str.slice(idx, idx + search.length)}</mark>
+        {str.slice(idx + search.length)}
+      </>
+    );
+  };
+
+  const fetchPhePolicyData = async () => {
+    try {
+      setPheLoading(true);
+      // Get default active policy
+      const pvRes = await apiFetch('/api/policy-versions?is_default=true&status=active');
+      const policies = await pvRes.json();
+      if (!policies || policies.length === 0) {
+        setPheWaterRates([]); setPheOccupancy([]); setPheCalcParams([]);
+        return;
+      }
+      const policy = policies[0];
+      setPhePolicyName(policy.name || 'Active Policy');
+      const pid = policy.id;
+
+      // Fetch all 3 data sets in parallel
+      const [wrRes, ofRes, cpRes] = await Promise.all([
+        apiFetch(`/api/policy-versions/${pid}/water-rates`),
+        apiFetch(`/api/policy-versions/${pid}/occupancy-factors`),
+        apiFetch(`/api/policy-versions/${pid}/calculation-parameters`)
+      ]);
+      const wr = await wrRes.json();
+      const of2 = await ofRes.json();
+      const cp = await cpRes.json();
+      setPheWaterRates(Array.isArray(wr) ? wr : []);
+      setPheOccupancy(Array.isArray(of2) ? of2 : []);
+      setPheCalcParams(Array.isArray(cp) ? cp : []);
+    } catch (err) {
+      console.error('Error fetching PHE policy data:', err);
+    } finally {
+      setPheLoading(false);
+    }
+  };
+
   const fetchElectricalFactors = async () => {
     try {
       const url = selectedGuideline 
@@ -551,37 +702,257 @@ export default function ProjectStandardsManagement() {
                     </div>
                   </div>
                 </>
+              ) : selectedMainCategory === 'PHE' ? (
+                /* PHE modules — show policy-driven data with search/filter */
+                <div className="bg-white rounded-lg shadow-md border border-lodha-gold/10">
+                  {/* Header */}
+                  <div className="px-6 py-4 border-b border-lodha-gold/10">
+                    <div className="flex flex-wrap justify-between items-center gap-3">
+                      <div>
+                        <h2 className="heading-secondary">{selectedSubModule} Standards</h2>
+                        <p className="text-sm text-lodha-grey mt-0.5">From policy: <strong>{phePolicyName}</strong> · Managed via Policy Management</p>
+                      </div>
+                    </div>
+
+                    {/* Search + Filter Bar */}
+                    {!pheLoading && (
+                      <div className="mt-4 flex flex-wrap items-center gap-3">
+                        {/* Search */}
+                        <div className="relative flex-1 min-w-[200px] max-w-sm">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-lodha-grey" />
+                          <input
+                            type="text"
+                            placeholder={`Search ${selectedSubModule.toLowerCase()}...`}
+                            value={pheSearch}
+                            onChange={e => setPheSearch(e.target.value)}
+                            className="w-full pl-9 pr-8 py-2 border border-lodha-gold/30 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-lodha-gold/40 focus:border-lodha-gold"
+                          />
+                          {pheSearch && (
+                            <button onClick={() => setPheSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-lodha-grey hover:text-lodha-black">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Contextual Filters */}
+                        {selectedSubModule === 'Water Demand' && (
+                          <>
+                            <select value={pheFilterProjectType} onChange={e => { setPheFilterProjectType(e.target.value); setPheFilterSubType(''); setPheFilterUsage(''); }}
+                              className="px-3 py-2 border border-lodha-gold/30 rounded-lg text-sm bg-white min-w-[140px]">
+                              <option value="">All Project Types</option>
+                              {pheWaterProjectTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                            {pheWaterSubTypes.length > 1 && (
+                              <select value={pheFilterSubType} onChange={e => { setPheFilterSubType(e.target.value); setPheFilterUsage(''); }}
+                                className="px-3 py-2 border border-lodha-gold/30 rounded-lg text-sm bg-white min-w-[130px]">
+                                <option value="">All Sub Types</option>
+                                {pheWaterSubTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                              </select>
+                            )}
+                            {pheWaterUsages.length > 1 && (
+                              <select value={pheFilterUsage} onChange={e => setPheFilterUsage(e.target.value)}
+                                className="px-3 py-2 border border-lodha-gold/30 rounded-lg text-sm bg-white min-w-[130px]">
+                                <option value="">All Usages</option>
+                                {pheWaterUsages.map(u => <option key={u} value={u}>{u}</option>)}
+                              </select>
+                            )}
+                          </>
+                        )}
+                        {selectedSubModule === 'Pump Head' && (
+                          <>
+                            <select value={pheFilterProjectType} onChange={e => { setPheFilterProjectType(e.target.value); setPheFilterSubType(''); setPheFilterFactorType(''); }}
+                              className="px-3 py-2 border border-lodha-gold/30 rounded-lg text-sm bg-white min-w-[140px]">
+                              <option value="">All Project Types</option>
+                              {pheOccProjectTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                            {pheOccUnitTypes.length > 1 && (
+                              <select value={pheFilterSubType} onChange={e => setPheFilterSubType(e.target.value)}
+                                className="px-3 py-2 border border-lodha-gold/30 rounded-lg text-sm bg-white min-w-[130px]">
+                                <option value="">All Unit Types</option>
+                                {pheOccUnitTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                              </select>
+                            )}
+                            {pheOccFactorTypes.length > 1 && (
+                              <select value={pheFilterFactorType} onChange={e => setPheFilterFactorType(e.target.value)}
+                                className="px-3 py-2 border border-lodha-gold/30 rounded-lg text-sm bg-white min-w-[140px]">
+                                <option value="">All Factor Types</option>
+                                {pheOccFactorTypes.map(t => (
+                                  <option key={t} value={t}>
+                                    {t === 'occupants_per_unit' ? 'Occupants/Unit'
+                                      : t === 'sqm_per_person' ? 'Sqm/Person'
+                                      : t === 'sqm_per_fulltime' ? 'Sqm/Fulltime'
+                                      : t === 'visitor_sqm' ? 'Visitor Sqm'
+                                      : t === 'peak_factor' ? 'Peak Factor'
+                                      : t}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </>
+                        )}
+
+                        {/* Clear All Filters */}
+                        {pheHasActiveFilters && (
+                          <button onClick={clearPheFilters}
+                            className="flex items-center gap-1.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg border border-red-200 transition">
+                            <XCircle className="w-3.5 h-3.5" /> Clear Filters
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {pheLoading ? (
+                    <div className="py-12 text-center text-lodha-grey">Loading policy data...</div>
+                  ) : selectedSubModule === 'Water Demand' ? (
+                    /* Water Consumption Rates */
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                          <thead>
+                            <tr className="bg-lodha-sand/40 text-lodha-grey text-xs uppercase sticky top-0">
+                              <th className="py-2.5 px-4 font-bold">Project Type</th>
+                              <th className="py-2.5 px-3 font-bold">Sub Type</th>
+                              <th className="py-2.5 px-3 font-bold">Usage</th>
+                              <th className="py-2.5 px-3 text-right font-bold">Rate</th>
+                              <th className="py-2.5 px-3 font-bold">Unit</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredWaterRates.map((r, idx) => (
+                              <tr key={r.id || idx} className={`border-b border-lodha-gold/5 hover:bg-lodha-sand/30 ${idx % 2 !== 0 ? 'bg-lodha-sand/10' : ''}`}>
+                                <td className="py-2 px-4">
+                                  <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-lodha-sand text-lodha-black">{highlightMatch(r.project_type, pheSearch)}</span>
+                                </td>
+                                <td className="py-2 px-3 text-lodha-black">{highlightMatch(r.sub_type, pheSearch)}</td>
+                                <td className="py-2 px-3 font-medium text-lodha-black">{highlightMatch(r.usage_category, pheSearch)}</td>
+                                <td className="py-2 px-3 text-right font-mono text-lodha-gold font-semibold">{parseFloat(r.rate_value).toFixed(1)}</td>
+                                <td className="py-2 px-3 text-xs text-lodha-grey">{highlightMatch(r.unit || 'LPCD', pheSearch)}</td>
+                              </tr>
+                            ))}
+                            {filteredWaterRates.length === 0 && (
+                              <tr><td colSpan="5" className="py-8 text-center text-lodha-grey">
+                                {pheHasActiveFilters ? 'No rates match your filters.' : 'No water rates found in active policy.'}
+                              </td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="px-6 py-3 bg-lodha-sand/30 border-t border-lodha-gold/10 text-xs text-lodha-grey flex flex-wrap justify-between items-center gap-2">
+                        <span>
+                          {pheHasActiveFilters
+                            ? <><strong>{filteredWaterRates.length}</strong> of {pheWaterRates.length} rate{pheWaterRates.length !== 1 ? 's' : ''} shown</>
+                            : <>{pheWaterRates.length} rate{pheWaterRates.length !== 1 ? 's' : ''}</>}
+                        </span>
+                        <span>To update, go to <strong>Policy Management</strong></span>
+                      </div>
+                    </>
+                  ) : selectedSubModule === 'Pump Head' ? (
+                    /* Occupancy Factors */
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                          <thead>
+                            <tr className="bg-lodha-sand/40 text-lodha-grey text-xs uppercase sticky top-0">
+                              <th className="py-2.5 px-4 font-bold">Project Type</th>
+                              <th className="py-2.5 px-3 font-bold">Unit Type</th>
+                              <th className="py-2.5 px-3 font-bold">Sub Type</th>
+                              <th className="py-2.5 px-3 font-bold">Factor Type</th>
+                              <th className="py-2.5 px-3 text-right font-bold">Value</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredOccupancy.map((f, idx) => (
+                              <tr key={f.id || idx} className={`border-b border-lodha-gold/5 hover:bg-lodha-sand/30 ${idx % 2 !== 0 ? 'bg-lodha-sand/10' : ''}`}>
+                                <td className="py-2 px-4">
+                                  <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-lodha-sand text-lodha-black">{highlightMatch(f.project_type, pheSearch)}</span>
+                                </td>
+                                <td className="py-2 px-3 text-lodha-black">{highlightMatch(f.unit_type, pheSearch)}</td>
+                                <td className="py-2 px-3 text-lodha-black">{highlightMatch(f.sub_type, pheSearch)}</td>
+                                <td className="py-2 px-3 text-xs">
+                                  <span className="inline-block px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-medium">
+                                    {highlightMatch(
+                                      f.factor_type === 'occupants_per_unit' ? 'Occupants/Unit'
+                                        : f.factor_type === 'sqm_per_person' ? 'Sqm/Person'
+                                        : f.factor_type === 'sqm_per_fulltime' ? 'Sqm/Fulltime'
+                                        : f.factor_type === 'visitor_sqm' ? 'Visitor Sqm'
+                                        : f.factor_type === 'peak_factor' ? 'Peak Factor'
+                                        : f.factor_type,
+                                      pheSearch
+                                    )}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-3 text-right font-mono text-lodha-gold font-semibold">{parseFloat(f.factor_value).toFixed(1)}</td>
+                              </tr>
+                            ))}
+                            {filteredOccupancy.length === 0 && (
+                              <tr><td colSpan="5" className="py-8 text-center text-lodha-grey">
+                                {pheHasActiveFilters ? 'No factors match your filters.' : 'No occupancy factors found in active policy.'}
+                              </td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="px-6 py-3 bg-lodha-sand/30 border-t border-lodha-gold/10 text-xs text-lodha-grey flex flex-wrap justify-between items-center gap-2">
+                        <span>
+                          {pheHasActiveFilters
+                            ? <><strong>{filteredOccupancy.length}</strong> of {pheOccupancy.length} factor{pheOccupancy.length !== 1 ? 's' : ''} shown</>
+                            : <>{pheOccupancy.length} factor{pheOccupancy.length !== 1 ? 's' : ''}</>}
+                        </span>
+                        <span>Occupancy drives population → water demand → pump sizing</span>
+                      </div>
+                    </>
+                  ) : (selectedSubModule === 'Septic Tank' || selectedSubModule === 'Rainwater Harvesting') ? (
+                    /* Calculation Parameters */
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                          <thead>
+                            <tr className="bg-lodha-sand/40 text-lodha-grey text-xs uppercase sticky top-0">
+                              <th className="py-2.5 px-4 font-bold">Parameter</th>
+                              <th className="py-2.5 px-3 text-right font-bold">Value</th>
+                              <th className="py-2.5 px-3 font-bold">Unit</th>
+                              <th className="py-2.5 px-3 font-bold">Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredCalcParams.map((p, idx) => (
+                              <tr key={p.id || idx} className={`border-b border-lodha-gold/5 hover:bg-lodha-sand/30 ${idx % 2 !== 0 ? 'bg-lodha-sand/10' : ''}`}>
+                                <td className="py-2.5 px-4 font-medium text-lodha-black">
+                                  {highlightMatch(p.parameter_name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), pheSearch)}
+                                </td>
+                                <td className="py-2.5 px-3 text-right font-mono text-lodha-gold font-semibold">{parseFloat(p.parameter_value).toFixed(1)}</td>
+                                <td className="py-2.5 px-3 text-xs text-lodha-grey">{highlightMatch(p.unit, pheSearch)}</td>
+                                <td className="py-2.5 px-3 text-xs text-lodha-grey">{highlightMatch(p.description, pheSearch)}</td>
+                              </tr>
+                            ))}
+                            {filteredCalcParams.length === 0 && (
+                              <tr><td colSpan="4" className="py-8 text-center text-lodha-grey">
+                                {pheSearch ? 'No parameters match your search.' : 'No calculation parameters found in active policy.'}
+                              </td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="px-6 py-3 bg-lodha-sand/30 border-t border-lodha-gold/10 text-xs text-lodha-grey flex flex-wrap justify-between items-center gap-2">
+                        <span>
+                          {pheSearch
+                            ? <><strong>{filteredCalcParams.length}</strong> of {pheCalcParams.length} parameter{pheCalcParams.length !== 1 ? 's' : ''} shown</>
+                            : <>{pheCalcParams.length} parameter{pheCalcParams.length !== 1 ? 's' : ''}</>}
+                        </span>
+                        <span>Used for {selectedSubModule} calculations</span>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
               ) : (
                 /* Other modules - Generic placeholder */
                 <div className="bg-white rounded-lg shadow-md border border-lodha-gold/10">
                   <div className="flex justify-between items-center px-6 py-4 border-b border-lodha-gold/10">
                     <h2 className="heading-secondary">{selectedSubModule} Constants</h2>
-                    <button className="flex items-center gap-2 px-3 py-1.5 bg-lodha-gold text-white rounded-md text-sm">
-                      <Plus className="w-4 h-4" /> Add Factor
-                    </button>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                      <thead>
-                        <tr className="bg-lodha-sand/40 text-lodha-grey text-xs uppercase">
-                          <th className="py-2.5 px-4 font-bold">Factor</th>
-                          <th className="py-2.5 px-3 font-bold">Value</th>
-                          <th className="py-2.5 px-3 text-right font-bold">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-sm">
-                        <tr className="border-b border-lodha-gold/5 hover:bg-lodha-sand/20">
-                          <td className="py-3 px-4 font-medium">Standard {selectedSubModule} Factor</td>
-                          <td className="py-3 px-3 font-mono text-lodha-gold">0.85</td>
-                          <td className="py-3 px-3 text-right">
-                            <button className="text-lodha-gold p-1 hover:bg-lodha-gold/10 rounded"><Edit2 className="w-4 h-4"/></button>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="px-6 py-3 bg-lodha-sand/30 border-t border-lodha-gold/10 text-xs text-lodha-grey">
-                    Values updated here are used as default constants for <strong>{selectedSubModule}</strong> calculations.
+                  <div className="py-12 text-center text-lodha-grey text-sm">
+                    Standards for <strong>{selectedSubModule}</strong> will be configured here.
                   </div>
                 </div>
               )}
