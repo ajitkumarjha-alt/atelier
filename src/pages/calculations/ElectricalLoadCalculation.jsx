@@ -505,7 +505,7 @@ function BuildingSelection({ buildings, selectedBuildings, onToggle, onNext }) {
 function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, selectedBuildings }) {
   const [expandedSections, setExpandedSections] = useState({
     project: true,
-    building: true,
+    building: false,
     lifts: false,
     hvac: false,
     pressurization: false,
@@ -1077,7 +1077,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
 // Results Display Component  
 function ResultsDisplay({ results, calculationName, setCalculationName, status, setStatus, remarks, setRemarks, onSave, onBack, saving }) {
   const [regulatoryOpen, setRegulatoryOpen] = useState(false);
-  const [projectSummaryOpen, setProjectSummaryOpen] = useState(true);
+  const [projectSummaryOpen, setProjectSummaryOpen] = useState(false);
   
   if (!results || !results.totals) {
     return (
@@ -1269,7 +1269,7 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
                 TCL: {totals.grandTotalTCL?.toFixed(2)} kW | Max: {totals.totalMaxDemand?.toFixed(2)} kW
               </span>
             )}
-            {projectSummaryOpen ? <ChevronUp className="w-5 h-5 text-lodha-grey/50" /> : <ChevronDown className="w-5 h-5 text-lodha-grey/50" />}
+            {projectSummaryOpen ? <ChevronUp className="w-5 h-5 text-lodha-grey" /> : <ChevronDown className="w-5 h-5 text-lodha-grey" />}
           </div>
         </button>
 
@@ -1404,7 +1404,7 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
 }
 
 function BuildingBreakdownCard({ building, twins, index }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   
   return (
     <div className="bg-white rounded-lg shadow">
@@ -1437,7 +1437,7 @@ function BuildingBreakdownCard({ building, twins, index }) {
               TCL: {building.totals?.tcl?.toFixed(2)} kW | Max: {building.totals?.maxDemand?.toFixed(2)} kW
             </span>
           )}
-          {expanded ? <ChevronUp className="w-5 h-5 text-lodha-grey/50" /> : <ChevronDown className="w-5 h-5 text-lodha-grey/50" />}
+          {expanded ? <ChevronUp className="w-5 h-5 text-lodha-grey" /> : <ChevronDown className="w-5 h-5 text-lodha-grey" />}
         </div>
       </button>
       
@@ -1459,7 +1459,7 @@ function BuildingBreakdownCard({ building, twins, index }) {
 }
 
 function LoadCategoryTable({ category }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const hasItems = category.items && category.items.length > 0;
 
   return (
@@ -1473,7 +1473,7 @@ function LoadCategoryTable({ category }) {
           <span className="text-xs text-lodha-grey/70">
             TCL: {category.totalTCL?.toFixed(2) || '0.00'} kW | Max: {category.totalMaxDemand?.toFixed(2) || '0.00'} kW
           </span>
-          {collapsed ? <ChevronDown className="w-4 h-4 text-lodha-grey/50" /> : <ChevronUp className="w-4 h-4 text-lodha-grey/50" />}
+          {collapsed ? <ChevronDown className="w-4 h-4 text-lodha-grey" /> : <ChevronUp className="w-4 h-4 text-lodha-grey" />}
         </div>
       </button>
       {!collapsed && hasItems && (

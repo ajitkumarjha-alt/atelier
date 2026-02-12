@@ -50,7 +50,7 @@ export default function L2TopStats({ userEmail, projectId }) {
           <p className="text-lodha-black font-garamond text-3xl font-bold">{count}</p>
           <p className="text-lodha-grey/70 font-jost text-xs mt-2">{title}</p>
         </div>
-        <Icon className="w-12 h-12 text-lodha-grey/50" />
+        <Icon className="w-12 h-12 text-lodha-steel" />
       </div>
     </div>
   );

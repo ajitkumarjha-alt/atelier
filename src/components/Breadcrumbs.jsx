@@ -100,6 +100,17 @@ const Breadcrumbs = ({ customCrumbs = null }) => {
     return null;
   }
 
+  // Don't show breadcrumbs on top-level dashboard/landing pages
+  const dashboardPages = [
+    'dashboard', 'l0-dashboard', 'l1-dashboard', 'l2-dashboard', 
+    'l3-dashboard', 'l4-dashboard', 'cm-dashboard', 'super-admin-dashboard',
+    'consultant-dashboard', 'vendor-dashboard', 'pending-approval',
+    'welcome'
+  ];
+  if (pathnames.length === 1 && dashboardPages.includes(pathnames[0])) {
+    return null;
+  }
+
   return (
     <nav aria-label="Breadcrumb" className="mb-6">
       <ol className="flex items-center gap-2 text-sm flex-wrap">

@@ -138,7 +138,7 @@ export default function ConsultantProjectDrawings() {
 
         {drawings.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-            <FileText className="w-12 h-12 text-lodha-grey/50 mx-auto mb-4" />
+            <FileText className="w-12 h-12 text-lodha-steel mx-auto mb-4" />
             <p className="text-lodha-grey/70">No drawings available for this project</p>
           </div>
         ) : (

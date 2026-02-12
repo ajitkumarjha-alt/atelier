@@ -473,7 +473,7 @@ export default function PolicyManagement() {
               Upload a policy PDF document. Our AI will extract water consumption rates, occupancy factors, and calculation parameters for your review.
             </p>
             <div className="border-2 border-dashed border-lodha-steel rounded-lg p-6 md:p-8 text-center">
-              <Upload className="w-10 h-10 md:w-12 md:h-12 text-lodha-grey/50 mx-auto mb-3 md:mb-4" />
+              <Upload className="w-10 h-10 md:w-12 md:h-12 text-lodha-steel mx-auto mb-3 md:mb-4" />
               <p className="text-sm md:text-base text-lodha-grey mb-2">Drag and drop a PDF file here, or click to browse</p>
               <p className="text-xs md:text-sm text-lodha-grey/70">Coming soon: AI-powered policy extraction</p>
             </div>

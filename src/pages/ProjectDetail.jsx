@@ -15,15 +15,15 @@ export default function ProjectDetail() {
   const [updatingStage, setUpdatingStage] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [userLevel, setUserLevel] = useState(null);
-  const [collapsedSocieties, setCollapsedSocieties] = useState({});
-  const [collapsedBuildings, setCollapsedBuildings] = useState({});
+  const [expandedSocieties, setExpandedSocieties] = useState({});
+  const [expandedBuildings, setExpandedBuildings] = useState({});
 
   const toggleSociety = (societyId) => {
-    setCollapsedSocieties(prev => ({ ...prev, [societyId]: !prev[societyId] }));
+    setExpandedSocieties(prev => ({ ...prev, [societyId]: !prev[societyId] }));
   };
 
   const toggleBuilding = (buildingId) => {
-    setCollapsedBuildings(prev => ({ ...prev, [buildingId]: !prev[buildingId] }));
+    setExpandedBuildings(prev => ({ ...prev, [buildingId]: !prev[buildingId] }));
   };
 
   useEffect(() => {
@@ -288,10 +288,10 @@ export default function ProjectDetail() {
                       onClick={() => toggleSociety(societyId)}
                       className="w-full flex items-center gap-3 px-5 py-4 bg-lodha-sand/60 hover:bg-lodha-sand transition-colors text-left"
                     >
-                      {collapsedSocieties[societyId] ? (
-                        <ChevronRight className="w-5 h-5 text-lodha-gold flex-shrink-0" />
-                      ) : (
+                      {expandedSocieties[societyId] ? (
                         <ChevronDown className="w-5 h-5 text-lodha-gold flex-shrink-0" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-lodha-gold flex-shrink-0" />
                       )}
                       <Layers className="w-5 h-5 text-lodha-gold flex-shrink-0" />
                       <h3 className="font-jost font-bold text-lg text-lodha-black">
@@ -301,7 +301,7 @@ export default function ProjectDetail() {
                         {parentBuildings.length} building{parentBuildings.length !== 1 ? 's' : ''}
                       </span>
                     </button>
-                    {!collapsedSocieties[societyId] && (
+                    {expandedSocieties[societyId] && (
                     <div className="p-5 space-y-4">
                       {parentBuildings.map((building, idx) => {
                         // Find all buildings in the same twin group (including self)
@@ -321,10 +321,10 @@ export default function ProjectDetail() {
                               onClick={() => toggleBuilding(building.id)}
                               className="w-full flex items-center gap-3 px-4 py-3 bg-white hover:bg-lodha-sand/30 transition-colors text-left"
                             >
-                              {collapsedBuildings[building.id] ? (
-                                <ChevronRight className="w-4 h-4 text-lodha-grey flex-shrink-0" />
-                              ) : (
+                              {expandedBuildings[building.id] ? (
                                 <ChevronDown className="w-4 h-4 text-lodha-grey flex-shrink-0" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4 text-lodha-grey flex-shrink-0" />
                               )}
                               <Building2 className="w-4 h-4 text-lodha-gold flex-shrink-0" />
                               <h4 className="font-jost font-bold text-base text-lodha-black">
@@ -342,7 +342,7 @@ export default function ProjectDetail() {
                                 {floorCount} floor{floorCount !== 1 ? 's' : ''}
                               </span>
                             </button>
-                            {!collapsedBuildings[building.id] && (
+                            {expandedBuildings[building.id] && (
                             <div className="px-4 pb-4">
                             <div className="overflow-x-auto">
                               <table className="w-full text-sm">

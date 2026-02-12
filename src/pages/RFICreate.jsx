@@ -402,7 +402,7 @@ export default function RFICreate() {
                   </p>
                   
                   <div className="border-2 border-dashed border-lodha-steel rounded-lg p-6 text-center">
-                    <Upload className="w-12 h-12 text-lodha-grey/50 mx-auto mb-3" />
+                    <Upload className="w-12 h-12 text-lodha-steel mx-auto mb-3" />
                     <label className="cursor-pointer">
                       <span className="text-lodha-gold font-jost font-semibold hover:text-lodha-black">
                         Click to upload files

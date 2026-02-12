@@ -140,7 +140,7 @@ export default function VendorLogin() {
                       Email Address
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-lodha-grey/50" />
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-lodha-grey" />
                       <input
                         type="email"
                         value={email}
@@ -183,7 +183,7 @@ export default function VendorLogin() {
                       One-Time Password
                     </label>
                     <div className="relative">
-                      <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-lodha-grey/50" />
+                      <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-lodha-grey" />
                       <input
                         type="text"
                         value={otp}

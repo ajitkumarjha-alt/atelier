@@ -108,7 +108,7 @@ export default function FileUpload({
       {/* Upload Button */}
       <div>
         <label className="flex items-center justify-center gap-2 px-4 py-3 bg-white border-2 border-dashed border-lodha-steel rounded-lg cursor-pointer hover:border-lodha-gold hover:bg-lodha-sand/40 transition-colors">
-          <Upload className="w-5 h-5 text-lodha-grey/50" />
+          <Upload className="w-5 h-5 text-lodha-steel" />
           <span className="text-sm text-lodha-grey">
             {uploading ? 'Uploading...' : `Choose files (max ${maxFiles})`}
           </span>

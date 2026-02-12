@@ -111,7 +111,7 @@ export default function L4Dashboard() {
           ))
         ) : (
           <div className="col-span-full text-center py-12">
-            <Eye className="w-12 h-12 text-lodha-grey/30 mx-auto mb-4" />
+            <Eye className="w-12 h-12 text-lodha-steel mx-auto mb-4" />
             <p className="text-body text-lodha-grey">
               No projects assigned to your account
             </p>

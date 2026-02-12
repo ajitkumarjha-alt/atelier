@@ -24,7 +24,7 @@ function StandardsTable({ data, columns, onEdit, onDelete, canEdit }) {
   if (!data || data.length === 0) {
     return (
       <div className="bg-white border border-lodha-steel rounded-xl p-12 text-center">
-        <Database className="w-12 h-12 text-lodha-grey/30 mx-auto mb-3" />
+        <Database className="w-12 h-12 text-lodha-steel mx-auto mb-3" />
         <p className="text-lodha-grey/60 font-jost">No standards found</p>
       </div>
     );
@@ -366,7 +366,7 @@ export default function StandardsManagement() {
       {/* Search */}
       <div className="bg-white border border-lodha-steel rounded-xl p-4 mb-6">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-lodha-grey/40" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-lodha-grey" />
           <input
             type="text"
             placeholder="Search standards..."

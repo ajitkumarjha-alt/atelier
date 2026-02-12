@@ -225,7 +225,7 @@ export default function TaskManagement() {
           </div>
           <div className="flex-1" />
           <div className="relative min-w-[180px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-lodha-grey/40" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-lodha-grey" />
             <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-sm font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30" />
           </div>
           <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-sm font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30">
@@ -272,7 +272,7 @@ export default function TaskManagement() {
           <div className="space-y-3">
             {filteredTasks.length === 0 ? (
               <div className="bg-white border border-lodha-steel rounded-xl p-12 text-center">
-                <ListChecks className="w-12 h-12 text-lodha-grey/30 mx-auto mb-3" />
+                <ListChecks className="w-12 h-12 text-lodha-steel mx-auto mb-3" />
                 <p className="text-lodha-grey/60 font-jost">No tasks found</p>
               </div>
             ) : (
