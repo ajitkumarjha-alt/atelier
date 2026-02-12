@@ -51,9 +51,9 @@ class ElectricalLoadCalculator {
     if (this.factors && this.factors[key]) {
       return this.factors[key];
     }
-    // Fallback to default values if not found
-    console.warn(`Factor not found: ${key}, using defaults`);
-    return { wattPerSqm: null, mdf: 0.5, edf: 0.5, fdf: 0 };
+    // Fallback to MSEDCL standard values if not found
+    console.warn(`Factor not found: ${key}, using MSEDCL defaults (0.6/0.6/0)`);
+    return { wattPerSqm: null, mdf: 0.6, edf: 0.6, fdf: 0 };
   }
 
   /**
@@ -452,12 +452,16 @@ class ElectricalLoadCalculator {
           const buildingTotals = this.getBuildingTotals(buildingLoads);
           const flatTotals = this.getCategoryTotals(flatLoadsWithDF);
           
-          // Combine totals
+          // MSEDCL diversity factor based on area type (Metro=0.5, Others=0.4)
+          const totalUnits = (building.flats || []).reduce((sum, f) => sum + (parseInt(f.total_count) || 0), 0);
+          const diversityFactor = this.getBuildingDiversityFactor(areaType);
+          
+          // Combine totals - apply building-level diversity factor to max demand
           const combinedTotals = {
             tcl: buildingTotals.tcl + flatTotals.tcl,
-            maxDemand: buildingTotals.maxDemand + flatTotals.maxDemand,
-            essential: buildingTotals.essential + flatTotals.essential,
-            fire: buildingTotals.fire + flatTotals.fire
+            maxDemand: (buildingTotals.maxDemand + flatTotals.maxDemand) * diversityFactor,
+            essential: (buildingTotals.essential + flatTotals.essential) * diversityFactor,
+            fire: buildingTotals.fire + flatTotals.fire // Fire load NOT reduced by diversity
           };
 
           buildingBreakdowns.push({
@@ -469,6 +473,8 @@ class ElectricalLoadCalculator {
             buildingCALoads: buildingLoads,
             flatLoads: flatLoadsWithDF,
             totals: combinedTotals,
+            totalUnits: totalUnits,
+            diversityFactor: diversityFactor,
             isTwin: building.is_twin || !!building.twin_of_building_id,
             twinOfBuildingId: building.twin_of_building_id
           });
@@ -505,7 +511,8 @@ class ElectricalLoadCalculator {
           buildingBreakdowns: buildingBreakdowns,
           regulatoryCompliance: regulatoryCompliance,
           regulatoryFramework: this.regulations?.primaryFramework || null,
-          areaType: areaType
+          areaType: areaType,
+          factorsUsed: this.factors
         };
       }
 
@@ -532,7 +539,8 @@ class ElectricalLoadCalculator {
         selectedBuildings: buildingsList,
         regulatoryCompliance: regulatoryCompliance,
         regulatoryFramework: this.regulations?.primaryFramework || null,
-        areaType: areaType
+        areaType: areaType,
+        factorsUsed: this.factors
       };
     } catch (error) {
       console.error('Calculation error:', error);
@@ -745,8 +753,8 @@ class ElectricalLoadCalculator {
 
     for (const flat of flats) {
       const flatType = flat.flat_type || 'Unknown';
-      const areaSqft = parseFloat(flat.area_sqft) || 0;
-      const areaSqm = areaSqft * 0.092903; // Convert sqft to sqm
+      // area_sqft column actually stores carpet area in sq.m (input form uses sqm)
+      const areaSqm = parseFloat(flat.area_sqft) || 0;
       const count = parseInt(flat.total_count) || 0;
 
       if (count === 0 || areaSqm === 0) continue;
@@ -760,7 +768,7 @@ class ElectricalLoadCalculator {
       const totalTCL = loadPerFlatKW * count;
 
       items.push({
-        description: `${flatType} (${areaSqft.toFixed(0)} sqft)`,
+        description: `${flatType} (${areaSqm.toFixed(0)} sqm)`,
         areaSqm: areaSqm.toFixed(1),
         wattPerSqm: wattPerSqm,
         loadPerUnit: loadPerFlatKW.toFixed(2),
@@ -781,6 +789,7 @@ class ElectricalLoadCalculator {
 
   /**
    * Lighting Calculations
+   * All factors loaded from database via getFactor()
    */
   calculateLighting(inputs) {
     const items = [];
@@ -815,45 +824,48 @@ class ElectricalLoadCalculator {
     typicalLobby.tcl = (typicalLobby.wattPerSqm * typicalLobby.areaSqm * typicalLobby.nos) / 1000;
     items.push(typicalLobby);
 
-    // Staircases
+    // Staircases - factors from DB
+    const staircaseFactors = this.getFactor('LIGHTING', 'STAIRCASE', 'Staircases & Landings');
     const staircases = {
       description: 'Staircases & Landings',
       nos: (inputs.numberOfFloors || 38) * 2 * 2, // floors × 2 stairs × 2 landings
       wattPerFixture: 20, // 20W LED per landing
       tcl: 0,
-      mdf: 0.6,
-      edf: 0.6,
-      fdf: 1.0 // Full load during fire
+      mdf: staircaseFactors.mdf,
+      edf: staircaseFactors.edf,
+      fdf: staircaseFactors.fdf
     };
     staircases.tcl = (staircases.wattPerFixture * staircases.nos) / 1000;
     items.push(staircases);
 
-    // Terrace Lighting
+    // Terrace Lighting - factors from DB
     if (inputs.terraceLighting) {
+      const terraceFactors = this.getFactor('LIGHTING', 'TERRACE', 'Terrace Lighting');
       const terrace = {
         description: 'Terrace Lighting',
         areaSqm: inputs.terraceArea || 200,
-        wattPerSqm: 2.0,
+        wattPerSqm: terraceFactors.wattPerSqm || 2.0,
         nos: 1,
         tcl: 0,
-        mdf: 0.6,
-        edf: 0.6,
-        fdf: 0.25
+        mdf: terraceFactors.mdf,
+        edf: terraceFactors.edf,
+        fdf: terraceFactors.fdf
       };
       terrace.tcl = (terrace.wattPerSqm * terrace.areaSqm) / 1000;
       items.push(terrace);
     }
 
-    // External & Landscape Lighting
+    // External & Landscape Lighting - factors from DB
     if (inputs.landscapeLighting) {
+      const landscapeFactors = this.getFactor('LIGHTING', 'LANDSCAPE', 'Landscape & External Lighting');
       const landscape = {
         description: 'Landscape & External Lighting',
         totalLoad: inputs.landscapeLightingLoad || 10,
         nos: 1,
         tcl: inputs.landscapeLightingLoad || 10,
-        mdf: 0.8,
-        edf: 0.6,
-        fdf: 0.0
+        mdf: landscapeFactors.mdf,
+        edf: landscapeFactors.edf,
+        fdf: landscapeFactors.fdf
       };
       items.push(landscape);
     }
@@ -866,6 +878,7 @@ class ElectricalLoadCalculator {
 
   /**
    * Lift Calculations with lookup
+   * All demand factors loaded from database via getFactor()
    */
   async calculateLifts(inputs) {
     const buildingHeight = inputs.buildingHeight || 90;
@@ -875,42 +888,45 @@ class ElectricalLoadCalculator {
 
     const items = [];
 
-    // Passenger Lifts
+    // Passenger Lifts - factors from DB
     if (inputs.passengerLifts > 0) {
+      const passengerLiftFactors = this.getFactor('LIFTS', 'PASSENGER', 'Passenger Lift');
       items.push({
         description: 'Passenger Lifts',
         nos: inputs.passengerLifts,
         kwPerUnit: liftPowerKW,
         tcl: inputs.passengerLifts * liftPowerKW,
-        mdf: 0.6,
-        edf: 0.6,
-        fdf: 0.0 // Not used during fire
+        mdf: passengerLiftFactors.mdf,
+        edf: passengerLiftFactors.edf,
+        fdf: passengerLiftFactors.fdf
       });
     }
 
-    // Passenger + Fire Lift
+    // Passenger + Fire Lift - factors from DB
     if (inputs.passengerFireLifts > 0) {
+      const passengerFireFactors = this.getFactor('LIFTS', 'PASSENGER_FIRE', 'Passenger + Fire Lift');
       items.push({
         description: 'Passenger + Fire Lift',
         nos: inputs.passengerFireLifts,
         kwPerUnit: liftPowerKW,
         tcl: inputs.passengerFireLifts * liftPowerKW,
-        mdf: 0.6,
-        edf: 0.6,
-        fdf: 1.0 // Full load during fire
+        mdf: passengerFireFactors.mdf,
+        edf: passengerFireFactors.edf,
+        fdf: passengerFireFactors.fdf
       });
     }
 
-    // Firemen Evacuation Lift
+    // Firemen Evacuation Lift - factors from DB
     if (inputs.firemenLifts > 0) {
+      const firemenLiftFactors = this.getFactor('LIFTS', 'FIREMEN', 'Firemen Lift');
       items.push({
         description: 'Firemen Evac/Service Lift',
         nos: inputs.firemenLifts,
         kwPerUnit: liftPowerKW,
         tcl: inputs.firemenLifts * liftPowerKW,
-        mdf: 0.6,
-        edf: 0.6,
-        fdf: 1.0
+        mdf: firemenLiftFactors.mdf,
+        edf: firemenLiftFactors.edf,
+        fdf: firemenLiftFactors.fdf
       });
     }
 
@@ -921,7 +937,7 @@ class ElectricalLoadCalculator {
   }
 
   /**
-   * HVAC & Ventilation Calculations
+   * HVAC & Ventilation Calculations - factors from DB
    */
   async calculateHVAC(inputs) {
     const items = [];
@@ -932,15 +948,16 @@ class ElectricalLoadCalculator {
       const lobbyAreaSqft = lobbyArea * 10.76;
       const tonnage = Math.ceil(lobbyAreaSqft / 200); // 1 TR per 200 sqft
       const acPower = await this.lookupValue('ac_power', 'tonnage', tonnage > 3 ? 3 : tonnage);
+      const lobbyACFactors = this.getFactor('HVAC', 'AC', 'Lobby Air Conditioning');
 
       items.push({
         description: 'Lobby Air Conditioning',
         tonnage: tonnage,
         kwPerTR: acPower,
         tcl: tonnage * acPower,
-        mdf: 0.8,
-        edf: 0.0, // Not essential
-        fdf: 0.0
+        mdf: lobbyACFactors.mdf,
+        edf: lobbyACFactors.edf,
+        fdf: lobbyACFactors.fdf
       });
     }
 
@@ -948,15 +965,16 @@ class ElectricalLoadCalculator {
     if (inputs.lobbyType === 'Mech. Vent' || inputs.mechanicalVentilation) {
       const ventPower = await this.lookupValue('ventilation_fan', 'cfm', inputs.ventilationCFM || 5000);
       const numFans = inputs.ventilationFans || 4;
+      const ventFactors = this.getFactor('HVAC', 'VENTILATION', 'Mechanical Ventilation Fans');
 
       items.push({
         description: 'Mechanical Ventilation Fans',
         nos: numFans,
         kwPerUnit: ventPower,
         tcl: numFans * ventPower,
-        mdf: 0.7,
-        edf: 0.7,
-        fdf: 0.0
+        mdf: ventFactors.mdf,
+        edf: ventFactors.edf,
+        fdf: ventFactors.fdf
       });
     }
 
@@ -967,7 +985,7 @@ class ElectricalLoadCalculator {
   }
 
   /**
-   * Pressurization Systems
+   * Pressurization Systems - factors from DB
    */
   async calculatePressurization(inputs) {
     const items = [];
@@ -975,30 +993,34 @@ class ElectricalLoadCalculator {
     // Staircase Pressurization
     const staircaseFanPower = await this.lookupValue('pressurization_fan', 'staircase', 'standard');
     const numStaircases = inputs.numberOfStaircases || 2;
+    const staircasePresFactors = this.getFactor('PRESSURIZATION', 'STAIRCASE', 'Staircase Pressurization');
 
     items.push({
       description: 'Staircase Pressurization Fans',
       nos: numStaircases,
       kwPerUnit: staircaseFanPower,
       tcl: numStaircases * staircaseFanPower,
-      mdf: 0.6,
-      edf: 0.6,
-      fdf: 1.0 // Full during fire
+      mdf: staircasePresFactors.mdf,
+      edf: staircasePresFactors.edf,
+      fdf: staircasePresFactors.fdf
     });
 
     // Fire Lift Lobby Pressurization
+    // Pressurization is per fire lobby SHAFT/SYSTEM, not per floor.
+    // Typically 1 system per building (or per fire lift group).
     if (inputs.passengerFireLifts > 0 || inputs.firemenLifts > 0) {
       const lobbyFanPower = await this.lookupValue('pressurization_fan', 'lobby', 'standard');
-      const numLobbies = inputs.numberOfFloors || 38;
+      const numSystems = inputs.fireLobbyPressurizationSystems || 1;
+      const lobbyPresFactors = this.getFactor('PRESSURIZATION', 'LOBBY', 'Fire Lift Lobby Pressurization');
 
       items.push({
         description: 'Fire Lift Lobby Pressurization',
-        nos: numLobbies,
+        nos: numSystems,
         kwPerUnit: lobbyFanPower,
-        tcl: numLobbies * lobbyFanPower,
-        mdf: 0.6,
-        edf: 0.6,
-        fdf: 1.0
+        tcl: numSystems * lobbyFanPower,
+        mdf: lobbyPresFactors.mdf,
+        edf: lobbyPresFactors.edf,
+        fdf: lobbyPresFactors.fdf
       });
     }
 
@@ -1009,7 +1031,7 @@ class ElectricalLoadCalculator {
   }
 
   /**
-   * Building PHE (Plumbing & Hydraulic Equipment)
+   * Building PHE (Plumbing & Hydraulic Equipment) - factors from DB
    */
   async calculateBuildingPHE(inputs) {
     const items = [];
@@ -1019,6 +1041,7 @@ class ElectricalLoadCalculator {
       const pumpPower = await this.lookupValue('phe_pump', 'flow_lpm', inputs.boosterPumpFlow);
       const pumpConfig = inputs.boosterPumpSet || '1W+1S'; // Working + Standby
       const numPumps = pumpConfig.includes('2W') ? 2 : 1;
+      const boosterFactors = this.getFactor('PHE', 'BOOSTER', 'Booster Pump');
 
       items.push({
         description: 'PHE Booster Pumps',
@@ -1027,9 +1050,9 @@ class ElectricalLoadCalculator {
         nos: numPumps,
         kwPerUnit: pumpPower,
         tcl: numPumps * pumpPower,
-        mdf: 0.6,
-        edf: 0.6,
-        fdf: 1.0
+        mdf: boosterFactors.mdf,
+        edf: boosterFactors.edf,
+        fdf: boosterFactors.fdf
       });
     }
 
@@ -1037,6 +1060,7 @@ class ElectricalLoadCalculator {
     if (inputs.sewagePumpCapacity) {
       const sewagePower = await this.lookupValue('sewage_pump', 'capacity_lpm', inputs.sewagePumpCapacity);
       const numSewagePumps = inputs.sewagePumpSet || 2;
+      const sewageFactors = this.getFactor('PHE', 'SEWAGE', 'Sewage Pump');
 
       items.push({
         description: 'Sewage Pumps',
@@ -1044,9 +1068,9 @@ class ElectricalLoadCalculator {
         nos: numSewagePumps,
         kwPerUnit: sewagePower,
         tcl: numSewagePumps * sewagePower,
-        mdf: 0.6,
-        edf: 0.6,
-        fdf: 0.0
+        mdf: sewageFactors.mdf,
+        edf: sewageFactors.edf,
+        fdf: sewageFactors.fdf
       });
     }
 
@@ -1057,21 +1081,25 @@ class ElectricalLoadCalculator {
   }
 
   /**
-   * Building Fire Fighting Equipment
+   * Building Fire Fighting Equipment - factors from DB
    */
   calculateBuildingFF(inputs) {
     const items = [];
 
-    // Wet Riser Pump (if separate from main system)
-    if (inputs.wetRiserPump) {
+    // Wet Riser Pump - mandatory for buildings > 15m (NBC 2016)
+    // Auto-enable for tall buildings unless explicitly disabled
+    const buildingHeight = inputs.buildingHeight || 0;
+    const hasWetRiser = inputs.wetRiserPump !== undefined ? inputs.wetRiserPump : (buildingHeight > 15);
+    if (hasWetRiser) {
+      const wetRiserFactors = this.getFactor('FIREFIGHTING', 'WET_RISER', 'Wet Riser Pump');
       items.push({
         description: 'Wet Riser Pump',
         kwPerUnit: inputs.wetRiserPumpPower || 11,
         nos: 1,
         tcl: inputs.wetRiserPumpPower || 11,
-        mdf: 0.6,
-        edf: 0.6,
-        fdf: 1.0
+        mdf: wetRiserFactors.mdf,
+        edf: wetRiserFactors.edf,
+        fdf: wetRiserFactors.fdf
       });
     }
 
@@ -1082,29 +1110,31 @@ class ElectricalLoadCalculator {
   }
 
   /**
-   * Other Building Loads
+   * Other Building Loads - factors from DB
    */
   calculateOtherBuildingLoads(inputs) {
     const items = [];
 
     // Security Systems
+    const securityFactors = this.getFactor('OTHER', 'SECURITY', 'Security System');
     items.push({
       description: 'Security & CCTV',
       tcl: inputs.securitySystemLoad || 2,
       nos: 1,
-      mdf: 1.0,
-      edf: 1.0,
-      fdf: 0.0
+      mdf: securityFactors.mdf,
+      edf: securityFactors.edf,
+      fdf: securityFactors.fdf
     });
 
     // Common Area Small Power
+    const smallPowerFactors = this.getFactor('OTHER', 'SMALL_POWER', 'Common Area Power');
     items.push({
       description: 'Common Area Power Sockets',
       tcl: inputs.smallPowerLoad || 5,
       nos: 1,
-      mdf: 0.5,
-      edf: 0.5,
-      fdf: 0.0
+      mdf: smallPowerFactors.mdf,
+      edf: smallPowerFactors.edf,
+      fdf: smallPowerFactors.fdf
     });
 
     return {
@@ -1132,7 +1162,7 @@ class ElectricalLoadCalculator {
   }
 
   /**
-   * Main Fire Fighting Pumps
+   * Main Fire Fighting Pumps - factors from DB
    */
   async calculateFFPumps(inputs) {
     const items = [];
@@ -1142,6 +1172,7 @@ class ElectricalLoadCalculator {
     const mainPumpPower = await this.lookupValue('ff_main_pump', 'flow_lpm', mainFlow);
     const pumpConfig = inputs.fbtPumpSetType || 'Main+SBY+Jky';
     const mainPumpCount = pumpConfig.includes('2 Main') ? 2 : 1;
+    const mainPumpFactors = this.getFactor('FIREFIGHTING', 'HYDRANT', 'Fire Main Pump');
 
     items.push({
       description: 'Main Hydrant Pump',
@@ -1149,22 +1180,23 @@ class ElectricalLoadCalculator {
       nos: mainPumpCount,
       kwPerUnit: mainPumpPower,
       tcl: mainPumpCount * mainPumpPower,
-      mdf: 0.6,
-      edf: 0.6,
-      fdf: 0.25 // Jockey only, main during fire
+      mdf: mainPumpFactors.mdf,
+      edf: mainPumpFactors.edf,
+      fdf: mainPumpFactors.fdf
     });
 
     // Jockey Pump
     const jockeyPower = await this.lookupValue('ff_jockey_pump', 'standard', '180');
+    const jockeyFactors = this.getFactor('FIREFIGHTING', 'JOCKEY', 'Fire Jockey Pump');
     items.push({
       description: 'Hydrant Jockey Pump',
       flowLPM: 180,
       nos: mainPumpCount,
       kwPerUnit: jockeyPower,
       tcl: mainPumpCount * jockeyPower,
-      mdf: 0.6,
-      edf: 0.6,
-      fdf: 0.25
+      mdf: jockeyFactors.mdf,
+      edf: jockeyFactors.edf,
+      fdf: jockeyFactors.fdf
     });
 
     // Sprinkler System
@@ -1172,6 +1204,7 @@ class ElectricalLoadCalculator {
       const sprinklerPower = await this.lookupValue('ff_sprinkler_pump', 'flow_lpm', inputs.sprinklerPumpFlow);
       const sprinklerConfig = inputs.sprinklerPumpSet || 'Main+SBY+Jky';
       const sprinklerCount = sprinklerConfig.includes('2 Main') ? 2 : 1;
+      const sprinklerFactors = this.getFactor('FIREFIGHTING', 'SPRINKLER', 'Sprinkler Pump');
 
       items.push({
         description: 'Sprinkler Main Pump',
@@ -1179,20 +1212,21 @@ class ElectricalLoadCalculator {
         nos: sprinklerCount,
         kwPerUnit: sprinklerPower,
         tcl: sprinklerCount * sprinklerPower,
-        mdf: 0.6,
-        edf: 0.6,
-        fdf: 0.25
+        mdf: sprinklerFactors.mdf,
+        edf: sprinklerFactors.edf,
+        fdf: sprinklerFactors.fdf
       });
 
+      const sprinklerJockeyFactors = this.getFactor('FIREFIGHTING', 'JOCKEY', 'Fire Jockey Pump');
       items.push({
         description: 'Sprinkler Jockey Pump',
         flowLPM: 180,
         nos: sprinklerCount,
         kwPerUnit: jockeyPower,
         tcl: sprinklerCount * jockeyPower,
-        mdf: 0.6,
-        edf: 0.6,
-        fdf: 0.25
+        mdf: sprinklerJockeyFactors.mdf,
+        edf: sprinklerJockeyFactors.edf,
+        fdf: sprinklerJockeyFactors.fdf
       });
     }
 
@@ -1203,7 +1237,7 @@ class ElectricalLoadCalculator {
   }
 
   /**
-   * PHE Transfer Pumps (Society Level)
+   * PHE Transfer Pumps (Society Level) - factors from DB
    */
   async calculatePHETransferPumps(inputs) {
     const items = [];
@@ -1213,6 +1247,7 @@ class ElectricalLoadCalculator {
       const transferPower = await this.lookupValue('phe_pump', 'flow_lpm', inputs.domTransferFlow);
       const transferConfig = inputs.domTransferConfig || '1W+1S';
       const transferCount = transferConfig.includes('2W') ? 2 : (transferConfig.includes('3W') ? 3 : 1);
+      const transferFactors = this.getFactor('PHE', 'TRANSFER', 'Domestic Transfer Pump');
 
       items.push({
         description: 'Domestic Transfer Pumps',
@@ -1221,9 +1256,9 @@ class ElectricalLoadCalculator {
         nos: transferCount,
         kwPerUnit: transferPower,
         tcl: transferCount * transferPower,
-        mdf: 0.6,
-        edf: 0.6,
-        fdf: 1.0
+        mdf: transferFactors.mdf,
+        edf: transferFactors.edf,
+        fdf: transferFactors.fdf
       });
     }
 
@@ -1234,7 +1269,7 @@ class ElectricalLoadCalculator {
   }
 
   /**
-   * Society Infrastructure
+   * Society Infrastructure - factors from DB
    */
   async calculateSocietyInfrastructure(inputs) {
     const items = [];
@@ -1242,53 +1277,57 @@ class ElectricalLoadCalculator {
     // STP/WTP
     if (inputs.stpCapacity) {
       const stpPower = await this.lookupValue('stp_power', 'capacity_kld', inputs.stpCapacity);
+      const stpFactors = this.getFactor('INFRASTRUCTURE', 'STP', 'STP/WTP Plant');
       items.push({
         description: 'STP/WTP Plant',
         capacityKLD: inputs.stpCapacity,
         nos: 1,
         kwPerUnit: stpPower,
         tcl: stpPower,
-        mdf: 0.8,
-        edf: 0.0,
-        fdf: 0.0
+        mdf: stpFactors.mdf,
+        edf: stpFactors.edf,
+        fdf: stpFactors.fdf
       });
     }
 
     // Clubhouse / Amenities
     if (inputs.clubhouseLoad) {
+      const clubhouseFactors = this.getFactor('INFRASTRUCTURE', 'CLUBHOUSE', 'Clubhouse & Amenities');
       items.push({
         description: 'Clubhouse & Amenities',
         tcl: inputs.clubhouseLoad,
         nos: 1,
-        mdf: 0.5,
-        edf: 0.0,
-        fdf: 0.0
+        mdf: clubhouseFactors.mdf,
+        edf: clubhouseFactors.edf,
+        fdf: clubhouseFactors.fdf
       });
     }
 
     // EV Charging Stations
     if (inputs.evChargerCount > 0) {
       const evPower = await this.lookupValue('ev_charger', 'type', inputs.evChargerType || 'fast');
+      const evFactors = this.getFactor('INFRASTRUCTURE', 'EV', 'EV Charger');
       items.push({
         description: `EV Charging Stations (${inputs.evChargerType || 'fast'})`,
         nos: inputs.evChargerCount,
         kwPerUnit: evPower,
         tcl: inputs.evChargerCount * evPower,
-        mdf: 0.4,
-        edf: 0.0,
-        fdf: 0.0
+        mdf: evFactors.mdf,
+        edf: evFactors.edf,
+        fdf: evFactors.fdf
       });
     }
 
     // Street Lighting
     if (inputs.streetLightingLoad) {
+      const streetFactors = this.getFactor('INFRASTRUCTURE', 'STREET_LIGHTING', 'Street Lighting');
       items.push({
         description: 'Street & Common Area Lighting',
         tcl: inputs.streetLightingLoad,
         nos: 1,
-        mdf: 1.0,
-        edf: 0.6,
-        fdf: 0.0
+        mdf: streetFactors.mdf,
+        edf: streetFactors.edf,
+        fdf: streetFactors.fdf
       });
     }
 
@@ -1303,9 +1342,9 @@ class ElectricalLoadCalculator {
    */
   applyDemandFactors(loadGroup) {
     loadGroup.items = loadGroup.items.map(item => {
-      item.maxDemandKW = item.tcl * (item.mdf || 0.6);
-      item.essentialKW = item.tcl * (item.edf || 0.6);
-      item.fireKW = item.tcl * (item.fdf || 0.0);
+      item.maxDemandKW = item.tcl * (item.mdf ?? 0.6);
+      item.essentialKW = item.tcl * (item.edf ?? 0.6);
+      item.fireKW = item.tcl * (item.fdf ?? 0.0);
       return item;
     });
 
@@ -1447,7 +1486,7 @@ class ElectricalLoadCalculator {
     const grandEssential = totalBuildingEssential + totalSocietyEssential;
     const grandFire = totalBuildingFire + totalSocietyFire;
 
-    const transformerSizeKVA = Math.ceil(grandMaxDemand / 0.9 / 100) * 100;
+    const transformerSizeKVA = this.getStandardTransformerSize(grandMaxDemand / 0.9);
 
     return {
       perBuilding: {
@@ -1490,8 +1529,8 @@ class ElectricalLoadCalculator {
     const grandEssential = (totalBuildingEssential * numberOfBuildings) + totalSocietyEssential;
     const grandFire = (totalBuildingFire * numberOfBuildings) + totalSocietyFire;
 
-    // Transformer sizing (kVA at 0.9 PF)
-    const transformerSizeKVA = Math.ceil(grandMaxDemand / 0.9 / 100) * 100; // Round up to nearest 100
+    // Transformer sizing using standard sizes
+    const transformerSizeKVA = this.getStandardTransformerSize(grandMaxDemand / 0.9);
 
     return {
       perBuilding: {
@@ -1513,6 +1552,44 @@ class ElectricalLoadCalculator {
       transformerSizeKVA: transformerSizeKVA,
       numberOfBuildings: numberOfBuildings
     };
+  }
+
+  /**
+   * Get the next standard transformer size >= required kVA
+   * Uses IS/IEC standard transformer ratings
+   * @param {number} requiredKVA - Minimum required capacity in kVA
+   * @returns {number} - Standard transformer size in kVA
+   */
+  getStandardTransformerSize(requiredKVA) {
+    const standardSizes = [
+      100, 160, 200, 250, 315, 400, 500, 630, 800, 
+      1000, 1250, 1600, 2000, 2500, 3150
+    ];
+    
+    for (const size of standardSizes) {
+      if (size >= requiredKVA) {
+        return size;
+      }
+    }
+    // If beyond standard range, round up to nearest 500
+    return Math.ceil(requiredKVA / 500) * 500;
+  }
+
+  /**
+   * Get building-level diversity factor per MSEDCL NSC Circular 35530 (14/11/2024)
+   * Section C.2: "Diversity Factor" for infrastructure/land sizing
+   *   - Metropolitan Regions & Major Cities: DF = 2 (i.e., multiply by 1/2 = 0.50)
+   *   - Other than Metro & Major Cities:     DF = 2.5 (i.e., multiply by 1/2.5 = 0.40)
+   * Section C.3: "Diversity factor is for working out infrastructure and land requirement only."
+   * @param {string} areaType - METRO, MAJOR_CITIES, URBAN, RURAL
+   * @returns {number} - Diversity factor as a multiplier (0.0 - 1.0)
+   */
+  getBuildingDiversityFactor(areaType = 'METRO') {
+    // MSEDCL Circular 35530: Metro/Major Cities → DF=2 (÷2), Others → DF=2.5 (÷2.5)
+    if (areaType === 'METRO' || areaType === 'MAJOR_CITIES') {
+      return 0.50;  // 1/2
+    }
+    return 0.40;    // 1/2.5
   }
 
   /**

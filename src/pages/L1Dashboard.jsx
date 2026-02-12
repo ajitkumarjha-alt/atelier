@@ -4,12 +4,15 @@ import Layout from '../components/Layout';
 import L1ProjectTable from '../components/L1ProjectTable';
 import AIChat from '../components/AIChat';
 import { auth } from '../lib/firebase';
-import { Plus, MessageCircle } from 'lucide-react';
+import { Plus, MessageCircle, Calendar, Send, ListChecks, AlertTriangle, FileText, Database } from 'lucide-react';
+import { apiFetchJson } from '../lib/api';
 
 export default function L1Dashboard() {
   const [user, setUser] = useState(null);
   const [userLevel, setUserLevel] = useState(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [rfcStats, setRfcStats] = useState(null);
+  const [taskStats, setTaskStats] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,6 +22,9 @@ export default function L1Dashboard() {
     if (currentUser?.email) {
       fetchUserLevel(currentUser.email);
     }
+    // Fetch extra stats
+    apiFetchJson('/api/rfc/stats').then(setRfcStats).catch(() => {});
+    apiFetchJson('/api/tasks/stats').then(setTaskStats).catch(() => {});
   }, []);
 
   const fetchUserLevel = async (email) => {
@@ -48,6 +54,30 @@ export default function L1Dashboard() {
         >
           <Plus className="w-5 h-5" />
           Create New Project
+        </button>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <button onClick={() => navigate('/rfc-management')} className="bg-white border border-lodha-steel rounded-xl p-4 hover:shadow-md transition-all text-left">
+          <Send className="w-5 h-5 text-amber-600 mb-2" />
+          <p className="text-sm font-jost font-semibold text-lodha-grey">RFC Review</p>
+          <p className="text-xs text-lodha-grey/60 font-jost">{rfcStats?.pending || 0} pending</p>
+        </button>
+        <button onClick={() => navigate('/task-management')} className="bg-white border border-lodha-steel rounded-xl p-4 hover:shadow-md transition-all text-left">
+          <ListChecks className="w-5 h-5 text-blue-600 mb-2" />
+          <p className="text-sm font-jost font-semibold text-lodha-grey">Tasks</p>
+          <p className="text-xs text-lodha-grey/60 font-jost">{taskStats?.overdue || 0} overdue</p>
+        </button>
+        <button onClick={() => navigate('/mas-list')} className="bg-white border border-lodha-steel rounded-xl p-4 hover:shadow-md transition-all text-left">
+          <FileText className="w-5 h-5 text-lodha-gold mb-2" />
+          <p className="text-sm font-jost font-semibold text-lodha-grey">MAS Approvals</p>
+          <p className="text-xs text-lodha-grey/60 font-jost">Review materials</p>
+        </button>
+        <button onClick={() => navigate('/standards-management')} className="bg-white border border-lodha-steel rounded-xl p-4 hover:shadow-md transition-all text-left">
+          <Database className="w-5 h-5 text-lodha-grey mb-2" />
+          <p className="text-sm font-jost font-semibold text-lodha-grey">Standards</p>
+          <p className="text-xs text-lodha-grey/60 font-jost">Manage policies</p>
         </button>
       </div>
 

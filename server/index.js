@@ -31,6 +31,12 @@ import { performHealthCheck } from './utils/health.js';
 import { sendOTPEmail, sendWelcomeEmail } from './utils/emailService.js';
 import policyRoutes from './routes/policy.js';
 import ElectricalLoadCalculator from './services/electricalLoadService.js';
+import createSocietiesRouter from './routes/societies.js';
+import createDDSRouter from './routes/dds.js';
+import createTasksRouter from './routes/tasks.js';
+import createRFCRouter from './routes/rfc.js';
+import createStandardsRouter from './routes/standards.js';
+import createBuildingDetailsRouter from './routes/building-details.js';
 
 const app = express();
 const port = process.env.PORT || 5175;
@@ -349,6 +355,17 @@ app.get('/api/alive', (req, res) => {
 // Policy Management Routes
 // ============================================================================
 app.use('/api', policyRoutes);
+
+// ============================================================================
+// MEP Design Suite Routes
+// ============================================================================
+const routeDeps = { query, verifyToken, logger };
+app.use('/api', createSocietiesRouter(routeDeps));
+app.use('/api', createDDSRouter(routeDeps));
+app.use('/api', createTasksRouter(routeDeps));
+app.use('/api', createRFCRouter(routeDeps));
+app.use('/api', createStandardsRouter(routeDeps));
+app.use('/api', createBuildingDetailsRouter(routeDeps));
 
 // Cleanup endpoint - TEMPORARY for user cleanup
 app.post('/api/admin/cleanup-users', async (req, res) => {
@@ -1437,52 +1454,60 @@ async function initializeDatabase() {
     `);
     console.log('✓ electrical_load_factors table initialized');
 
-    // Initialize default electrical load factors if table is empty
-    const factorsCount = await query('SELECT COUNT(*) as count FROM electrical_load_factors');
-    if (parseInt(factorsCount.rows[0].count) === 0) {
-      await query(`
+    // Initialize/update default electrical load factors (upsert to handle schema changes)
+    await query(`
         INSERT INTO electrical_load_factors (category, sub_category, description, watt_per_sqm, mdf, edf, fdf, notes) VALUES
-        -- Residential Flat Loads
-        ('RESIDENTIAL', 'FLAT', 'Residential Flat Load', 25.00, 0.4000, 0.1000, 0.0000, 'NBC 2016 / EcoNiwas Samhita: 20-25 W/sqm'),
+        -- Residential Flat Loads (MSEDCL: 75 W/sqm carpet area, MDF=50%, EDF=10%)
+        ('RESIDENTIAL', 'FLAT', 'Residential Flat Load', 75.00, 0.5000, 0.1000, 0.0000, 'MSEDCL NSC Circular 35530 - 75 W/sqm, MDF 50%'),
         
-        -- Lighting
-        ('LIGHTING', 'LOBBY', 'GF Entrance Lobby', 3.00, 0.6000, 0.6000, 0.2500, 'EcoNiwas Samhita'),
-        ('LIGHTING', 'LOBBY', 'Typical Floor Lobby', 3.00, 0.6000, 0.6000, 0.2500, 'EcoNiwas Samhita'),
-        ('LIGHTING', 'TERRACE', 'Terrace Lighting', 2.00, 0.6000, 0.6000, 1.0000, 'Full load during fire'),
-        ('LIGHTING', 'LANDSCAPE', 'Landscape Lighting', 2.00, 0.6000, 0.6000, 0.2500, 'External lighting'),
-        ('LIGHTING', 'STREET', 'Street Lighting', 2.00, 0.6000, 0.6000, 0.0000, 'Society level'),
+        -- Lighting (MSEDCL: 0.3 W/sqft = ~3.23 W/sqm)
+        ('LIGHTING', 'LOBBY', 'GF Entrance Lobby', 3.00, 0.6000, 0.6000, 0.2500, 'MSEDCL NSC Circular 35530 - 0.3 W/sqft'),
+        ('LIGHTING', 'LOBBY', 'Typical Floor Lobby', 3.00, 0.6000, 0.6000, 0.2500, 'MSEDCL NSC Circular 35530 - 0.3 W/sqft'),
+        ('LIGHTING', 'STAIRCASE', 'Staircases & Landings', NULL, 0.6000, 0.6000, 1.0000, 'MSEDCL - full fire load for egress'),
+        ('LIGHTING', 'TERRACE', 'Terrace Lighting', 2.00, 0.6000, 0.6000, 0.2500, 'MSEDCL NSC Circular 35530'),
+        ('LIGHTING', 'LANDSCAPE', 'Landscape & External Lighting', 2.00, 0.6000, 0.2500, 0.0000, 'MSEDCL NSC Circular 35530'),
         
-        -- Lifts
-        ('LIFTS', 'PASSENGER', 'Passenger Lift', NULL, 0.5000, 0.5000, 0.0000, 'Standard passenger lift'),
-        ('LIFTS', 'PASSENGER_FIRE', 'Passenger cum Fire Lift', NULL, 0.5000, 0.5000, 1.0000, 'Fire-rated lift'),
-        ('LIFTS', 'FIREMEN', 'Firemen Lift', NULL, 0.0000, 0.0000, 1.0000, 'Emergency use only'),
+        -- Lifts (MSEDCL: MDF=0.6, EDF=0.6 for all lifts)
+        ('LIFTS', 'PASSENGER', 'Passenger Lift', NULL, 0.6000, 0.6000, 0.0000, 'MSEDCL NSC Circular 35530'),
+        ('LIFTS', 'PASSENGER_FIRE', 'Passenger + Fire Lift', NULL, 0.6000, 0.6000, 1.0000, 'MSEDCL NSC Circular 35530'),
+        ('LIFTS', 'FIREMEN', 'Firemen Lift', NULL, 0.6000, 0.6000, 1.0000, 'MSEDCL - service/evac lift, runs during normal + fire'),
         
-        -- HVAC & Ventilation
-        ('HVAC', 'VENTILATION', 'Mechanical Ventilation Fan', NULL, 0.7000, 0.0000, 0.0000, 'Basement/parking ventilation'),
+        -- HVAC & Ventilation (MSEDCL: MDF=0.6, EDF=0.6)
+        ('HVAC', 'AC', 'Lobby Air Conditioning', NULL, 0.6000, 0.6000, 0.0000, 'MSEDCL NSC Circular 35530'),
+        ('HVAC', 'VENTILATION', 'Mechanical Ventilation Fans', NULL, 0.6000, 0.6000, 0.6000, 'MSEDCL NSC Circular 35530 - runs during fire'),
         
-        -- Pressurization
-        ('PRESSURIZATION', 'STAIRCASE', 'Staircase Pressurization Fan', NULL, 0.0000, 0.0000, 1.0000, 'Fire safety - staircase'),
-        ('PRESSURIZATION', 'LOBBY', 'Lobby Pressurization System', NULL, 0.0000, 0.0000, 1.0000, 'Fire safety - lobby'),
+        -- Pressurization (fire-only systems, MDF/EDF=0)
+        ('PRESSURIZATION', 'STAIRCASE', 'Staircase Pressurization', NULL, 0.0000, 0.0000, 1.0000, 'MSEDCL - fire safety system only'),
+        ('PRESSURIZATION', 'LOBBY', 'Fire Lift Lobby Pressurization', NULL, 0.0000, 0.0000, 1.0000, 'MSEDCL - fire safety system only'),
         
-        -- PHE (Plumbing & Hydraulic Equipment)
-        ('PHE', 'BOOSTER', 'Booster Pump', NULL, 0.6000, 0.6000, 0.0000, 'Water supply'),
-        ('PHE', 'SEWAGE', 'Sewage Pump', NULL, 0.6000, 0.6000, 0.0000, 'Wastewater'),
-        ('PHE', 'WET_RISER', 'Wet Riser Pump', NULL, 0.0000, 0.0000, 1.0000, 'Fire fighting'),
-        ('PHE', 'FIRE_MAIN', 'Fire Fighting Main Pump', NULL, 0.0000, 0.0000, 1.0000, 'Fire fighting - main'),
-        ('PHE', 'FIRE_SPRINKLER', 'Sprinkler Pump', NULL, 0.0000, 0.0000, 1.0000, 'Fire fighting - sprinkler'),
-        ('PHE', 'DOM_TRANSFER', 'Domestic Transfer Pump', NULL, 0.7000, 0.0000, 0.0000, 'Society level water transfer'),
+        -- PHE (MSEDCL: MDF=0.6, EDF=0.6; Booster FDF=1.0 per MSEDCL)
+        ('PHE', 'BOOSTER', 'Booster Pump', NULL, 0.6000, 0.6000, 1.0000, 'MSEDCL NSC Circular 35530 - fire duty'),
+        ('PHE', 'SEWAGE', 'Sewage Pump', NULL, 0.6000, 0.6000, 0.0000, 'MSEDCL NSC Circular 35530'),
+        ('PHE', 'TRANSFER', 'Domestic Transfer Pump', NULL, 0.6000, 0.6000, 0.2500, 'MSEDCL NSC Circular 35530'),
         
-        -- Infrastructure
-        ('INFRASTRUCTURE', 'STP', 'Sewage Treatment Plant', NULL, 0.7000, 0.0000, 0.0000, 'Wastewater treatment'),
-        ('INFRASTRUCTURE', 'CLUBHOUSE', 'Clubhouse', NULL, 0.7000, 0.3000, 0.0000, 'Society amenity'),
-        ('INFRASTRUCTURE', 'EV_CHARGER', 'EV Charger', NULL, 0.2000, 0.0000, 0.0000, 'Electric vehicle charging'),
+        -- Fire Fighting (MSEDCL: MDF=0.6, EDF=0.6, FDF=0.25 for main pumps)
+        ('FIREFIGHTING', 'WET_RISER', 'Wet Riser Pump', NULL, 0.6000, 0.6000, 1.0000, 'MSEDCL NSC Circular 35530'),
+        ('FIREFIGHTING', 'HYDRANT', 'Fire Main Pump', NULL, 0.6000, 0.6000, 0.2500, 'MSEDCL NSC Circular 35530'),
+        ('FIREFIGHTING', 'JOCKEY', 'Fire Jockey Pump', NULL, 0.6000, 0.6000, 0.2500, 'MSEDCL NSC Circular 35530'),
+        ('FIREFIGHTING', 'SPRINKLER', 'Sprinkler Pump', NULL, 0.6000, 0.6000, 0.2500, 'MSEDCL NSC Circular 35530'),
         
-        -- Other
-        ('OTHER', 'SECURITY', 'Security System', NULL, 0.8000, 0.8000, 0.2500, 'CCTV, access control'),
-        ('OTHER', 'SMALL_POWER', 'Small Power Load', NULL, 0.6000, 0.3000, 0.0000, 'Miscellaneous')
-      `);
-      console.log('✓ electrical_load_factors table populated with default values');
-    }
+        -- Infrastructure (MSEDCL: MDF=0.6)
+        ('INFRASTRUCTURE', 'STP', 'STP/WTP Plant', NULL, 0.6000, 0.0000, 0.0000, 'MSEDCL NSC Circular 35530'),
+        ('INFRASTRUCTURE', 'CLUBHOUSE', 'Clubhouse & Amenities', NULL, 0.6000, 0.0000, 0.0000, 'MSEDCL NSC Circular 35530'),
+        ('INFRASTRUCTURE', 'EV', 'EV Charger', NULL, 0.6000, 0.0000, 0.0000, 'MSEDCL NSC Circular 35530'),
+        ('INFRASTRUCTURE', 'STREET_LIGHTING', 'Street Lighting', NULL, 0.6000, 0.6000, 0.0000, 'MSEDCL NSC Circular 35530'),
+        
+        -- Other (MSEDCL: MDF=0.6, EDF=0.6)
+        ('OTHER', 'SECURITY', 'Security System', NULL, 0.6000, 0.6000, 0.2500, 'MSEDCL NSC Circular 35530'),
+        ('OTHER', 'SMALL_POWER', 'Common Area Power', NULL, 0.6000, 0.6000, 0.0000, 'MSEDCL NSC Circular 35530')
+      ON CONFLICT (category, sub_category, description) DO UPDATE SET
+        watt_per_sqm = EXCLUDED.watt_per_sqm,
+        mdf = EXCLUDED.mdf,
+        edf = EXCLUDED.edf,
+        fdf = EXCLUDED.fdf,
+        notes = EXCLUDED.notes
+    `);
+    console.log('✓ electrical_load_factors table synced with latest defaults');
 
     // Add flat_loads and building_breakdowns columns to electrical_load_calculations
     try {
@@ -4688,7 +4713,8 @@ app.post('/api/electrical-load-calculations', verifyToken, async (req, res) => {
       building_breakdowns: results.buildingBreakdowns || null,
       total_loads: results.totals,
       regulatory_compliance: regulatoryCompliance,
-      regulatory_framework: results.regulatoryFramework
+      regulatory_framework: results.regulatoryFramework,
+      factors_used: results.factorsUsed || null
     });
   } catch (error) {
     console.error('Error creating electrical load calculation:', error);
@@ -4776,7 +4802,8 @@ app.put('/api/electrical-load-calculations/:id', verifyToken, async (req, res) =
     if (inputParameters) {
       const calculator = new ElectricalLoadCalculator({ query });
       const buildings = selectedBuildings || existing.rows[0].selected_buildings;
-      results = await calculator.calculate(inputParameters, buildings);
+      const projectId = existing.rows[0].project_id;
+      results = await calculator.calculate(inputParameters, buildings, projectId);
     }
 
     // Build update query dynamically

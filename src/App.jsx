@@ -23,6 +23,11 @@ import ConsultantMASDetail from './pages/ConsultantMASDetail';
 import ConsultantRFIDetail from './pages/ConsultantRFIDetail';
 import ProjectDetail from './pages/ProjectDetail';
 import ProjectInput from './pages/ProjectInput';
+import ProjectInputEnhanced from './pages/project/ProjectInputEnhanced';
+import DDSManagement from './pages/DDSManagement';
+import TaskManagement from './pages/TaskManagement';
+import RFCManagement from './pages/RFCManagement';
+import StandardsManagement from './pages/StandardsManagement';
 import MASPage from './pages/MASPage';
 import MASForm from './pages/MASForm';
 import MASDetail from './pages/MASDetail';
@@ -147,6 +152,12 @@ function AppRoutes() {
                 <Navigate to="/vendor-dashboard" replace />
               ) : userLevel === 'CM' ? (
                 <Navigate to="/cm-dashboard" replace />
+              ) : userLevel === 'L3' ? (
+                <Navigate to="/l3-dashboard" replace />
+              ) : userLevel === 'L4' ? (
+                <Navigate to="/l4-dashboard" replace />
+              ) : userLevel === 'CONSULTANT' ? (
+                <Navigate to="/consultant-dashboard" replace />
               ) : (
                 <Navigate to="/l2-dashboard" replace />
               )
@@ -441,6 +452,77 @@ function AppRoutes() {
               <Navigate to="/" replace />
             )
           } 
+        />
+
+        {/* DDS Management */}
+        <Route
+          path="/dds/:projectId"
+          element={
+            user ? (
+              <DDSManagement />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        {/* Task Management */}
+        <Route
+          path="/task-management"
+          element={
+            user ? (
+              <TaskManagement />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        {/* RFC Management */}
+        <Route
+          path="/rfc-management"
+          element={
+            user && ['L1', 'L2', 'L3', 'SUPER_ADMIN'].includes(userLevel) ? (
+              <RFCManagement />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        {/* Standards Management */}
+        <Route
+          path="/standards-management"
+          element={
+            user && ['L0', 'L1', 'L2', 'SUPER_ADMIN'].includes(userLevel) ? (
+              <StandardsManagement />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        {/* Enhanced Project Input */}
+        <Route
+          path="/project-input-enhanced"
+          element={
+            user && (userLevel === 'L0' || userLevel === 'L1' || userLevel === 'SUPER_ADMIN') ? (
+              <ProjectInputEnhanced />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        <Route
+          path="/project-input-enhanced/:projectId"
+          element={
+            user && (userLevel === 'L0' || userLevel === 'L1' || userLevel === 'SUPER_ADMIN') ? (
+              <ProjectInputEnhanced />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
         />
 
         {/* Project Input Page */}

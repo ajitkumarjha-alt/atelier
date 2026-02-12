@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { Plus, Trash2, Edit2, Check, X, Upload, FileText, Download, Calculator, Settings, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Upload, FileText, Download, Calculator, Settings } from 'lucide-react';
+import { apiFetch } from '../lib/api';
 
 export default function ProjectStandardsManagement() {
   const [standards, setStandards] = useState([]);
@@ -79,7 +80,7 @@ export default function ProjectStandardsManagement() {
   const fetchAllStandards = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/project-standards-all');
+      const response = await apiFetch('/api/project-standards-all');
       if (response.ok) {
         const data = await response.json();
         setStandards(data);
@@ -95,7 +96,7 @@ export default function ProjectStandardsManagement() {
 
   const fetchDocumentCategories = async () => {
     try {
-      const response = await fetch('/api/project-standards-documents/categories');
+      const response = await apiFetch('/api/project-standards-documents/categories');
       if (response.ok) {
         const data = await response.json();
         setDocumentCategories(data.categories);
@@ -105,7 +106,7 @@ export default function ProjectStandardsManagement() {
 
   const fetchDocuments = async () => {
     try {
-      const response = await fetch('/api/project-standards-documents');
+      const response = await apiFetch('/api/project-standards-documents');
       if (response.ok) {
         const data = await response.json();
         setDocuments(data.documents);
@@ -119,7 +120,7 @@ export default function ProjectStandardsManagement() {
       const url = selectedGuideline 
         ? `/api/electrical-load-factors?guideline=${encodeURIComponent(selectedGuideline)}`
         : '/api/electrical-load-factors';
-      const response = await fetch(url);
+      const response = await apiFetch(url);
       if (response.ok) {
         const data = await response.json();
         setElectricalFactors(data);
@@ -129,7 +130,7 @@ export default function ProjectStandardsManagement() {
   
   const fetchGuidelines = async () => {
     try {
-      const response = await fetch('/api/electrical-load-factors/guidelines/list');
+      const response = await apiFetch('/api/electrical-load-factors/guidelines/list');
       if (response.ok) {
         const data = await response.json();
         setGuidelines(data);
@@ -147,9 +148,8 @@ export default function ProjectStandardsManagement() {
         ? `/api/electrical-load-factors/${editingFactorId}`
         : '/api/electrical-load-factors';
       
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(factorFormData)
       });
       
@@ -170,9 +170,8 @@ export default function ProjectStandardsManagement() {
   const handleDeleteElectricalFactor = async (id) => {
     if (!window.confirm('Are you sure you want to delete this factor?')) return;
     try {
-      const response = await fetch(`/api/electrical-load-factors/${id}`, {
+      const response = await apiFetch(`/api/electrical-load-factors/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...electricalFactors.find(f => f.id === id), is_active: false })
       });
       if (response.ok) {
@@ -225,7 +224,7 @@ export default function ProjectStandardsManagement() {
       formData.append('file', uploadFile);
       formData.append('category', uploadCategory);
       formData.append('description', uploadDescription);
-      const response = await fetch('/api/project-standards-documents/upload', { method: 'POST', body: formData });
+      const response = await apiFetch('/api/project-standards-documents/upload', { method: 'POST', body: formData });
       if (response.ok) {
         await fetchDocuments();
         setUploadFile(null);
@@ -238,7 +237,7 @@ export default function ProjectStandardsManagement() {
   const handleDeleteDocument = async (docId) => {
     if (!window.confirm('Are you sure?')) return;
     try {
-      const response = await fetch(`/api/project-standards-documents/${docId}`, { method: 'DELETE' });
+      const response = await apiFetch(`/api/project-standards-documents/${docId}`, { method: 'DELETE' });
       if (response.ok) await fetchDocuments();
     } catch (err) { alert(err.message); }
   };
@@ -246,9 +245,8 @@ export default function ProjectStandardsManagement() {
   const handleAddStandard = async () => {
     if (!newEntry.value.trim()) return alert('Please enter a value');
     try {
-      const response = await fetch('/api/project-standards', {
+      const response = await apiFetch('/api/project-standards', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newEntry),
       });
       if (response.ok) {
@@ -260,9 +258,8 @@ export default function ProjectStandardsManagement() {
 
   const handleUpdateStandard = async (id) => {
     try {
-      const response = await fetch(`/api/project-standards/${id}`, {
+      const response = await apiFetch(`/api/project-standards/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editData[id]),
       });
       if (response.ok) {
@@ -275,16 +272,15 @@ export default function ProjectStandardsManagement() {
   const handleDeleteStandard = async (id) => {
     if (!window.confirm('Are you sure?')) return;
     try {
-      const response = await fetch(`/api/project-standards/${id}`, { method: 'DELETE' });
+      const response = await apiFetch(`/api/project-standards/${id}`, { method: 'DELETE' });
       if (response.ok) await fetchAllStandards();
     } catch (err) { alert(err.message); }
   };
 
   const handleToggleActive = async (id, currentStatus) => {
     try {
-      await fetch(`/api/project-standards/${id}`, {
+      await apiFetch(`/api/project-standards/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !currentStatus }),
       });
       await fetchAllStandards();
@@ -320,89 +316,93 @@ export default function ProjectStandardsManagement() {
           </div>
         </div>
 
-        {/* 1. Standards Tab (Preserved as is) */}
+        {/* 1. Standards Tab */}
         {activeTab === 'standards' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
-            <div className="bg-white rounded-lg shadow-md p-6 h-fit">
-              <h2 className="heading-secondary mb-4">Categories</h2>
-              <div className="space-y-2">
-                {categories.map(cat => (
-                  <button
-                    key={cat.value}
-                    onClick={() => setSelectedCategory(cat.value)}
-                    className={`w-full text-left px-4 py-2 rounded transition ${
-                      selectedCategory === cat.value ? 'bg-lodha-gold text-white' : 'bg-lodha-sand text-lodha-black hover:bg-lodha-sand/80 border border-lodha-gold/30'
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
+          <div className="space-y-4 animate-fadeIn">
+            {/* Category Pills */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold uppercase tracking-wider text-lodha-grey mr-1">Category</span>
+              {categories.map(cat => (
+                <button
+                  key={cat.value}
+                  onClick={() => {
+                    setSelectedCategory(cat.value);
+                    setNewEntry({ ...newEntry, category: cat.value });
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
+                    selectedCategory === cat.value
+                      ? 'bg-lodha-gold text-white shadow-sm'
+                      : 'bg-lodha-sand text-lodha-black hover:bg-lodha-gold/20 border border-lodha-gold/20'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Content */}
+            <div className="bg-white rounded-lg shadow-md border border-lodha-gold/10">
+              {/* Header with inline add form */}
+              <div className="px-6 py-4 border-b border-lodha-gold/10 flex flex-wrap items-end gap-3">
+                <h2 className="heading-secondary mr-auto">{categories.find(c => c.value === selectedCategory)?.label}</h2>
+                <input
+                  type="text"
+                  value={newEntry.value}
+                  onChange={e => setNewEntry({ ...newEntry, value: e.target.value })}
+                  placeholder="New value"
+                  className="px-3 py-1.5 border border-lodha-gold/30 rounded-md text-sm w-40"
+                />
+                <input
+                  type="text"
+                  value={newEntry.description}
+                  onChange={e => setNewEntry({ ...newEntry, description: e.target.value })}
+                  placeholder="Description"
+                  className="px-3 py-1.5 border border-lodha-gold/30 rounded-md text-sm w-48"
+                />
+                <button
+                  onClick={handleAddStandard}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-lodha-gold text-white rounded-md text-sm hover:bg-lodha-deep transition whitespace-nowrap"
+                >
+                  <Plus className="w-4 h-4" /> Add
+                </button>
+              </div>
+
+              {/* Standards List */}
+              <div className="divide-y divide-lodha-gold/10">
+                {filteredStandards.length === 0 && (
+                  <div className="py-8 text-center text-lodha-grey text-sm">No standards in this category yet.</div>
+                )}
+                {filteredStandards.map((standard, idx) => (
+                  <div key={standard.id} className={`px-6 py-3 flex items-center gap-4 hover:bg-lodha-sand/30 ${idx % 2 !== 0 ? 'bg-lodha-sand/10' : ''}`}>
+                    {editingId === standard.id ? (
+                      <>
+                        <input
+                          type="text"
+                          value={editData[standard.id]?.value || standard.value}
+                          onChange={e => setEditData({...editData, [standard.id]: {...editData[standard.id], value: e.target.value}})}
+                          className="flex-1 px-3 py-1.5 border border-lodha-gold/30 rounded text-sm"
+                        />
+                        <button onClick={() => handleUpdateStandard(standard.id)} className="px-3 py-1 bg-lodha-gold text-white text-sm rounded">Save</button>
+                        <button onClick={() => setEditingId(null)} className="px-3 py-1 bg-gray-200 text-sm rounded">Cancel</button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium text-lodha-black">{standard.value}</span>
+                          {standard.description && <span className="text-sm text-lodha-grey ml-2">— {standard.description}</span>}
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button onClick={() => setEditingId(standard.id)} className="p-1.5 text-lodha-gold hover:bg-lodha-gold/10 rounded" title="Edit"><Edit2 className="w-3.5 h-3.5"/></button>
+                          <button onClick={() => handleToggleActive(standard.id, standard.is_active)} className="p-1.5 hover:bg-green-50 rounded" title={standard.is_active ? 'Active' : 'Inactive'}><Check className={`w-3.5 h-3.5 ${standard.is_active ? 'text-green-600' : 'text-gray-300'}`}/></button>
+                          <button onClick={() => handleDeleteStandard(standard.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded" title="Delete"><Trash2 className="w-3.5 h-3.5"/></button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 ))}
               </div>
-            </div>
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="heading-secondary mb-4">Add New Standard</h2>
-                <div className="space-y-4">
-                  <select
-                    value={newEntry.category}
-                    onChange={e => setNewEntry({ ...newEntry, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-lodha-grey rounded"
-                  >
-                    {categories.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
-                  </select>
-                  <input
-                    type="text"
-                    value={newEntry.value}
-                    onChange={e => setNewEntry({ ...newEntry, value: e.target.value })}
-                    placeholder="Value (e.g. Residential)"
-                    className="w-full px-3 py-2 border border-lodha-grey rounded"
-                  />
-                  <textarea
-                    value={newEntry.description}
-                    onChange={e => setNewEntry({ ...newEntry, description: e.target.value })}
-                    placeholder="Description"
-                    rows="2"
-                    className="w-full px-3 py-2 border border-lodha-grey rounded"
-                  />
-                  <button onClick={handleAddStandard} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-lodha-gold text-white rounded">
-                    <Plus className="w-4 h-4" /> Add Standard
-                  </button>
-                </div>
-              </div>
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="heading-secondary mb-4">{categories.find(c => c.value === selectedCategory)?.label}</h2>
-                <div className="space-y-3">
-                  {filteredStandards.map(standard => (
-                    <div key={standard.id} className="p-4 border border-lodha-gold/30 rounded-lg bg-lodha-sand/50">
-                      {editingId === standard.id ? (
-                        <div className="space-y-3">
-                          <input
-                            type="text"
-                            value={editData[standard.id]?.value || standard.value}
-                            onChange={e => setEditData({...editData, [standard.id]: {...editData[standard.id], value: e.target.value}})}
-                            className="w-full px-3 py-2 border rounded"
-                          />
-                          <div className="flex gap-2">
-                            <button onClick={() => handleUpdateStandard(standard.id)} className="flex-1 bg-lodha-gold text-white py-1 rounded">Save</button>
-                            <button onClick={() => setEditingId(null)} className="flex-1 bg-gray-200 py-1 rounded">Cancel</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h3 className="font-semibold">{standard.value}</h3>
-                            <p className="text-sm text-lodha-grey">{standard.description}</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={() => setEditingId(standard.id)} className="p-2 text-lodha-gold"><Edit2 className="w-4 h-4"/></button>
-                            <button onClick={() => handleToggleActive(standard.id, standard.is_active)} className="p-2"><Check className={`w-4 h-4 ${standard.is_active ? 'text-green-600' : 'text-gray-400'}`}/></button>
-                            <button onClick={() => handleDeleteStandard(standard.id)} className="p-2 text-red-500"><Trash2 className="w-4 h-4"/></button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              <div className="px-6 py-3 bg-lodha-sand/30 border-t border-lodha-gold/10 text-xs text-lodha-grey">
+                {filteredStandards.length} item{filteredStandards.length !== 1 ? 's' : ''} · These values appear in dropdown fields across the application
               </div>
             </div>
           </div>
@@ -410,11 +410,12 @@ export default function ProjectStandardsManagement() {
 
         {/* 2. Calculation Standards Tab (UPDATED) */}
         {activeTab === 'calculations' && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-fadeIn">
-            {/* Disciplines Column */}
-            <div className="bg-white rounded-lg shadow-md p-5 border border-lodha-gold/10 h-fit">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-lodha-grey mb-4">Disciplines</h2>
-              <div className="space-y-1">
+          <div className="space-y-4 animate-fadeIn">
+            {/* Compact Navigation Row */}
+            <div className="flex flex-wrap items-start gap-4">
+              {/* Disciplines - horizontal pills */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold uppercase tracking-wider text-lodha-grey mr-1">Discipline</span>
                 {Object.keys(calculationStructure).map(main => (
                   <button
                     key={main}
@@ -422,27 +423,30 @@ export default function ProjectStandardsManagement() {
                       setSelectedMainCategory(main);
                       setSelectedSubModule(calculationStructure[main][0]);
                     }}
-                    className={`w-full text-left px-4 py-2.5 rounded-md transition flex justify-between items-center ${
-                      selectedMainCategory === main ? 'bg-lodha-gold text-white shadow-sm' : 'text-lodha-black hover:bg-lodha-sand'
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
+                      selectedMainCategory === main
+                        ? 'bg-lodha-gold text-white shadow-sm'
+                        : 'bg-lodha-sand text-lodha-black hover:bg-lodha-gold/20 border border-lodha-gold/20'
                     }`}
                   >
-                    <span className="font-medium">{main}</span>
-                    {selectedMainCategory === main && <ChevronRight className="w-4 h-4" />}
+                    {main}
                   </button>
                 ))}
               </div>
-            </div>
 
-            {/* Modules Column */}
-            <div className="bg-white rounded-lg shadow-md p-5 border border-lodha-gold/10 h-fit">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-lodha-grey mb-4">{selectedMainCategory} Modules</h2>
-              <div className="space-y-1">
+              <div className="w-px h-8 bg-lodha-gold/20 hidden sm:block" />
+
+              {/* Modules - horizontal pills */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold uppercase tracking-wider text-lodha-grey mr-1">Module</span>
                 {calculationStructure[selectedMainCategory].map(sub => (
                   <button
                     key={sub}
                     onClick={() => setSelectedSubModule(sub)}
-                    className={`w-full text-left px-4 py-2 rounded-md text-sm transition ${
-                      selectedSubModule === sub ? 'bg-lodha-sand text-lodha-gold font-bold border-l-4 border-lodha-gold' : 'text-lodha-grey hover:text-lodha-black'
+                    className={`px-3 py-1.5 rounded-full text-sm transition ${
+                      selectedSubModule === sub
+                        ? 'bg-lodha-black text-white font-semibold'
+                        : 'bg-white text-lodha-grey hover:text-lodha-black border border-lodha-gold/20'
                     }`}
                   >
                     {sub}
@@ -451,18 +455,18 @@ export default function ProjectStandardsManagement() {
               </div>
             </div>
 
-            {/* Content Column */}
-            <div className="lg:col-span-2 space-y-6">
+            {/* Content - Full Width */}
+            <div className="space-y-4">
               {selectedSubModule === 'Electrical Load' ? (
                 <>
                   {/* Electrical Load Factors Management */}
-                  <div className="bg-white rounded-lg shadow-md p-6 border border-lodha-gold/10">
-                    <div className="flex justify-between items-center mb-6">
+                  <div className="bg-white rounded-lg shadow-md border border-lodha-gold/10">
+                    <div className="flex flex-wrap justify-between items-center gap-3 px-6 py-4 border-b border-lodha-gold/10">
                       <div>
                         <h2 className="heading-secondary">{selectedSubModule} Factors</h2>
-                        <p className="text-sm text-lodha-grey mt-1">L0 configurable load calculation standards</p>
+                        <p className="text-sm text-lodha-grey mt-0.5">L0 configurable load calculation standards &nbsp;·&nbsp; <strong>MDF</strong> = Max Demand &nbsp;·&nbsp; <strong>EDF</strong> = Essential Demand &nbsp;·&nbsp; <strong>FDF</strong> = Fire Demand</p>
                       </div>
-                      <div className="flex gap-3">
+                      <div className="flex gap-3 items-center">
                         <select
                           value={selectedGuideline}
                           onChange={(e) => setSelectedGuideline(e.target.value)}
@@ -477,7 +481,7 @@ export default function ProjectStandardsManagement() {
                             resetFactorForm();
                             setShowAddFactorModal(true);
                           }}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-lodha-gold text-white rounded-md text-sm hover:bg-lodha-deep transition"
+                          className="flex items-center gap-2 px-3 py-1.5 bg-lodha-gold text-white rounded-md text-sm hover:bg-lodha-deep transition whitespace-nowrap"
                         >
                           <Plus className="w-4 h-4" /> Add Factor
                         </button>
@@ -487,43 +491,45 @@ export default function ProjectStandardsManagement() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm">
                         <thead>
-                          <tr className="border-b border-lodha-gold/20 text-lodha-grey text-xs uppercase">
-                            <th className="pb-3 font-bold">Use Type</th>
-                            <th className="pb-3 font-bold">W/sq.m</th>
-                            <th className="pb-3 font-bold">MDF</th>
-                            <th className="pb-3 font-bold">EDF</th>
-                            <th className="pb-3 font-bold">FDF</th>
-                            <th className="pb-3 font-bold">Notes</th>
-                            <th className="pb-3 text-right font-bold">Actions</th>
+                          <tr className="bg-lodha-sand/40 text-lodha-grey text-xs uppercase">
+                            <th className="py-2.5 px-4 font-bold">Category</th>
+                            <th className="py-2.5 px-3 font-bold">Description</th>
+                            <th className="py-2.5 px-3 font-bold text-right whitespace-nowrap">W/sq.m</th>
+                            <th className="py-2.5 px-3 font-bold text-right">MDF</th>
+                            <th className="py-2.5 px-3 font-bold text-right">EDF</th>
+                            <th className="py-2.5 px-3 font-bold text-right">FDF</th>
+                            <th className="py-2.5 px-3 font-bold">Reference</th>
+                            <th className="py-2.5 px-3 text-center font-bold w-20">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {electricalFactors.map((factor) => (
-                            <tr key={factor.id} className="border-b border-lodha-gold/5 hover:bg-lodha-sand/20">
-                              <td className="py-4">
-                                <div>
-                                  <div className="font-medium text-lodha-black">{factor.description}</div>
-                                  <div className="text-xs text-lodha-grey">{factor.category} / {factor.sub_category}</div>
-                                </div>
+                          {electricalFactors.map((factor, idx) => (
+                            <tr key={factor.id} className={`border-b border-lodha-gold/5 hover:bg-lodha-sand/30 ${idx % 2 === 0 ? '' : 'bg-lodha-sand/10'}`}>
+                              <td className="py-2.5 px-4">
+                                <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-lodha-sand text-lodha-black">{factor.category}</span>
+                                {factor.sub_category && <span className="text-xs text-lodha-grey ml-1">/ {factor.sub_category}</span>}
                               </td>
-                              <td className="py-4 font-mono text-lodha-gold">{factor.watt_per_sqm || '-'}</td>
-                              <td className="py-4 font-mono">{factor.mdf || '-'}</td>
-                              <td className="py-4 font-mono">{factor.edf || '-'}</td>
-                              <td className="py-4 font-mono">{factor.fdf || '-'}</td>
-                              <td className="py-4 text-xs text-lodha-grey max-w-xs truncate">{factor.notes || '-'}</td>
-                              <td className="py-4 text-right">
-                                <div className="flex gap-2 justify-end">
+                              <td className="py-2.5 px-3 font-medium text-lodha-black">{factor.description}</td>
+                              <td className="py-2.5 px-3 font-mono text-right text-lodha-gold font-semibold">{factor.watt_per_sqm || '—'}</td>
+                              <td className="py-2.5 px-3 font-mono text-right">{factor.mdf != null ? `${(factor.mdf * 100).toFixed(0)}%` : '—'}</td>
+                              <td className="py-2.5 px-3 font-mono text-right">{factor.edf != null ? `${(factor.edf * 100).toFixed(0)}%` : '—'}</td>
+                              <td className="py-2.5 px-3 font-mono text-right">{factor.fdf != null ? `${(factor.fdf * 100).toFixed(0)}%` : '—'}</td>
+                              <td className="py-2.5 px-3 text-xs text-lodha-grey">{factor.notes || '—'}</td>
+                              <td className="py-2.5 px-3 text-center">
+                                <div className="flex gap-1 justify-center">
                                   <button 
                                     onClick={() => handleEditElectricalFactor(factor)}
-                                    className="text-lodha-gold p-1 hover:bg-lodha-gold/10 rounded"
+                                    className="text-lodha-gold p-1.5 hover:bg-lodha-gold/10 rounded"
+                                    title="Edit factor"
                                   >
-                                    <Edit2 className="w-4 h-4"/>
+                                    <Edit2 className="w-3.5 h-3.5"/>
                                   </button>
                                   <button 
                                     onClick={() => handleDeleteElectricalFactor(factor.id)}
-                                    className="text-red-500 p-1 hover:bg-red-50 rounded"
+                                    className="text-red-400 p-1.5 hover:bg-red-50 rounded"
+                                    title="Delete factor"
                                   >
-                                    <Trash2 className="w-4 h-4"/>
+                                    <Trash2 className="w-3.5 h-3.5"/>
                                   </button>
                                 </div>
                               </td>
@@ -531,7 +537,7 @@ export default function ProjectStandardsManagement() {
                           ))}
                           {electricalFactors.length === 0 && (
                             <tr>
-                              <td colSpan="7" className="py-8 text-center text-lodha-grey">
+                              <td colSpan="8" className="py-8 text-center text-lodha-grey">
                                 No factors found for {selectedGuideline}. Click "Add Factor" to create one.
                               </td>
                             </tr>
@@ -539,65 +545,45 @@ export default function ProjectStandardsManagement() {
                         </tbody>
                       </table>
                     </div>
-                  </div>
-                  
-                  <div className="bg-lodha-sand/50 border border-lodha-gold/30 rounded-lg p-5">
-                    <div className="flex gap-3 items-start">
-                      <Settings className="w-5 h-5 text-lodha-gold mt-1" />
-                      <div>
-                        <h3 className="font-jost font-semibold text-lodha-black">Guideline Management</h3>
-                        <p className="text-sm text-lodha-grey mt-1">
-                          These factors are used in electrical load calculations. Select a guideline above to view/edit its factors.
-                          <br />
-                          <strong>MDF</strong> = Maximum Demand Factor, <strong>EDF</strong> = Essential Demand Factor, <strong>FDF</strong> = Fire Demand Factor
-                        </p>
-                      </div>
+                    <div className="px-6 py-3 bg-lodha-sand/30 border-t border-lodha-gold/10 text-xs text-lodha-grey flex justify-between items-center">
+                      <span>{electricalFactors.length} factor{electricalFactors.length !== 1 ? 's' : ''} · Guideline: <strong>{selectedGuideline}</strong></span>
+                      <span>Changes apply to all new calculations</span>
                     </div>
                   </div>
                 </>
               ) : (
                 /* Other modules - Generic placeholder */
-                <>
-                  <div className="bg-white rounded-lg shadow-md p-6 border border-lodha-gold/10">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="heading-secondary">{selectedSubModule} Constants</h2>
-                      <button className="flex items-center gap-2 px-3 py-1.5 bg-lodha-gold text-white rounded-md text-sm">
-                        <Plus className="w-4 h-4" /> Add Factor
-                      </button>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left">
-                        <thead>
-                          <tr className="border-b border-lodha-gold/20 text-lodha-grey text-xs uppercase">
-                            <th className="pb-3 font-bold">Factor</th>
-                            <th className="pb-3 font-bold">Value</th>
-                            <th className="pb-3 text-right">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="text-sm">
-                          <tr className="border-b border-lodha-gold/5 hover:bg-lodha-sand/20">
-                            <td className="py-4 font-medium">Standard {selectedSubModule} Factor</td>
-                            <td className="py-4 font-mono text-lodha-gold">0.85</td>
-                            <td className="py-4 text-right">
-                              <button className="text-lodha-gold p-1 hover:bg-lodha-gold/10 rounded"><Edit2 className="w-4 h-4"/></button>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
+                <div className="bg-white rounded-lg shadow-md border border-lodha-gold/10">
+                  <div className="flex justify-between items-center px-6 py-4 border-b border-lodha-gold/10">
+                    <h2 className="heading-secondary">{selectedSubModule} Constants</h2>
+                    <button className="flex items-center gap-2 px-3 py-1.5 bg-lodha-gold text-white rounded-md text-sm">
+                      <Plus className="w-4 h-4" /> Add Factor
+                    </button>
                   </div>
-                  <div className="bg-lodha-sand/50 border border-lodha-gold/30 rounded-lg p-5">
-                    <div className="flex gap-3 items-start">
-                      <Settings className="w-5 h-5 text-lodha-gold mt-1" />
-                      <div>
-                        <h3 className="font-jost font-semibold text-lodha-black">Engine Integration</h3>
-                        <p className="text-sm text-lodha-grey mt-1">
-                          Values updated here are used as default constants for <strong>{selectedSubModule}</strong> calculations.
-                        </p>
-                      </div>
-                    </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-lodha-sand/40 text-lodha-grey text-xs uppercase">
+                          <th className="py-2.5 px-4 font-bold">Factor</th>
+                          <th className="py-2.5 px-3 font-bold">Value</th>
+                          <th className="py-2.5 px-3 text-right font-bold">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-sm">
+                        <tr className="border-b border-lodha-gold/5 hover:bg-lodha-sand/20">
+                          <td className="py-3 px-4 font-medium">Standard {selectedSubModule} Factor</td>
+                          <td className="py-3 px-3 font-mono text-lodha-gold">0.85</td>
+                          <td className="py-3 px-3 text-right">
+                            <button className="text-lodha-gold p-1 hover:bg-lodha-gold/10 rounded"><Edit2 className="w-4 h-4"/></button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
-                </>
+                  <div className="px-6 py-3 bg-lodha-sand/30 border-t border-lodha-gold/10 text-xs text-lodha-grey">
+                    Values updated here are used as default constants for <strong>{selectedSubModule}</strong> calculations.
+                  </div>
+                </div>
               )}
             </div>
           </div>

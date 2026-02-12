@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Menu, X, LogOut, LayoutDashboard, 
-  Building2, FileText, AlertCircle, Settings, User, Users, FolderKanban, Database
+  Building2, FileText, AlertCircle, Settings, User, Users, FolderKanban, Database,
+  Calendar, ListChecks, Send, BookOpen
 } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { createOrUpdateUser } from '../services/userService';
 import Breadcrumbs from './Breadcrumbs';
+import NotificationBell from './NotificationBell';
 
 export default function Layout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -39,6 +41,9 @@ export default function Layout({ children }) {
     // L0 specific
     if (userLevel === 'L0') {
       items.push({ name: 'L0 Dashboard', path: '/l0-dashboard', icon: FolderKanban });
+      items.push({ name: 'RFC Management', path: '/rfc-management', icon: Send });
+      items.push({ name: 'Task Overview', path: '/task-management', icon: ListChecks });
+      items.push({ name: 'Standards', path: '/standards-management', icon: BookOpen });
       items.push({ name: 'Policy Management', path: '/policy-management', icon: Database });
     }
 
@@ -46,6 +51,9 @@ export default function Layout({ children }) {
     if (userLevel === 'L1') {
       items.push({ name: 'Project Management', path: '/l1-dashboard', icon: Building2 });
       items.push({ name: 'Create Project', path: '/project-input', icon: FolderKanban });
+      items.push({ name: 'RFC Management', path: '/rfc-management', icon: Send });
+      items.push({ name: 'Task Management', path: '/task-management', icon: ListChecks });
+      items.push({ name: 'Standards', path: '/standards-management', icon: BookOpen });
       items.push({ name: 'Policy Management', path: '/policy-management', icon: Database });
     }
 
@@ -53,6 +61,8 @@ export default function Layout({ children }) {
     if (['L2', 'L3', 'L4'].includes(userLevel)) {
       items.push({ name: 'MAS Management', path: '/mas-list', icon: FileText });
       items.push({ name: 'RFI Management', path: '/cm-dashboard', icon: AlertCircle });
+      items.push({ name: 'RFC Management', path: '/rfc-management', icon: Send });
+      items.push({ name: 'Task Management', path: '/task-management', icon: ListChecks });
     }
 
     // L2 gets Policy Management (can create/test but not activate)
@@ -76,6 +86,9 @@ export default function Layout({ children }) {
         { name: 'L0 Dashboard', path: '/l0-dashboard', icon: FolderKanban },
         { name: 'L1 Dashboard', path: '/l1-dashboard', icon: Building2 },
         { name: 'L2 Dashboard', path: '/l2-dashboard', icon: LayoutDashboard },
+        { name: 'RFC Management', path: '/rfc-management', icon: Send },
+        { name: 'Task Management', path: '/task-management', icon: ListChecks },
+        { name: 'Standards', path: '/standards-management', icon: BookOpen },
         { name: 'Policy Management', path: '/policy-management', icon: Database },
         { name: 'Project Standards', path: '/project-standards', icon: Settings },
         { name: 'User Management', path: '/super-admin-dashboard', icon: Users }
@@ -191,16 +204,19 @@ export default function Layout({ children }) {
               {navItems.find(item => item.path === location.pathname)?.name || 'Dashboard'}
             </h2>
           </div>
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 rounded-lg hover:bg-lodha-sand
-                     text-lodha-grey text-xs md:text-sm font-jost font-semibold transition-colors duration-200
-                     border border-lodha-gold hover:border-lodha-grey flex-shrink-0"
-            aria-label="Sign out"
-          >
-            <LogOut className="w-4 h-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Sign Out</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 rounded-lg hover:bg-lodha-sand
+                       text-lodha-grey text-xs md:text-sm font-jost font-semibold transition-colors duration-200
+                       border border-lodha-gold hover:border-lodha-grey flex-shrink-0"
+              aria-label="Sign out"
+            >
+              <LogOut className="w-4 h-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
+          </div>
         </header>
 
         {/* Page Content */}

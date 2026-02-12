@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import AIChat from '../components/AIChat';
-import { Eye, MapPin, Clock, MessageCircle } from 'lucide-react';
+import { Eye, MapPin, Clock, MessageCircle, ListChecks, AlertTriangle, CheckCircle2, Calendar } from 'lucide-react';
 import { apiFetchJson } from '../lib/api';
 import { auth } from '../lib/firebase';
 
@@ -10,6 +11,9 @@ export default function L3Dashboard() {
   const [loading, setLoading] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [myTasks, setMyTasks] = useState([]);
+  const [taskStats, setTaskStats] = useState(null);
+  const navigate = useNavigate();
   const userEmail = localStorage.getItem('userEmail');
 
   useEffect(() => {
@@ -31,6 +35,9 @@ export default function L3Dashboard() {
     } else {
       setLoading(false);
     }
+    // Fetch tasks
+    apiFetchJson('/api/tasks/my').then(data => setMyTasks(Array.isArray(data) ? data : [])).catch(() => {});
+    apiFetchJson('/api/tasks/stats').then(setTaskStats).catch(() => {});
   }, [userEmail]);
 
   const getStageColor = (stage) => {
@@ -60,6 +67,71 @@ export default function L3Dashboard() {
         <p className="text-body">
           View project progress with limited edit capabilities. Monitor KPIs and project status.
         </p>
+      </div>
+
+      {/* My Tasks Section */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-garamond text-xl font-bold text-lodha-grey flex items-center gap-2">
+            <ListChecks className="w-5 h-5 text-lodha-gold" /> My Tasks
+          </h2>
+          <button onClick={() => navigate('/task-management')} className="text-sm text-lodha-gold hover:text-lodha-grey font-jost font-semibold">
+            View All →
+          </button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="bg-white border border-lodha-steel rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-50 rounded-lg flex items-center justify-center">
+                <Clock className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-garamond font-bold text-lodha-grey">{taskStats?.pending || 0}</p>
+                <p className="text-xs text-lodha-grey/60 font-jost">Pending</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white border border-lodha-steel rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-garamond font-bold text-lodha-grey">{taskStats?.overdue || 0}</p>
+                <p className="text-xs text-lodha-grey/60 font-jost">Overdue</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white border border-lodha-steel rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-garamond font-bold text-lodha-grey">{taskStats?.completed || 0}</p>
+                <p className="text-xs text-lodha-grey/60 font-jost">Completed</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        {myTasks.filter(t => t.status !== 'completed').slice(0, 5).map(task => {
+          const isOverdue = task.due_date && new Date(task.due_date) < new Date();
+          return (
+            <div key={task.id} className={`bg-white border ${isOverdue ? 'border-red-300' : 'border-lodha-steel'} rounded-lg p-4 mb-2 cursor-pointer hover:shadow-md transition-all`} onClick={() => navigate('/task-management')}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${task.priority === 'high' ? 'bg-red-500' : task.priority === 'medium' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                  <span className="font-jost font-semibold text-sm text-lodha-grey">{task.title}</span>
+                </div>
+                {task.due_date && (
+                  <span className={`text-xs font-jost ${isOverdue ? 'text-red-600 font-semibold' : 'text-lodha-grey/60'}`}>
+                    <Calendar className="w-3 h-3 inline mr-1" />{new Date(task.due_date).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Projects Grid */}

@@ -137,12 +137,18 @@ export default function ProjectDetail() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         <button
           onClick={() => navigate(`/design-calculations/${id}`)}
           className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
         >
           Design Calculations
+        </button>
+        <button
+          onClick={() => navigate(`/dds/${id}`)}
+          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
+        >
+          DDS Management
         </button>
         <button
           onClick={() => navigate(`/drawing-schedule/${id}`)}

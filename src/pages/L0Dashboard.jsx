@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderKanban, AlertCircle, FileText, Trash2 } from 'lucide-react';
+import { FolderKanban, AlertCircle, FileText, Trash2, Calendar, RefreshCw, ListChecks, Send, BarChart3 } from 'lucide-react';
 import Layout from '../components/Layout';
 import ProjectCard from '../components/ProjectCard';
 import AIReports from '../components/AIReports';
+import { apiFetchJson } from '../lib/api';
 
 export default function L0Dashboard() {
   const [projects, setProjects] = useState([]);
@@ -12,6 +13,8 @@ export default function L0Dashboard() {
     pendingMAS: 0,
     pendingRFI: 0,
   });
+  const [rfcStats, setRfcStats] = useState(null);
+  const [taskStats, setTaskStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -66,6 +69,9 @@ export default function L0Dashboard() {
     };
 
     fetchData();
+    // Fetch RFC and Task stats
+    apiFetchJson('/api/rfc/stats').then(setRfcStats).catch(() => {});
+    apiFetchJson('/api/tasks/stats').then(setTaskStats).catch(() => {});
   }, []);
 
   const handleDeleteProject = async (event, project) => {
@@ -224,6 +230,48 @@ export default function L0Dashboard() {
               <p className="text-xs text-lodha-grey/60">Assignments & tracking</p>
             </div>
           </button>
+        </div>
+      </div>
+
+      {/* DDS, RFC & Task Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-white border border-lodha-steel rounded-xl p-5 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate('/rfc-management')}>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 bg-amber-50 rounded-lg flex items-center justify-center">
+              <Send className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-sm font-jost font-semibold text-lodha-grey">Changes (RFC)</p>
+              <p className="text-xs text-lodha-grey/60 font-jost">{rfcStats?.pending || 0} pending review</p>
+            </div>
+          </div>
+          {rfcStats?.critical > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs font-jost text-red-700">
+              <AlertCircle className="w-3 h-3 inline mr-1" />{rfcStats.critical} critical RFCs require attention
+            </div>
+          )}
+        </div>
+        <div className="bg-white border border-lodha-steel rounded-xl p-5 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate('/task-management')}>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+              <ListChecks className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-jost font-semibold text-lodha-grey">Task Overview</p>
+              <p className="text-xs text-lodha-grey/60 font-jost">{taskStats?.pending || 0} pending, {taskStats?.overdue || 0} overdue</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white border border-lodha-steel rounded-xl p-5 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate('/standards-management')}>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 bg-lodha-gold/10 rounded-lg flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-lodha-gold" />
+            </div>
+            <div>
+              <p className="text-sm font-jost font-semibold text-lodha-grey">Standards & Policies</p>
+              <p className="text-xs text-lodha-grey/60 font-jost">Manage calculation standards</p>
+            </div>
+          </div>
         </div>
       </div>
 

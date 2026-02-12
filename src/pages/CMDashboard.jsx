@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Plus, Clock, CheckCircle } from 'lucide-react';
+import { FileText, Plus, Clock, CheckCircle, Building2, AlertTriangle, Layers } from 'lucide-react';
 import Layout from '../components/Layout';
+import { apiFetchJson } from '../lib/api';
 
 export default function CMDashboard() {
   const [rfis, setRfis] = useState([]);
@@ -61,33 +62,39 @@ export default function CMDashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-lg p-6 shadow-lg border border-gray-200">
+        <div className="bg-white border border-lodha-steel rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 font-jost text-sm mb-1">Total RFIs</p>
-              <p className="text-lodha-black font-garamond text-3xl font-bold">{rfis.length}</p>
+              <p className="text-lodha-grey/60 font-jost text-sm mb-1">Total RFIs</p>
+              <p className="text-lodha-grey font-garamond text-3xl font-bold">{rfis.length}</p>
             </div>
-            <FileText className="w-12 h-12 text-gray-400" />
+            <div className="w-12 h-12 bg-lodha-gold/10 rounded-lg flex items-center justify-center">
+              <FileText className="w-6 h-6 text-lodha-gold" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg p-6 shadow-lg border border-gray-200">
+        <div className="bg-white border border-lodha-steel rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 font-jost text-sm mb-1">Pending</p>
-              <p className="text-lodha-black font-garamond text-3xl font-bold">{pendingCount}</p>
+              <p className="text-lodha-grey/60 font-jost text-sm mb-1">Pending</p>
+              <p className="text-lodha-grey font-garamond text-3xl font-bold">{pendingCount}</p>
             </div>
-            <Clock className="w-12 h-12 text-gray-400" />
+            <div className="w-12 h-12 bg-amber-50 rounded-lg flex items-center justify-center">
+              <Clock className="w-6 h-6 text-amber-600" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-6 shadow-lg border border-gray-200">
+        <div className="bg-white border border-lodha-steel rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 font-jost text-sm mb-1">Approved</p>
-              <p className="text-lodha-black font-garamond text-3xl font-bold">{approvedCount}</p>
+              <p className="text-lodha-grey/60 font-jost text-sm mb-1">Approved</p>
+              <p className="text-lodha-grey font-garamond text-3xl font-bold">{approvedCount}</p>
             </div>
-            <CheckCircle className="w-12 h-12 text-gray-400" />
+            <div className="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center">
+              <CheckCircle className="w-6 h-6 text-emerald-600" />
+            </div>
           </div>
         </div>
       </div>

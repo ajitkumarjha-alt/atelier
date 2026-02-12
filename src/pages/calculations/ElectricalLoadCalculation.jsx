@@ -9,7 +9,8 @@ import {
   Zap,
   FileText,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Settings
 } from 'lucide-react';
 import Layout from '../../components/Layout';
 import { apiFetch } from '../../lib/api';
@@ -191,15 +192,13 @@ export default function ElectricalLoadCalculation() {
       }
       
       // Auto-calculate total carpet area from selected buildings
-      const totalCarpetAreaSqFt = newSelection.reduce((total, bldg) => {
+      // area_sqft column actually stores carpet area in sq.m (input form uses sqm)
+      const totalCarpetAreaSqM = newSelection.reduce((total, bldg) => {
         const buildingCarpetArea = (bldg.flats || []).reduce((sum, flat) => {
           return sum + (parseFloat(flat.area_sqft) || 0) * (parseInt(flat.total_count) || 0);
         }, 0);
         return total + buildingCarpetArea;
       }, 0);
-      
-      // Convert to sq.m (1 sq.ft = 0.092903 sq.m)
-      const totalCarpetAreaSqM = totalCarpetAreaSqFt * 0.092903;
       
       // Update input parameters with auto-calculated carpet area
       setInputParameters(prev => ({
@@ -263,7 +262,8 @@ export default function ElectricalLoadCalculation() {
         selectedBuildings: result.selected_buildings || [],
         regulatory_compliance: result.regulatory_compliance || result.calculation_metadata,
         regulatory_framework: result.regulatory_framework,
-        areaType: result.area_type || inputParameters.areaType
+        areaType: result.area_type || inputParameters.areaType,
+        factors_used: result.factors_used || null
       });
       setCurrentStep(3);
     } catch (error) {
@@ -690,8 +690,357 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
         )}
       </CollapsibleSection>
 
-      {/* Continue with remaining sections - truncated for brevity */}
-      {/* The full component would include all input sections from the implementation plan */}
+      {/* Lift Configuration */}
+      <CollapsibleSection title="Lift Configuration" section="lifts" icon={Building2}>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <FormField label="Passenger Lifts" hint="Standard passenger lifts (not fire-rated)">
+            <input
+              type="number"
+              min="0"
+              value={inputs.passengerLifts}
+              onChange={(e) => onChange('passengerLifts', parseInt(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+          <FormField label="Passenger + Fire Lifts" hint="Dual-purpose lifts (fire-rated)">
+            <input
+              type="number"
+              min="0"
+              value={inputs.passengerFireLifts}
+              onChange={(e) => onChange('passengerFireLifts', parseInt(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+          <FormField label="Firemen Lifts" hint="Dedicated firemen evacuation lifts">
+            <input
+              type="number"
+              min="0"
+              value={inputs.firemenLifts}
+              onChange={(e) => onChange('firemenLifts', parseInt(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+        </div>
+      </CollapsibleSection>
+
+      {/* HVAC & Ventilation */}
+      <CollapsibleSection title="HVAC & Ventilation" section="hvac" icon={Zap}>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Lobby Ventilation Type">
+            <select
+              value={inputs.lobbyType}
+              onChange={(e) => onChange('lobbyType', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Nat. Vent">Natural Ventilation</option>
+              <option value="AC">Air Conditioned</option>
+              <option value="Mech. Vent">Mechanical Ventilation</option>
+            </select>
+          </FormField>
+          <FormField label="Terrace Lighting">
+            <div className="flex items-center gap-3 pt-2">
+              <input
+                type="checkbox"
+                checked={inputs.terraceLighting}
+                onChange={(e) => onChange('terraceLighting', e.target.checked)}
+                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">Include terrace lighting load</span>
+            </div>
+          </FormField>
+        </div>
+        {inputs.terraceLighting && (
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            <FormField label="Terrace Area (sq.m)">
+              <input
+                type="number"
+                min="0"
+                value={inputs.terraceArea}
+                onChange={(e) => onChange('terraceArea', parseFloat(e.target.value) || 0)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </FormField>
+          </div>
+        )}
+        {(inputs.lobbyType === 'Mech. Vent' || inputs.mechanicalVentilation) && (
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            <FormField label="Ventilation CFM">
+              <input
+                type="number"
+                min="0"
+                value={inputs.ventilationCFM}
+                onChange={(e) => onChange('ventilationCFM', parseInt(e.target.value) || 0)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </FormField>
+            <FormField label="Number of Ventilation Fans">
+              <input
+                type="number"
+                min="0"
+                value={inputs.ventilationFans}
+                onChange={(e) => onChange('ventilationFans', parseInt(e.target.value) || 0)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </FormField>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <FormField label="Landscape Lighting">
+            <div className="flex items-center gap-3 pt-2">
+              <input
+                type="checkbox"
+                checked={inputs.landscapeLighting}
+                onChange={(e) => onChange('landscapeLighting', e.target.checked)}
+                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">Include landscape/external lighting</span>
+            </div>
+          </FormField>
+          {inputs.landscapeLighting && (
+            <FormField label="Landscape Lighting Load (kW)">
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={inputs.landscapeLightingLoad}
+                onChange={(e) => onChange('landscapeLightingLoad', parseFloat(e.target.value) || 0)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </FormField>
+          )}
+        </div>
+      </CollapsibleSection>
+
+      {/* Pressurization */}
+      <CollapsibleSection title="Pressurization Systems" section="pressurization" icon={Zap}>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Number of Staircases" hint="For pressurization fan sizing">
+            <input
+              type="number"
+              min="1"
+              value={inputs.numberOfStaircases}
+              onChange={(e) => onChange('numberOfStaircases', parseInt(e.target.value) || 2)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+        </div>
+        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+          Staircase and fire lift lobby pressurization fans are automatically calculated based on building configuration.
+          Fire lift lobby pressurization is included when passenger+fire lifts or firemen lifts are present.
+        </div>
+      </CollapsibleSection>
+
+      {/* PHE - Building Level */}
+      <CollapsibleSection title="PHE (Building Level)" section="phe" icon={Zap}>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Booster Pump Flow (LPM)">
+            <input
+              type="number"
+              min="0"
+              value={inputs.boosterPumpFlow}
+              onChange={(e) => onChange('boosterPumpFlow', parseInt(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+          <FormField label="Booster Pump Set">
+            <select
+              value={inputs.boosterPumpSet}
+              onChange={(e) => onChange('boosterPumpSet', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="1W+1S">1 Working + 1 Standby</option>
+              <option value="2W+1S">2 Working + 1 Standby</option>
+            </select>
+          </FormField>
+          <FormField label="Sewage Pump Capacity (LPM)">
+            <input
+              type="number"
+              min="0"
+              value={inputs.sewagePumpCapacity}
+              onChange={(e) => onChange('sewagePumpCapacity', parseInt(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+          <FormField label="Number of Sewage Pumps">
+            <input
+              type="number"
+              min="0"
+              value={inputs.sewagePumpSet}
+              onChange={(e) => onChange('sewagePumpSet', parseInt(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+        </div>
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <FormField label="Wet Riser Pump">
+            <div className="flex items-center gap-3 pt-2">
+              <input
+                type="checkbox"
+                checked={inputs.wetRiserPump}
+                onChange={(e) => onChange('wetRiserPump', e.target.checked)}
+                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">Include wet riser pump (separate from main FF)</span>
+            </div>
+          </FormField>
+          {inputs.wetRiserPump && (
+            <FormField label="Wet Riser Pump Power (kW)">
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={inputs.wetRiserPumpPower}
+                onChange={(e) => onChange('wetRiserPumpPower', parseFloat(e.target.value) || 0)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </FormField>
+          )}
+        </div>
+      </CollapsibleSection>
+
+      {/* Fire Fighting - Society Level */}
+      <CollapsibleSection title="Fire Fighting System (Society)" section="ff" icon={Zap}>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Main Hydrant Pump Flow (LPM)" hint="MSEDCL standard: 2850 LPM for high-rise">
+            <input
+              type="number"
+              min="0"
+              value={inputs.mainPumpFlow}
+              onChange={(e) => onChange('mainPumpFlow', parseInt(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+          <FormField label="FBT Pump Set Type">
+            <select
+              value={inputs.fbtPumpSetType}
+              onChange={(e) => onChange('fbtPumpSetType', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Main+SBY+Jky">Main + Standby + Jockey</option>
+              <option value="2 Main+SBY+Jky">2 Main + Standby + Jockey</option>
+            </select>
+          </FormField>
+          <FormField label="Sprinkler Pump Flow (LPM)">
+            <input
+              type="number"
+              min="0"
+              value={inputs.sprinklerPumpFlow}
+              onChange={(e) => onChange('sprinklerPumpFlow', parseInt(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+          <FormField label="Sprinkler Pump Set">
+            <select
+              value={inputs.sprinklerPumpSet}
+              onChange={(e) => onChange('sprinklerPumpSet', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Main+SBY+Jky">Main + Standby + Jockey</option>
+              <option value="2 Main+SBY+Jky">2 Main + Standby + Jockey</option>
+            </select>
+          </FormField>
+        </div>
+      </CollapsibleSection>
+
+      {/* Society Infrastructure */}
+      <CollapsibleSection title="Society Infrastructure" section="society" icon={Building2}>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Domestic Transfer Flow (LPM)">
+            <input
+              type="number"
+              min="0"
+              value={inputs.domTransferFlow}
+              onChange={(e) => onChange('domTransferFlow', parseInt(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+          <FormField label="Transfer Pump Config">
+            <select
+              value={inputs.domTransferConfig}
+              onChange={(e) => onChange('domTransferConfig', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="1W+1S">1 Working + 1 Standby</option>
+              <option value="2W+1S">2 Working + 1 Standby</option>
+              <option value="3W+1S">3 Working + 1 Standby</option>
+            </select>
+          </FormField>
+          <FormField label="STP Capacity (KLD)" hint="Sewage Treatment Plant capacity in kilolitres/day">
+            <input
+              type="number"
+              min="0"
+              value={inputs.stpCapacity}
+              onChange={(e) => onChange('stpCapacity', parseInt(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+          <FormField label="Clubhouse Load (kW)" hint="Total amenity electrical load">
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={inputs.clubhouseLoad}
+              onChange={(e) => onChange('clubhouseLoad', parseFloat(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+          <FormField label="Street Lighting Load (kW)">
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={inputs.streetLightingLoad}
+              onChange={(e) => onChange('streetLightingLoad', parseFloat(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+          <FormField label="EV Charger Count">
+            <input
+              type="number"
+              min="0"
+              value={inputs.evChargerCount}
+              onChange={(e) => onChange('evChargerCount', parseInt(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+          {inputs.evChargerCount > 0 && (
+            <FormField label="EV Charger Type">
+              <select
+                value={inputs.evChargerType}
+                onChange={(e) => onChange('evChargerType', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="slow">Slow (3.3 kW)</option>
+                <option value="standard">Standard (7.4 kW)</option>
+                <option value="fast">Fast (22 kW)</option>
+                <option value="dc_fast">DC Fast (50 kW)</option>
+              </select>
+            </FormField>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <FormField label="Security System Load (kW)">
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              value={inputs.securitySystemLoad}
+              onChange={(e) => onChange('securitySystemLoad', parseFloat(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+          <FormField label="Common Area Small Power (kW)">
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              value={inputs.smallPowerLoad}
+              onChange={(e) => onChange('smallPowerLoad', parseFloat(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </FormField>
+        </div>
+      </CollapsibleSection>
 
       {/* Action Buttons */}
       <div className="flex justify-between pt-6 border-t">
@@ -727,6 +1076,9 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
 
 // Results Display Component  
 function ResultsDisplay({ results, calculationName, setCalculationName, status, setStatus, remarks, setRemarks, onSave, onBack, saving }) {
+  const [regulatoryOpen, setRegulatoryOpen] = useState(false);
+  const [projectSummaryOpen, setProjectSummaryOpen] = useState(true);
+  
   if (!results || !results.totals) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
@@ -799,233 +1151,76 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
         </div>
       </div>
 
-      {/* Regulatory Compliance (MSEDCL) */}
-      {results.regulatory_compliance && (
+      {/* Factors Used in Calculation (MSEDCL) */}
+      {(results.factors_used || results.regulatory_compliance) && (
         <div className="bg-white rounded-lg shadow-lg border-2 border-blue-500">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-t-lg">
-            <h3 className="text-xl font-bold flex items-center gap-2">
-              <FileText className="w-6 h-6" />
-              Regulatory Compliance - MSEDCL 2016
-            </h3>
-            <p className="text-sm text-blue-100 mt-1">
-              {results.regulatory_framework?.framework_name || 'MSEDCL Infrastructure Development Guidelines 2016'}
-            </p>
-          </div>
+          <button
+            onClick={() => setRegulatoryOpen(!regulatoryOpen)}
+            className="w-full text-left bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-t-lg flex items-center justify-between"
+          >
+            <div>
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <FileText className="w-6 h-6" />
+                Calculation Factors — MSEDCL NSC Circular 35530
+              </h3>
+              <p className="text-sm text-blue-100 mt-1">Demand & diversity factors used in this calculation</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/project-standards')}
+                className="flex items-center gap-1 px-3 py-1 text-xs bg-white/20 hover:bg-white/30 text-white rounded transition"
+                title="Manage calculation factors (L0 only)"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                Manage Factors
+              </button>
+              {regulatoryOpen ? <ChevronUp className="w-5 h-5 text-white" /> : <ChevronDown className="w-5 h-5 text-white" />}
+            </div>
+          </button>
 
-          <div className="p-6 space-y-6">
-            {/* MSEDCL Minimum Load Check */}
-            {results.regulatory_compliance.msedclMinimum && (
-              <div className="border-l-4 border-blue-500 pl-4 bg-blue-50 p-4 rounded">
-                <h4 className="font-semibold text-blue-900 mb-2">Minimum Load Requirement</h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-600">Carpet Area:</span>
-                    <span className="ml-2 font-semibold">{results.regulatory_compliance.msedclMinimum.carpetArea} sq.m</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">MSEDCL Minimum:</span>
-                    <span className="ml-2 font-semibold">{results.regulatory_compliance.msedclMinimum.requiredKW} kW</span>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-gray-600">Standard:</span>
-                    <span className="ml-2 font-semibold">{results.regulatory_compliance.msedclMinimum.standard}</span>
-                    {results.regulatory_compliance.msedclMinimum.applied && (
-                      <span className="ml-2 text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded">
-                        ⚠️ Minimum applied
-                      </span>
-                    )}
-                  </div>
-                </div>
+          {regulatoryOpen && (
+          <div className="p-4">
+            {results.factors_used && Object.keys(results.factors_used).length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-blue-50">
+                      <th className="text-left py-2 px-3 border-b-2 border-blue-200 font-semibold text-blue-900">Category</th>
+                      <th className="text-left py-2 px-3 border-b-2 border-blue-200 font-semibold text-blue-900">Description</th>
+                      <th className="text-right py-2 px-3 border-b-2 border-blue-200 font-semibold text-blue-900">W/sqm</th>
+                      <th className="text-right py-2 px-3 border-b-2 border-blue-200 font-semibold text-blue-900">MDF</th>
+                      <th className="text-right py-2 px-3 border-b-2 border-blue-200 font-semibold text-blue-900">EDF</th>
+                      <th className="text-right py-2 px-3 border-b-2 border-blue-200 font-semibold text-blue-900">FDF</th>
+                      <th className="text-left py-2 px-3 border-b-2 border-blue-200 font-semibold text-blue-900">Reference</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(results.factors_used)
+                      .sort(([a], [b]) => a.localeCompare(b))
+                      .map(([key, factor], idx) => {
+                        const parts = key.split('/');
+                        const category = parts[0];
+                        const description = parts[2] || parts[1];
+                        return (
+                          <tr key={key} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                            <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-700">{category}</td>
+                            <td className="py-2 px-3 border-b border-gray-100 text-gray-800">{description}</td>
+                            <td className="py-2 px-3 border-b border-gray-100 text-right font-mono">{factor.wattPerSqm != null ? factor.wattPerSqm : '—'}</td>
+                            <td className="py-2 px-3 border-b border-gray-100 text-right font-mono">{(factor.mdf * 100).toFixed(0)}%</td>
+                            <td className="py-2 px-3 border-b border-gray-100 text-right font-mono">{(factor.edf * 100).toFixed(0)}%</td>
+                            <td className="py-2 px-3 border-b border-gray-100 text-right font-mono">{(factor.fdf * 100).toFixed(0)}%</td>
+                            <td className="py-2 px-3 border-b border-gray-100 text-xs text-gray-500">{factor.notes || '—'}</td>
+                          </tr>
+                        );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            )}
-
-            {/* Sanctioned Load (for billing) */}
-            {results.regulatory_compliance.sanctionedLoad && (
-              <div className="border-l-4 border-green-500 pl-4 bg-green-50 p-4 rounded">
-                <h4 className="font-semibold text-green-900 mb-2">Sanctioned Load (Contract Demand)</h4>
-                <div className="grid grid-cols-2 gap-3 text-sm mb-2">
-                  <div>
-                    <span className="text-gray-600">Total Connected Load:</span>
-                    <span className="ml-2 font-bold text-lg">{results.regulatory_compliance.sanctionedLoad.totalConnectedLoadKW} kW</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Sanctioned Load:</span>
-                    <span className="ml-2 font-bold text-lg">{results.regulatory_compliance.sanctionedLoad.sanctionedLoadKW} kW / {results.regulatory_compliance.sanctionedLoad.sanctionedLoadKVA} kVA</span>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-gray-600">Power Factor:</span>
-                    <span className="ml-2 font-semibold">{results.regulatory_compliance.sanctionedLoad.powerFactor}</span>
-                  </div>
-                </div>
-                <p className="text-xs text-green-800 italic">
-                  {results.regulatory_compliance.sanctionedLoad.note}
-                </p>
-              </div>
-            )}
-
-            {/* Load After DF (for infrastructure) */}
-            {results.regulatory_compliance.loadAfterDF && (
-              <div className="border-l-4 border-purple-500 pl-4 bg-purple-50 p-4 rounded">
-                <h4 className="font-semibold text-purple-900 mb-2">Load After Diversity Factor (For DTC Sizing Only)</h4>
-                <div className="grid grid-cols-3 gap-3 text-sm mb-2">
-                  <div>
-                    <span className="text-gray-600">Max Demand:</span>
-                    <span className="ml-2 font-bold">{results.regulatory_compliance.loadAfterDF.maxDemandKW} kW / {results.regulatory_compliance.loadAfterDF.maxDemandKVA} kVA</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Essential:</span>
-                    <span className="ml-2 font-bold">{results.regulatory_compliance.loadAfterDF.essentialKW} kW</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Fire:</span>
-                    <span className="ml-2 font-bold">{results.regulatory_compliance.loadAfterDF.fireKW} kW</span>
-                  </div>
-                  <div className="col-span-3">
-                    <span className="text-gray-600">Power Factor:</span>
-                    <span className="ml-2 font-semibold">{results.regulatory_compliance.loadAfterDF.powerFactor}</span>
-                  </div>
-                </div>
-                <p className="text-xs text-purple-800 italic font-semibold">
-                  ⚠️ {results.regulatory_compliance.loadAfterDF.note}
-                </p>
-              </div>
-            )}
-
-            {/* Validation Warnings */}
-            {results.regulatory_compliance.validation && !results.regulatory_compliance.validation.valid && (
-              <div className="border-l-4 border-red-500 pl-4 bg-red-50 p-4 rounded">
-                <h4 className="font-semibold text-red-900 mb-2">⚠️ Regulatory Limit Warnings</h4>
-                <div className="text-sm space-y-2">
-                  {results.regulatory_compliance.validation.exceedsKWLimit && (
-                    <div className="flex items-start gap-2">
-                      <span className="text-red-600">❌</span>
-                      <span>Sanctioned load exceeds {results.regulatory_compliance.validation.maxKW} kW limit</span>
-                    </div>
-                  )}
-                  {results.regulatory_compliance.validation.exceedsKVALimit && (
-                    <div className="flex items-start gap-2">
-                      <span className="text-red-600">❌</span>
-                      <span>Sanctioned load exceeds {results.regulatory_compliance.validation.maxKVA} kVA limit</span>
-                    </div>
-                  )}
-                  {results.regulatory_compliance.warnings && results.regulatory_compliance.warnings.map((warning, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <span className="text-red-600">⚠️</span>
-                      <span className="text-red-700">{warning}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* DTC Requirements */}
-            {results.regulatory_compliance.dtc && results.regulatory_compliance.dtc.needed && (
-              <div className="border-l-4 border-orange-500 pl-4 bg-orange-50 p-4 rounded">
-                <h4 className="font-semibold text-orange-900 mb-2">DTC (Distribution Transformer Centre) Requirements</h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-600">Area Type:</span>
-                    <span className="ml-2 font-semibold">{results.areaType}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Threshold:</span>
-                    <span className="ml-2 font-semibold">{results.regulatory_compliance.dtc.threshold} kVA</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Load After DF:</span>
-                    <span className="ml-2 font-bold text-orange-700">{results.regulatory_compliance.dtc.loadAfterDF_KVA} kVA</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Required DTCs:</span>
-                    <span className="ml-2 font-bold">{results.regulatory_compliance.dtc.dtcCount} × {results.regulatory_compliance.dtc.dtcCapacityPerUnit || 500} kVA</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Total Capacity:</span>
-                    <span className="ml-2 font-bold text-lg">{results.regulatory_compliance.dtc.totalCapacity} kVA</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Land Required:</span>
-                    <span className="ml-2 font-bold">{results.regulatory_compliance.dtc.landRequired} sq.m</span>
-                  </div>
-                </div>
-                <div className="mt-3 pt-3 border-t border-orange-200">
-                  {results.regulatory_compliance.dtc.ringMainRequired && (
-                    <div className="text-xs text-orange-800 mb-1">
-                      ✓ Ring Main System Required (Metro/Major Cities)
-                    </div>
-                  )}
-                  {results.regulatory_compliance.dtc.individualTransformerRequired && (
-                    <div className="text-xs text-orange-800">
-                      ✓ Individual Transformer Per Building Required (Metro/Major Cities)
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Substation Requirements */}
-            {results.regulatory_compliance.substation && results.regulatory_compliance.substation.needed && (
-              <div className="border-l-4 border-indigo-500 pl-4 bg-indigo-50 p-4 rounded">
-                <h4 className="font-semibold text-indigo-900 mb-2">Substation Requirements</h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="col-span-2">
-                    <span className="text-gray-600">Type:</span>
-                    <span className="ml-2 font-bold">{results.regulatory_compliance.substation.substationType}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Load After DF:</span>
-                    <span className="ml-2 font-bold text-indigo-700">{results.regulatory_compliance.substation.loadAfterDF_MVA} MVA</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Incoming Feeders:</span>
-                    <span className="ml-2 font-semibold">{results.regulatory_compliance.substation.incomingFeeders} × {results.regulatory_compliance.substation.feederCapacity} MVA</span>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-gray-600">Land Required:</span>
-                    <span className="ml-2 font-bold">{results.regulatory_compliance.substation.landRequired || 'As per MSETCL'} {results.regulatory_compliance.substation.landRequired ? 'sq.m' : ''}</span>
-                  </div>
-                </div>
-                {results.regulatory_compliance.substation.specialRequirements && results.regulatory_compliance.substation.specialRequirements.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-indigo-200">
-                    <p className="text-xs font-semibold text-indigo-900 mb-1">Special Requirements:</p>
-                    {results.regulatory_compliance.substation.specialRequirements.map((req, i) => (
-                      <div key={i} className="text-xs text-indigo-800">✓ {req}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Land & Lease Summary */}
-            {results.regulatory_compliance.land && results.regulatory_compliance.land.total > 0 && (
-              <div className="border-l-4 border-teal-500 pl-4 bg-teal-50 p-4 rounded">
-                <h4 className="font-semibold text-teal-900 mb-2">Land & Lease Requirements</h4>
-                <div className="text-sm space-y-2">
-                  <div>
-                    <span className="text-gray-600">Total Land Required:</span>
-                    <span className="ml-2 font-bold text-lg">{results.regulatory_compliance.land.total} sq.m</span>
-                  </div>
-                  {results.regulatory_compliance.land.breakdown && results.regulatory_compliance.land.breakdown.map((item, i) => (
-                    <div key={i} className="ml-4 text-xs text-gray-700">
-                      • {item.type}: {item.totalLand} sq.m {item.count ? `(${item.count} units)` : ''}
-                    </div>
-                  ))}
-                  {results.regulatory_compliance.lease && (
-                    <div className="mt-3 pt-3 border-t border-teal-200">
-                      <p className="text-xs font-semibold text-teal-900 mb-1">Lease Terms:</p>
-                      <div className="text-xs text-teal-800 space-y-1">
-                        <div>• Duration: {results.regulatory_compliance.lease.duration}</div>
-                        <div>• Annual Rent: {results.regulatory_compliance.lease.annualRent}</div>
-                        <div>• Upfront Payment: {results.regulatory_compliance.lease.upfrontPayment}</div>
-                        {results.regulatory_compliance.lease.encumbranceFree && <div>• Encumbrance-free land required</div>}
-                        {results.regulatory_compliance.lease.registrationRequired && <div>• Lease deed registration required</div>}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+            ) : (
+              <p className="text-sm text-gray-500 italic">No factor data available.</p>
             )}
           </div>
+          )}
         </div>
       )}
 
@@ -1034,70 +1229,52 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
         <div className="space-y-4">
           {results.buildingBreakdowns.map((building, index) => {
             // Skip duplicate twin buildings - only show one from each twin pair
-            // But only skip if the parent/twin building is also in the results
             if (building.twinOfBuildingId) {
-              // Check if the parent building is in the selected buildings
               const parentExists = results.buildingBreakdowns.some(b => 
                 b.buildingId === building.twinOfBuildingId
               );
-              // Only skip if parent exists in selection
-              if (parentExists) {
-                return null;
-              }
+              if (parentExists) return null;
             }
             
-            // Find all twins of this building to show in the header
             const twins = results.buildingBreakdowns.filter(b => 
               b.twinOfBuildingId === building.buildingId || 
               (building.twinOfBuildingId && b.buildingId === building.twinOfBuildingId)
             );
             
             return (
-              <div key={building.buildingId || building.buildingName} className="bg-white rounded-lg shadow p-6">
-                <div className="mb-4 pb-3 border-b border-gray-200">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900">
-                        {building.buildingName || `Building ${index + 1}`}
-                      </h3>
-                      {twins.length > 0 && (
-                        <p className="text-sm text-gray-600 mt-1">
-                          Similar to: {twins.map(t => t.buildingName).join(', ')}
-                        </p>
-                      )}
-                      <p className="text-sm text-gray-500">
-                        {building.numberOfFloors || '-'} floors • {Number(building.buildingHeight || 0).toFixed(1)} m height
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Flat/Office/Shop Loads */}
-                {building.flatLoads && building.flatLoads.items && building.flatLoads.items.length > 0 && (
-                  <div className="mb-4">
-                    <LoadCategoryTable category={building.flatLoads} />
-                  </div>
-                )}
-                
-                {/* Building Common Area Loads */}
-                <div>
-                  {building.buildingCALoads?.map((category, idx) => (
-                    <LoadCategoryTable key={`${building.buildingId}-ca-${idx}`} category={category} />
-                  ))}
-                </div>
-              </div>
+              <BuildingBreakdownCard 
+                key={building.buildingId || building.buildingName} 
+                building={building} 
+                twins={twins} 
+                index={index} 
+              />
             );
           })}
         </div>
       )}
 
       {/* Project Level Summary */}
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-lg p-6 border-2 border-blue-200">
-        <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <Calculator className="w-6 h-6 text-blue-600" />
-          Project Level Summary
-        </h3>
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-lg border-2 border-blue-200">
+        <button
+          onClick={() => setProjectSummaryOpen(!projectSummaryOpen)}
+          className="w-full text-left px-6 py-4 flex items-center justify-between"
+        >
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <Calculator className="w-6 h-6 text-blue-600" />
+            Project Level Summary
+          </h3>
+          <div className="flex items-center gap-3">
+            {!projectSummaryOpen && (
+              <span className="text-sm text-gray-500">
+                TCL: {totals.grandTotalTCL?.toFixed(2)} kW | Max: {totals.totalMaxDemand?.toFixed(2)} kW
+              </span>
+            )}
+            {projectSummaryOpen ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+          </div>
+        </button>
 
+        {projectSummaryOpen && (
+        <div className="px-6 pb-6">
         {/* Buildings Summary Table */}
         {Array.isArray(results.buildingBreakdowns) && results.buildingBreakdowns.length > 0 && (
           <div className="bg-white rounded-lg shadow p-4 mb-4">
@@ -1149,6 +1326,8 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
             <LoadCategoryTable key={`society-${idx}`} category={category} />
           ))}
         </div>
+        </div>
+        )}
       </div>
 
       {/* Save Form */}
@@ -1224,82 +1403,153 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
   );
 }
 
-function LoadCategoryTable({ category }) {
+function BuildingBreakdownCard({ building, twins, index }) {
+  const [expanded, setExpanded] = useState(true);
+  
   return (
-    <div className="mb-6">
-      <h4 className="font-semibold text-lg mb-2">{category.category}</h4>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse border border-gray-300 text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border border-gray-300 p-2 text-left" rowSpan="2">Description</th>
-              <th className="border border-gray-300 p-2 text-center" colSpan="4">Connected Load</th>
-              <th className="border border-gray-300 p-2 text-center" colSpan="2">Maximum Demand</th>
-              <th className="border border-gray-300 p-2 text-center" colSpan="2">Essential</th>
-              <th className="border border-gray-300 p-2 text-center" colSpan="2">Fire Load</th>
-            </tr>
-            <tr>
-              <th className="border border-gray-300 p-1 text-right text-xs">Area (sqm)</th>
-              <th className="border border-gray-300 p-1 text-right text-xs">W/sqm</th>
-              <th className="border border-gray-300 p-1 text-right text-xs">Nos</th>
-              <th className="border border-gray-300 p-1 text-right text-xs bg-blue-50">TCL (kW)</th>
-              <th className="border border-gray-300 p-1 text-right text-xs">MDF</th>
-              <th className="border border-gray-300 p-1 text-right text-xs bg-green-50">Max (kW)</th>
-              <th className="border border-gray-300 p-1 text-right text-xs">EDF</th>
-              <th className="border border-gray-300 p-1 text-right text-xs bg-yellow-50">Ess (kW)</th>
-              <th className="border border-gray-300 p-1 text-right text-xs">FDF</th>
-              <th className="border border-gray-300 p-1 text-right text-xs bg-red-50">Fire (kW)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {category.items.map((item, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
-                <td className="border border-gray-300 p-2">{item.description}</td>
-                <td className="border border-gray-300 p-1 text-right text-gray-600">
-                  {item.areaSqm ? Number(item.areaSqm).toFixed(1) : '-'}
-                </td>
-                <td className="border border-gray-300 p-1 text-right text-gray-600">
-                  {item.wattPerSqm ? Number(item.wattPerSqm).toFixed(1) : '-'}
-                </td>
-                <td className="border border-gray-300 p-1 text-right text-gray-600">{item.nos || '-'}</td>
-                <td className="border border-gray-300 p-1 text-right font-semibold bg-blue-50">
-                  {item.tcl?.toFixed(2) || '0.00'}
-                </td>
-                <td className="border border-gray-300 p-1 text-right text-gray-600">
-                  {item.mdf ? (item.mdf * 100).toFixed(0) + '%' : '-'}
-                </td>
-                <td className="border border-gray-300 p-1 text-right font-semibold bg-green-50">
-                  {item.maxDemandKW?.toFixed(2) || '0.00'}
-                </td>
-                <td className="border border-gray-300 p-1 text-right text-gray-600">
-                  {item.edf ? (item.edf * 100).toFixed(0) + '%' : '-'}
-                </td>
-                <td className="border border-gray-300 p-1 text-right font-semibold bg-yellow-50">
-                  {item.essentialKW?.toFixed(2) || '0.00'}
-                </td>
-                <td className="border border-gray-300 p-1 text-right text-gray-600">
-                  {item.fdf ? (item.fdf * 100).toFixed(0) + '%' : '-'}
-                </td>
-                <td className="border border-gray-300 p-1 text-right font-semibold bg-red-50">
-                  {item.fireKW?.toFixed(2) || '0.00'}
-                </td>
+    <div className="bg-white rounded-lg shadow">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full text-left p-5 flex items-start justify-between"
+      >
+        <div className="flex-1">
+          <h3 className="text-xl font-bold text-gray-900">
+            {building.buildingName || `Building ${index + 1}`}
+          </h3>
+          {twins.length > 0 && (
+            <p className="text-sm text-gray-600 mt-1">
+              Similar to: {twins.map(t => t.buildingName).join(', ')}
+            </p>
+          )}
+          <p className="text-sm text-gray-500">
+            {building.numberOfFloors || '-'} floors • {Number(building.buildingHeight || 0).toFixed(1)} m height
+            {building.totalUnits > 0 && ` • ${building.totalUnits} units`}
+          </p>
+          {building.diversityFactor && building.diversityFactor < 1.0 && (
+            <p className="text-xs text-purple-700 mt-1 bg-purple-50 px-2 py-1 rounded inline-block">
+              Building Diversity Factor: {(building.diversityFactor * 100).toFixed(0)}%
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-3 ml-4 mt-1 shrink-0">
+          {!expanded && (
+            <span className="text-xs text-gray-500">
+              TCL: {building.totals?.tcl?.toFixed(2)} kW | Max: {building.totals?.maxDemand?.toFixed(2)} kW
+            </span>
+          )}
+          {expanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+        </div>
+      </button>
+      
+      {expanded && (
+        <div className="px-5 pb-5 border-t border-gray-200">
+          {building.flatLoads && building.flatLoads.items && building.flatLoads.items.length > 0 && (
+            <div className="mt-3">
+              <LoadCategoryTable category={building.flatLoads} />
+            </div>
+          )}
+          
+          {building.buildingCALoads?.map((category, idx) => (
+            <LoadCategoryTable key={`${building.buildingId}-ca-${idx}`} category={category} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LoadCategoryTable({ category }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const hasItems = category.items && category.items.length > 0;
+
+  return (
+    <div className="mb-4">
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="w-full flex items-center justify-between py-2 px-1 hover:bg-gray-50 rounded transition-colors"
+      >
+        <h4 className="font-semibold text-base text-gray-900">{category.category}</h4>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-500">
+            TCL: {category.totalTCL?.toFixed(2) || '0.00'} kW | Max: {category.totalMaxDemand?.toFixed(2) || '0.00'} kW
+          </span>
+          {collapsed ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronUp className="w-4 h-4 text-gray-400" />}
+        </div>
+      </button>
+      {!collapsed && hasItems && (
+        <div className="overflow-x-auto mt-1">
+          <table className="w-full border-collapse border border-gray-300 text-sm">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border border-gray-300 p-2 text-left" rowSpan="2">Description</th>
+                <th className="border border-gray-300 p-2 text-center" colSpan="4">Connected Load</th>
+                <th className="border border-gray-300 p-2 text-center" colSpan="2">Maximum Demand</th>
+                <th className="border border-gray-300 p-2 text-center" colSpan="2">Essential</th>
+                <th className="border border-gray-300 p-2 text-center" colSpan="2">Fire Load</th>
               </tr>
-            ))}
-          </tbody>
-          <tfoot className="bg-gray-200 font-bold">
-            <tr>
-              <td className="border border-gray-300 p-2" colSpan="4">Subtotal - {category.category}</td>
-              <td className="border border-gray-300 p-2 text-right bg-blue-100">{category.totalTCL?.toFixed(2) || '0.00'}</td>
-              <td className="border border-gray-300 p-2"></td>
-              <td className="border border-gray-300 p-2 text-right bg-green-100">{category.totalMaxDemand?.toFixed(2) || '0.00'}</td>
-              <td className="border border-gray-300 p-2"></td>
-              <td className="border border-gray-300 p-2 text-right bg-yellow-100">{category.totalEssential?.toFixed(2) || '0.00'}</td>
-              <td className="border border-gray-300 p-2"></td>
-              <td className="border border-gray-300 p-2 text-right bg-red-100">{category.totalFire?.toFixed(2) || '0.00'}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+              <tr>
+                <th className="border border-gray-300 p-1 text-right text-xs">Area (sqm)</th>
+                <th className="border border-gray-300 p-1 text-right text-xs">W/sqm</th>
+                <th className="border border-gray-300 p-1 text-right text-xs">Nos</th>
+                <th className="border border-gray-300 p-1 text-right text-xs bg-blue-50">TCL (kW)</th>
+                <th className="border border-gray-300 p-1 text-right text-xs">MDF</th>
+                <th className="border border-gray-300 p-1 text-right text-xs bg-green-50">Max (kW)</th>
+                <th className="border border-gray-300 p-1 text-right text-xs">EDF</th>
+                <th className="border border-gray-300 p-1 text-right text-xs bg-yellow-50">Ess (kW)</th>
+                <th className="border border-gray-300 p-1 text-right text-xs">FDF</th>
+                <th className="border border-gray-300 p-1 text-right text-xs bg-red-50">Fire (kW)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {category.items.map((item, idx) => (
+                <tr key={idx} className="hover:bg-gray-50">
+                  <td className="border border-gray-300 p-2">{item.description}</td>
+                  <td className="border border-gray-300 p-1 text-right text-gray-600">
+                    {item.areaSqm ? Number(item.areaSqm).toFixed(1) : '-'}
+                  </td>
+                  <td className="border border-gray-300 p-1 text-right text-gray-600">
+                    {item.wattPerSqm ? Number(item.wattPerSqm).toFixed(1) : '-'}
+                  </td>
+                  <td className="border border-gray-300 p-1 text-right text-gray-600">{item.nos || '-'}</td>
+                  <td className="border border-gray-300 p-1 text-right font-semibold bg-blue-50">
+                    {item.tcl?.toFixed(2) || '0.00'}
+                  </td>
+                  <td className="border border-gray-300 p-1 text-right text-gray-600">
+                    {item.mdf != null ? (item.mdf * 100).toFixed(0) + '%' : '-'}
+                  </td>
+                  <td className="border border-gray-300 p-1 text-right font-semibold bg-green-50">
+                    {item.maxDemandKW?.toFixed(2) || '0.00'}
+                  </td>
+                  <td className="border border-gray-300 p-1 text-right text-gray-600">
+                    {item.edf != null ? (item.edf * 100).toFixed(0) + '%' : '-'}
+                  </td>
+                  <td className="border border-gray-300 p-1 text-right font-semibold bg-yellow-50">
+                    {item.essentialKW?.toFixed(2) || '0.00'}
+                  </td>
+                  <td className="border border-gray-300 p-1 text-right text-gray-600">
+                    {item.fdf != null ? (item.fdf * 100).toFixed(0) + '%' : '-'}
+                  </td>
+                  <td className="border border-gray-300 p-1 text-right font-semibold bg-red-50">
+                    {item.fireKW?.toFixed(2) || '0.00'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot className="bg-gray-200 font-bold">
+              <tr>
+                <td className="border border-gray-300 p-2" colSpan="4">Subtotal - {category.category}</td>
+                <td className="border border-gray-300 p-2 text-right bg-blue-100">{category.totalTCL?.toFixed(2) || '0.00'}</td>
+                <td className="border border-gray-300 p-2"></td>
+                <td className="border border-gray-300 p-2 text-right bg-green-100">{category.totalMaxDemand?.toFixed(2) || '0.00'}</td>
+                <td className="border border-gray-300 p-2"></td>
+                <td className="border border-gray-300 p-2 text-right bg-yellow-100">{category.totalEssential?.toFixed(2) || '0.00'}</td>
+                <td className="border border-gray-300 p-2"></td>
+                <td className="border border-gray-300 p-2 text-right bg-red-100">{category.totalFire?.toFixed(2) || '0.00'}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
