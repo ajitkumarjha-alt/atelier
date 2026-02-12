@@ -95,9 +95,9 @@ export default function SuperAdminDashboard() {
       access: 'Consultant access: technical review',
     },
     {
-      title: 'Project Standards',
-      subtitle: 'Manage Dropdown Options',
-      description: 'Add, edit, and manage application types, residential types, and flat types.',
+      title: 'System Config',
+      subtitle: 'Dropdowns & Factors',
+      description: 'Configure dropdown options, calculation factors, and reference documents.',
       icon: Database,
       color: 'from-lodha-gold/30 to-lodha-gold/20',
       textColor: 'text-lodha-black',

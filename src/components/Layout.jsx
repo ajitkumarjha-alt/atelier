@@ -43,7 +43,7 @@ export default function Layout({ children }) {
       items.push({ name: 'L0 Dashboard', path: '/l0-dashboard', icon: FolderKanban });
       items.push({ name: 'RFC Management', path: '/rfc-management', icon: Send });
       items.push({ name: 'Task Overview', path: '/task-management', icon: ListChecks });
-      items.push({ name: 'Standards', path: '/standards-management', icon: BookOpen });
+      items.push({ name: 'Reference Standards', path: '/standards-management', icon: BookOpen });
       items.push({ name: 'Policy Management', path: '/policy-management', icon: Database });
     }
 
@@ -53,7 +53,7 @@ export default function Layout({ children }) {
       items.push({ name: 'Create Project', path: '/project-input', icon: FolderKanban });
       items.push({ name: 'RFC Management', path: '/rfc-management', icon: Send });
       items.push({ name: 'Task Management', path: '/task-management', icon: ListChecks });
-      items.push({ name: 'Standards', path: '/standards-management', icon: BookOpen });
+      items.push({ name: 'Reference Standards', path: '/standards-management', icon: BookOpen });
       items.push({ name: 'Policy Management', path: '/policy-management', icon: Database });
     }
 
@@ -88,9 +88,9 @@ export default function Layout({ children }) {
         { name: 'L2 Dashboard', path: '/l2-dashboard', icon: LayoutDashboard },
         { name: 'RFC Management', path: '/rfc-management', icon: Send },
         { name: 'Task Management', path: '/task-management', icon: ListChecks },
-        { name: 'Standards', path: '/standards-management', icon: BookOpen },
+        { name: 'Reference Standards', path: '/standards-management', icon: BookOpen },
         { name: 'Policy Management', path: '/policy-management', icon: Database },
-        { name: 'Project Standards', path: '/project-standards', icon: Settings },
+        { name: 'System Config', path: '/project-standards', icon: Settings },
         { name: 'User Management', path: '/super-admin-dashboard', icon: Users }
       );
     }

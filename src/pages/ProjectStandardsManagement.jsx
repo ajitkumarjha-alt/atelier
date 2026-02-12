@@ -444,8 +444,8 @@ export default function ProjectStandardsManagement() {
     <Layout>
       <div className="p-6">
         <div className="mb-8">
-          <h1 className="heading-primary mb-2">Project Standards Management</h1>
-          <p className="text-lodha-grey">Manage dropdown options, calculation factors, and reference documents</p>
+          <h1 className="heading-primary mb-2">System Configuration</h1>
+          <p className="text-lodha-grey">Dropdown options, calculation factors, and reference documents</p>
         </div>
 
         {error && <div className="mb-6 p-4 bg-lodha-sand border border-lodha-gold rounded">{error}</div>}
