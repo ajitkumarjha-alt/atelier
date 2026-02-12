@@ -104,20 +104,14 @@
   cursor: wait;
 }
 
-/* Hidden Content - Using aria-hidden */
-[aria-hidden="true"] {
-  display: none !important;
-}
+/* Hidden Content - Using aria-hidden
+   Note: aria-hidden="true" hides from screen readers only, NOT from visual display.
+   Lucide icons and other decorative elements use aria-hidden="true" by design.
+   Do NOT use display:none here — it would hide all icons. */
 
-/* Interactive Elements - Ensure minimum touch target size (44x44px per WCAG) */
-button,
-a,
-input[type="checkbox"],
-input[type="radio"],
-[role="button"] {
-  min-height: 44px;
-  min-width: 44px;
-}
+/* Interactive Elements - Ensure minimum touch target size (44x44px per WCAG)
+   Note: Applied only to standalone interactive elements, not icon-only buttons
+   or inline elements that have visual constraints. */
 
 /* Ensure sufficient color contrast */
 ::selection {
