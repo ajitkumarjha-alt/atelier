@@ -162,9 +162,13 @@ const createMasRouter = ({ query, verifyToken }) => {
 
     try {
       const result = await query(
-        `SELECT m.*, p.name as project_name 
+        `SELECT m.*, p.name as project_name,
+                au.full_name as assigned_to_name,
+                abu.full_name as assigned_by_name
          FROM material_approval_sheets m
          LEFT JOIN projects p ON m.project_id = p.id
+         LEFT JOIN users au ON au.id = m.assigned_to_id
+         LEFT JOIN users abu ON abu.id = m.assigned_by_id
          WHERE m.id = $1`,
         [id]
       );
@@ -331,6 +335,39 @@ const createMasRouter = ({ query, verifyToken }) => {
     } catch (error) {
       console.error('Error updating MAS:', error);
       res.status(500).json({ error: 'Failed to update MAS' });
+    }
+  });
+
+  // Assign MAS to a user
+  router.patch('/mas/:id/assign', verifyToken, async (req, res) => {
+    try {
+      const { assigned_to_id, due_date } = req.body;
+      const userId = req.user?.userId;
+
+      const result = await query(
+        `UPDATE material_approval_sheets SET
+          assigned_to_id = $1, assigned_by_id = $2, assigned_at = CURRENT_TIMESTAMP,
+          due_date = COALESCE($3, due_date),
+          updated_at = CURRENT_TIMESTAMP
+         WHERE id = $4 RETURNING *`,
+        [assigned_to_id, userId, due_date || null, req.params.id]
+      );
+      if (result.rows.length === 0) return res.status(404).json({ error: 'MAS not found' });
+
+      // Notify assignee
+      if (assigned_to_id) {
+        const mas = result.rows[0];
+        await query(
+          `INSERT INTO notifications (user_id, project_id, title, message, notification_type, entity_type, entity_id)
+           VALUES ($1, $2, $3, $4, 'todo', 'mas', $5)`,
+          [assigned_to_id, mas.project_id, 'MAS Assigned', `You have been assigned MAS: ${mas.material_name || mas.mas_ref_no}`, mas.id]
+        );
+      }
+
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error('Error assigning MAS:', error);
+      res.status(500).json({ error: 'Failed to assign MAS' });
     }
   });
 

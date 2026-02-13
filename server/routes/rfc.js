@@ -19,7 +19,7 @@ const createRFCRouter = ({ query, verifyToken, logger }) => {
   // POST /api/rfc - Create RFC
   router.post('/rfc', verifyToken, async (req, res) => {
     try {
-      const { project_id, building_id, title, description, change_reason, impact_assessment, priority } = req.body;
+      const { project_id, building_id, title, description, change_reason, impact_assessment, priority, assigned_to_id, due_date } = req.body;
       const userId = req.user?.userId;
 
       if (!title || !project_id) {
@@ -28,10 +28,21 @@ const createRFCRouter = ({ query, verifyToken, logger }) => {
 
       const result = await query(
         `INSERT INTO requests_for_change (project_id, building_id, title, description, change_reason,
-         impact_assessment, raised_by_id, priority)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-        [project_id, building_id, title, description, change_reason, impact_assessment, userId, priority || 'normal']
+         impact_assessment, raised_by_id, priority, assigned_to_id, assigned_by_id, assigned_at, due_date)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+        [project_id, building_id, title, description, change_reason, impact_assessment, userId,
+         priority || 'normal', assigned_to_id || null, assigned_to_id ? userId : null,
+         assigned_to_id ? new Date() : null, due_date || null]
       );
+
+      // Notify assignee
+      if (assigned_to_id) {
+        await query(
+          `INSERT INTO notifications (user_id, project_id, title, message, notification_type, entity_type, entity_id)
+           VALUES ($1, $2, $3, $4, 'todo', 'rfc', $5)`,
+          [assigned_to_id, project_id, 'RFC Assigned', `You have been assigned RFC: ${title}`, result.rows[0].id]
+        );
+      }
 
       await logActivity(project_id, userId, req.user?.email, 'rfc', result.rows[0].id, 'create',
         { title }, `Created RFC: ${title}`);
@@ -48,11 +59,14 @@ const createRFCRouter = ({ query, verifyToken, logger }) => {
     try {
       const { project_id, status, raised_by_id } = req.query;
       let sql = `SELECT r.*, p.name as project_name, u.full_name as raised_by_name,
-                   b.name as building_name
+                   b.name as building_name, au.full_name as assigned_to_name,
+                   abu.full_name as assigned_by_name
                  FROM requests_for_change r
                  JOIN projects p ON p.id = r.project_id
                  LEFT JOIN users u ON u.id = r.raised_by_id
                  LEFT JOIN buildings b ON b.id = r.building_id
+                 LEFT JOIN users au ON au.id = r.assigned_to_id
+                 LEFT JOIN users abu ON abu.id = r.assigned_by_id
                  WHERE 1=1`;
       const params = [];
       let paramCount = 0;
@@ -77,13 +91,17 @@ const createRFCRouter = ({ query, verifyToken, logger }) => {
         `SELECT r.*, p.name as project_name, u.full_name as raised_by_name,
                 b.name as building_name,
                 l2u.full_name as l2_reviewed_by_name,
-                l1u.full_name as l1_reviewed_by_name
+                l1u.full_name as l1_reviewed_by_name,
+                au.full_name as assigned_to_name,
+                abu.full_name as assigned_by_name
          FROM requests_for_change r
          JOIN projects p ON p.id = r.project_id
          LEFT JOIN users u ON u.id = r.raised_by_id
          LEFT JOIN buildings b ON b.id = r.building_id
          LEFT JOIN users l2u ON l2u.id = r.l2_reviewed_by_id
          LEFT JOIN users l1u ON l1u.id = r.l1_reviewed_by_id
+         LEFT JOIN users au ON au.id = r.assigned_to_id
+         LEFT JOIN users abu ON abu.id = r.assigned_by_id
          WHERE r.id = $1`, [req.params.id]
       );
       if (result.rows.length === 0) return res.status(404).json({ error: 'RFC not found' });
@@ -91,6 +109,41 @@ const createRFCRouter = ({ query, verifyToken, logger }) => {
     } catch (err) {
       logger.error('Error fetching RFC:', err);
       res.status(500).json({ error: 'Failed to fetch RFC' });
+    }
+  });
+
+  // PATCH /api/rfc/:id/assign - Assign RFC to a user
+  router.patch('/rfc/:id/assign', verifyToken, async (req, res) => {
+    try {
+      const { assigned_to_id, due_date } = req.body;
+      const userId = req.user?.userId;
+
+      const result = await query(
+        `UPDATE requests_for_change SET
+          assigned_to_id = $1, assigned_by_id = $2, assigned_at = CURRENT_TIMESTAMP,
+          due_date = COALESCE($3, due_date)
+         WHERE id = $4 RETURNING *`,
+        [assigned_to_id, userId, due_date || null, req.params.id]
+      );
+      if (result.rows.length === 0) return res.status(404).json({ error: 'RFC not found' });
+
+      // Notify assignee
+      if (assigned_to_id) {
+        const rfc = result.rows[0];
+        await query(
+          `INSERT INTO notifications (user_id, project_id, title, message, notification_type, entity_type, entity_id)
+           VALUES ($1, $2, $3, $4, 'todo', 'rfc', $5)`,
+          [assigned_to_id, rfc.project_id, 'RFC Assigned', `You have been assigned RFC: ${rfc.title}`, rfc.id]
+        );
+      }
+
+      await logActivity(result.rows[0].project_id, userId, req.user?.email, 'rfc', req.params.id, 'assign',
+        { assigned_to_id }, `Assigned RFC to user ${assigned_to_id}`);
+
+      res.json(result.rows[0]);
+    } catch (err) {
+      logger.error('Error assigning RFC:', err);
+      res.status(500).json({ error: 'Failed to assign RFC' });
     }
   });
 

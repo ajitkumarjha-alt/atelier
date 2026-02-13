@@ -25,6 +25,7 @@ export default function ProjectInput() {
   const [projectData, setProjectData] = useState({
     name: '',
     location: '',
+    state: '',
     latitude: '',
     longitude: '',
     projectCategory: 'GOLD 2',
@@ -130,6 +131,7 @@ export default function ProjectInput() {
         const nextProjectData = {
           ...data,
           projectCategory: data.projectCategory || data.project_category || 'GOLD 2',
+          state: data.state || '',
           buildings: normalizedBuildings,
           societies: Array.isArray(data.societies) ? data.societies : [],
         };
@@ -1088,6 +1090,19 @@ export default function ProjectInput() {
                   className="w-full px-4 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
                   placeholder="Enter full address"
                   rows="3"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-jost font-semibold text-lodha-black mb-2">
+                  State
+                </label>
+                <input
+                  type="text"
+                  value={projectData.state}
+                  onChange={e => handleProjectFieldChange('state', e.target.value)}
+                  className="w-full px-4 py-2 border border-lodha-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-lodha-gold"
+                  placeholder="e.g., Maharashtra"
                 />
               </div>
 

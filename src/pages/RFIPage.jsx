@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Loader, Search, AlertCircle, CheckCircle, Clock, Filter } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Loader, Search, AlertCircle, CheckCircle, Clock, Filter, ArrowLeft } from 'lucide-react';
 import Layout from '../components/Layout';
 import { auth } from '../lib/firebase';
 import { apiFetchJson } from '../lib/api';
 
 export default function RFIPage() {
+  const { projectId: urlProjectId } = useParams();
+  const navigate = useNavigate();
+  const isProjectScoped = Boolean(urlProjectId);
+
   const [items, setItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,6 +17,7 @@ export default function RFIPage() {
   const [user, setUser] = useState(null);
   const [filter, setFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
+  const [projectName, setProjectName] = useState('');
 
   useEffect(() => {
     setUser(auth.currentUser);
@@ -23,13 +29,26 @@ export default function RFIPage() {
     }
   }, [user]);
 
+  // Fetch project name when project-scoped
+  useEffect(() => {
+    if (isProjectScoped) {
+      apiFetchJson('/api/projects').then(data => {
+        const list = Array.isArray(data) ? data : data.projects || [];
+        const p = list.find(pr => String(pr.id) === String(urlProjectId));
+        if (p) setProjectName(p.name);
+      }).catch(() => {});
+    }
+  }, [isProjectScoped, urlProjectId]);
+
   const fetchRFI = async () => {
     try {
       setLoading(true);
-      // Fetch all RFI items - in a real app, this would be filtered by user's projects
-      const data = await apiFetchJson('/api/rfi/project/1'); // For now, fetch from project 1
-      setItems(data);
-      setFilteredItems(data);
+      const url = isProjectScoped
+        ? `/api/rfi/project/${urlProjectId}`
+        : '/api/rfi';
+      const data = await apiFetchJson(url);
+      setItems(Array.isArray(data) ? data : []);
+      setFilteredItems(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching RFI:', err);
       setError('Failed to load Requests for Information');
@@ -123,8 +142,20 @@ export default function RFIPage() {
     <Layout>
       {/* Header */}
       <div className="mb-6">
+        {isProjectScoped && (
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1.5 text-sm text-lodha-grey/60 hover:text-lodha-grey mb-3 font-jost transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to project
+          </button>
+        )}
         <h1 className="heading-primary mb-2">Requests for Information (RFI)</h1>
-        <p className="text-body">Track and manage information requests across all projects</p>
+        <p className="text-body">
+          {isProjectScoped && projectName
+            ? `RFIs for ${projectName}`
+            : 'Track and manage information requests across all projects'}
+        </p>
       </div>
 
       {error && (
@@ -215,7 +246,8 @@ export default function RFIPage() {
           filteredItems.map(item => (
             <div 
               key={item.id}
-              className={`group relative rounded-lg p-6 hover:shadow-lg transition-all ${getStatusStyle(item.status)}`}
+              onClick={() => navigate(isProjectScoped ? `/projects/${urlProjectId}/rfi/${item.id}` : `/rfi/${item.id}`)}
+              className={`group relative rounded-lg p-6 hover:shadow-lg transition-all cursor-pointer ${getStatusStyle(item.status)}`}
             >
               {/* Header */}
               <div className="flex justify-between items-start gap-4 mb-4">
@@ -237,6 +269,11 @@ export default function RFIPage() {
                 <span className="flex items-center gap-1">
                   <span className="font-semibold">Raised by:</span> {item.raised_by_name || 'Unknown'}
                 </span>
+                {item.assigned_to_name && (
+                  <span className="flex items-center gap-1 text-lodha-gold">
+                    <span className="font-semibold">Assigned to:</span> {item.assigned_to_name}
+                  </span>
+                )}
                 <span className="flex items-center gap-1">
                   <Clock className="w-4 h-4" />
                   {new Date(item.created_at).toLocaleDateString('en-US', { 
@@ -254,9 +291,9 @@ export default function RFIPage() {
 
               {/* Hover Actions */}
               <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button className="bg-lodha-gold text-white px-4 py-2 rounded-lg hover:bg-lodha-grey transition-colors font-jost font-semibold text-sm shadow-lg">
+                <span className="bg-lodha-gold text-white px-4 py-2 rounded-lg font-jost font-semibold text-sm shadow-lg">
                   View Details →
-                </button>
+                </span>
               </div>
             </div>
           ))

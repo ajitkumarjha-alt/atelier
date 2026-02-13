@@ -95,14 +95,14 @@ export default function SuperAdminDashboard() {
       access: 'Consultant access: technical review',
     },
     {
-      title: 'System Config',
-      subtitle: 'Dropdowns & Factors',
-      description: 'Configure dropdown options, calculation factors, and reference documents.',
+      title: 'Standards & Policies',
+      subtitle: 'Project Standards Hub',
+      description: 'Manage reference standards, policies, and project-specific selections.',
       icon: Database,
       color: 'from-lodha-gold/30 to-lodha-gold/20',
       textColor: 'text-lodha-black',
       borderColor: 'border-lodha-gold',
-      route: '/project-standards',
+      route: '/standards',
       access: 'Configuration',
     },
   ];

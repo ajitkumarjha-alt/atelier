@@ -27,19 +27,18 @@ import ProjectInputEnhanced from './pages/project/ProjectInputEnhanced';
 import DDSManagement from './pages/DDSManagement';
 import TaskManagement from './pages/TaskManagement';
 import RFCManagement from './pages/RFCManagement';
-import StandardsManagement from './pages/StandardsManagement';
+import StandardsHub from './pages/StandardsHub';
 import MASPage from './pages/MASPage';
 import MASForm from './pages/MASForm';
 import MASDetail from './pages/MASDetail';
 import RFIPage from './pages/RFIPage';
 import RFICreate from './pages/RFICreate';
 import RFIDetail from './pages/RFIDetail';
+import MyAssignments from './pages/MyAssignments';
 import DrawingSchedule from './pages/DrawingSchedule';
 import DesignCalculations from './pages/DesignCalculations';
 import ChangeRequestsPage from './pages/ChangeRequestsPage';
 import ChangeRequestDetail from './pages/ChangeRequestDetail';
-import ProjectStandardsManagement from './pages/ProjectStandardsManagement';
-import PolicyManagement from './pages/PolicyManagement';
 import { createOrUpdateUser } from './services/userService';
 import { Loader } from 'lucide-react';
 import FireFightingSystemDesign from './pages/calculations/FireFightingSystemDesign';
@@ -239,29 +238,21 @@ function AppRoutes() {
           } 
         />
 
-        {/* Project Standards Management */}
-        <Route 
-          path="/project-standards" 
+        {/* Standards Hub */}
+        <Route
+          path="/standards"
           element={
-            user && userLevel === 'SUPER_ADMIN' ? (
-              <ProjectStandardsManagement />
+            user ? (
+              <StandardsHub />
             ) : (
               <Navigate to="/" replace />
             )
-          } 
+          }
         />
 
-        {/* Policy Management - For L0, L1, L2, SUPER_ADMIN */}
-        <Route 
-          path="/policy-management" 
-          element={
-            user && ['SUPER_ADMIN', 'L0', 'L1', 'L2'].includes(userLevel) ? (
-              <PolicyManagement />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
+        {/* Legacy Standards Routes (redirect) */}
+        <Route path="/project-standards" element={<Navigate to="/standards" replace />} />
+        <Route path="/policy-management" element={<Navigate to="/standards" replace />} />
 
         {/* Drawing Schedule */}
         <Route 
@@ -490,17 +481,14 @@ function AppRoutes() {
           }
         />
 
-        {/* Standards Management */}
+        {/* Project-scoped RFC route */}
         <Route
-          path="/standards-management"
-          element={
-            user && ['L0', 'L1', 'L2', 'SUPER_ADMIN'].includes(userLevel) ? (
-              <StandardsManagement />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          }
+          path="/projects/:projectId/rfc"
+          element={user ? <RFCManagement /> : <Navigate to="/" replace />}
         />
+
+        {/* Legacy Standards Management (redirect) */}
+        <Route path="/standards-management" element={<Navigate to="/standards" replace />} />
 
         {/* Enhanced Project Input */}
         <Route
@@ -715,6 +703,26 @@ function AppRoutes() {
               <Navigate to="/" replace />
             )
           } 
+        />
+
+        {/* Project-scoped RFI routes */}
+        <Route
+          path="/projects/:projectId/rfi"
+          element={user ? <RFIPage /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/projects/:projectId/rfi/create"
+          element={user ? <RFICreate /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/projects/:projectId/rfi/:id"
+          element={user ? <RFIDetail /> : <Navigate to="/" replace />}
+        />
+
+        {/* My Assignments */}
+        <Route
+          path="/my-assignments"
+          element={user ? <MyAssignments /> : <Navigate to="/" replace />}
         />
 
         {/* Legacy Routes - Coming Soon */}

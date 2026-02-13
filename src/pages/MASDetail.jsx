@@ -25,6 +25,12 @@ export default function MASDetail() {
   const [l1Comments, setL1Comments] = useState('');
   const [submittingL1, setSubmittingL1] = useState(false);
 
+  // Assignment State
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [assignUserId, setAssignUserId] = useState('');
+  const [assignDueDate, setAssignDueDate] = useState('');
+  const [submittingAssign, setSubmittingAssign] = useState(false);
+
   // Consultant Referral State
   const [consultants, setConsultants] = useState([]);
   const [showConsultantReferral, setShowConsultantReferral] = useState(false);
@@ -40,6 +46,13 @@ export default function MASDetail() {
     fetchMASDetail();
     fetchConsultants();
   }, [id]);
+
+  // Fetch team members when MAS loads (for assignment)
+  useEffect(() => {
+    if (mas?.project_id) {
+      fetchTeamMembers(mas.project_id);
+    }
+  }, [mas?.project_id]);
 
   const fetchUserLevel = async (email) => {
     try {
@@ -71,6 +84,53 @@ export default function MASDetail() {
       console.error('Error fetching MAS details:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTeamMembers = async (projectId) => {
+    try {
+      const response = await apiFetch(`/api/projects/${projectId}/team`);
+      if (response.ok) {
+        const data = await response.json();
+        setTeamMembers(data);
+      }
+    } catch (error) {
+      console.error('Error fetching team members:', error);
+    }
+  };
+
+  const handleAssign = async () => {
+    if (!assignUserId) {
+      alert('Please select a team member to assign');
+      return;
+    }
+    try {
+      setSubmittingAssign(true);
+      const response = await apiFetch(`/api/mas/${id}/assign`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dev-user-email': user?.email,
+        },
+        body: JSON.stringify({
+          assigned_to_id: assignUserId,
+          due_date: assignDueDate || null,
+        }),
+      });
+      if (response.ok) {
+        alert('Assignment updated successfully');
+        setAssignUserId('');
+        setAssignDueDate('');
+        fetchMASDetail();
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.error || 'Failed to assign'}`);
+      }
+    } catch (error) {
+      console.error('Error assigning MAS:', error);
+      alert('Error assigning MAS');
+    } finally {
+      setSubmittingAssign(false);
     }
   };
 
@@ -529,6 +589,69 @@ export default function MASDetail() {
               </div>
             )}
           </div>
+
+          {/* Assignment Section */}
+          {(userLevel === 'L0' || userLevel === 'L1' || userLevel === 'L2') && (
+            <div className="section-card p-6">
+              <h2 className="heading-tertiary mb-4 flex items-center">
+                <UserPlus className="w-5 h-5 mr-2 text-lodha-gold" />
+                Assignment
+              </h2>
+
+              {mas.assigned_to_name && (
+                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
+                    <span className="font-semibold">Currently Assigned to:</span> {mas.assigned_to_name}
+                  </p>
+                  {mas.assigned_by_name && (
+                    <p className="text-xs text-blue-600 mt-1">Assigned by: {mas.assigned_by_name}</p>
+                  )}
+                  {mas.due_date && (
+                    <p className="text-xs text-blue-600 mt-1">Due: {formatDate(mas.due_date)}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-4 bg-lodha-sand/40 p-5 rounded-xl">
+                <div>
+                  <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
+                    {mas.assigned_to_name ? 'Reassign To' : 'Assign To'} *
+                  </label>
+                  <select
+                    value={assignUserId}
+                    onChange={(e) => setAssignUserId(e.target.value)}
+                    className="input-field"
+                  >
+                    <option value="">Select team member</option>
+                    {teamMembers.map(member => (
+                      <option key={member.user_id} value={member.user_id}>
+                        {member.full_name} ({member.user_level})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-lodha-grey font-jost mb-1.5">
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    value={assignDueDate}
+                    onChange={(e) => setAssignDueDate(e.target.value)}
+                    className="input-field"
+                  />
+                </div>
+                <button
+                  onClick={handleAssign}
+                  disabled={submittingAssign || !assignUserId}
+                  className="w-full bg-lodha-gold text-white py-2 px-4 rounded-lg hover:bg-lodha-gold/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  {submittingAssign ? 'Assigning...' : (mas.assigned_to_name ? 'Reassign' : 'Assign')}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Consultant Referral Section */}
           {(userLevel === 'L1' || userLevel === 'L2') && (

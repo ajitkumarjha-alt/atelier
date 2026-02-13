@@ -3,7 +3,7 @@ import Layout from '../components/Layout';
 import { Plus, Trash2, Edit2, Check, X, Upload, FileText, Download, Calculator, Settings, Search, Filter, XCircle } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
-export default function ProjectStandardsManagement() {
+export default function ProjectStandardsManagement({ embedded = false, readOnly = false }) {
   const [standards, setStandards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -440,12 +440,16 @@ export default function ProjectStandardsManagement() {
 
   const filteredStandards = standards.filter(s => s.category === selectedCategory);
 
-  return (
-    <Layout>
-      <div className="p-6">
+  const pageContent = (
+      <div className={embedded ? 'p-0' : 'p-6'}>
         <div className="mb-8">
           <h1 className="heading-primary mb-2">System Configuration</h1>
           <p className="text-lodha-grey">Dropdown options, calculation factors, and reference documents</p>
+          {readOnly && (
+            <span className="inline-flex items-center mt-2 text-xs font-semibold px-2 py-1 rounded-full bg-lodha-sand text-lodha-grey">
+              Read-only
+            </span>
+          )}
         </div>
 
         {error && <div className="mb-6 p-4 bg-lodha-sand border border-lodha-gold rounded">{error}</div>}
@@ -613,10 +617,6 @@ export default function ProjectStandardsManagement() {
                   {/* Electrical Load Factors Management */}
                   <div className="bg-white rounded-lg shadow-md border border-lodha-gold/10">
                     <div className="flex flex-wrap justify-between items-center gap-3 px-6 py-4 border-b border-lodha-gold/10">
-                      <div>
-                        <h2 className="heading-secondary">{selectedSubModule} Factors</h2>
-                        <p className="text-sm text-lodha-grey mt-0.5">L0 configurable load calculation standards &nbsp;·&nbsp; <strong>MDF</strong> = Max Demand &nbsp;·&nbsp; <strong>EDF</strong> = Essential Demand &nbsp;·&nbsp; <strong>FDF</strong> = Fire Demand</p>
-                      </div>
                       <div className="flex gap-3 items-center">
                         <select
                           value={selectedGuideline}
@@ -1037,7 +1037,6 @@ export default function ProjectStandardsManagement() {
             </div>
           </div>
         )}
-      </div>
       
       {/* Add/Edit Electrical Factor Modal */}
       {showAddFactorModal && (
@@ -1188,6 +1187,16 @@ export default function ProjectStandardsManagement() {
           </div>
         </div>
       )}
+    </div>
+  );
+
+  if (embedded) {
+    return pageContent;
+  }
+
+  return (
+    <Layout>
+      {pageContent}
     </Layout>
   );
 }

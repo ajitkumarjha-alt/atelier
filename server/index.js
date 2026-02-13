@@ -37,6 +37,7 @@ import createTasksRouter from './routes/tasks.js';
 import createRFCRouter from './routes/rfc.js';
 import createStandardsRouter from './routes/standards.js';
 import createBuildingDetailsRouter from './routes/building-details.js';
+import createMyAssignmentsRouter from './routes/my-assignments.js';
 
 const app = express();
 const port = process.env.PORT || 5175;
@@ -366,6 +367,7 @@ app.use('/api', createTasksRouter(routeDeps));
 app.use('/api', createRFCRouter(routeDeps));
 app.use('/api', createStandardsRouter(routeDeps));
 app.use('/api', createBuildingDetailsRouter(routeDeps));
+app.use('/api', createMyAssignmentsRouter(routeDeps));
 
 // Cleanup endpoint - TEMPORARY for user cleanup
 app.post('/api/admin/cleanup-users', async (req, res) => {
@@ -854,6 +856,7 @@ async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         description TEXT,
+        state VARCHAR(100),
         status VARCHAR(50) NOT NULL DEFAULT 'Concept',
         lifecycle_stage VARCHAR(50) NOT NULL DEFAULT 'Concept',
         project_category VARCHAR(50),
@@ -884,6 +887,10 @@ async function initializeDatabase() {
     `);
     await query(`
       ALTER TABLE projects 
+      ADD COLUMN IF NOT EXISTS state VARCHAR(100)
+    `);
+    await query(`
+      ALTER TABLE projects 
       ADD COLUMN IF NOT EXISTS lead_name VARCHAR(255)
     `);
     await query(`
@@ -891,6 +898,29 @@ async function initializeDatabase() {
       ADD COLUMN IF NOT EXISTS project_category VARCHAR(50)
     `);
     console.log('✓ projects table migrated (project_status, site_status, lead_name)');
+
+    // Create project standard selections (per-project overrides)
+    await query(`
+      CREATE TABLE IF NOT EXISTS project_standard_selections (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        standard_key VARCHAR(100) NOT NULL,
+        standard_value VARCHAR(255),
+        standard_ref_id INTEGER,
+        notes TEXT,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_by VARCHAR(255),
+        updated_by VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(project_id, standard_key)
+      )
+    `);
+    await query(`
+      CREATE INDEX IF NOT EXISTS idx_project_standard_selections_project_id
+      ON project_standard_selections(project_id)
+    `);
+    console.log('✓ project_standard_selections table initialized');
 
     // Create buildings table if it doesn't exist
     await query(`
@@ -1178,6 +1208,10 @@ async function initializeDatabase() {
       'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS l1_reviewed_at TIMESTAMP WITH TIME ZONE',
       'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS final_status VARCHAR(50) DEFAULT \'Pending\'',
       'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS submitted_by_id INTEGER REFERENCES users(id)',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS assigned_to_id INTEGER REFERENCES users(id)',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS assigned_by_id INTEGER REFERENCES users(id)',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP WITH TIME ZONE',
+      'ALTER TABLE material_approval_sheets ADD COLUMN IF NOT EXISTS due_date DATE',
     ];
     
     for (const alterSql of masColumns) {
@@ -1242,6 +1276,11 @@ async function initializeDatabase() {
       'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS raised_by_email VARCHAR(255)',
       'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS project_team_response JSONB',
       'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS design_team_response JSONB',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS assigned_to_id INTEGER REFERENCES users(id)',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS assigned_by_id INTEGER REFERENCES users(id)',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP WITH TIME ZONE',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS due_date DATE',
+      'ALTER TABLE requests_for_information ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT \'normal\'',
     ];
     
     for (const alterSql of rfiColumns) {
@@ -1359,6 +1398,77 @@ async function initializeDatabase() {
       )
     `);
     console.log('✓ project_change_requests table initialized');
+
+    // DDS table
+    await query(`
+      CREATE TABLE IF NOT EXISTS dds (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        version INTEGER DEFAULT 1,
+        dds_type VARCHAR(20) DEFAULT 'internal',
+        status VARCHAR(20) DEFAULT 'draft',
+        created_by_id INTEGER REFERENCES users(id),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ dds table initialized');
+
+    // DDS Items table
+    await query(`
+      CREATE TABLE IF NOT EXISTS dds_items (
+        id SERIAL PRIMARY KEY,
+        dds_id INTEGER NOT NULL REFERENCES dds(id) ON DELETE CASCADE,
+        building_id INTEGER REFERENCES buildings(id) ON DELETE SET NULL,
+        floor_id INTEGER REFERENCES floors(id) ON DELETE SET NULL,
+        item_category VARCHAR(100),
+        item_name VARCHAR(500) NOT NULL,
+        description TEXT,
+        discipline VARCHAR(50),
+        expected_start_date DATE,
+        expected_completion_date DATE,
+        architect_input_date DATE,
+        structure_input_date DATE,
+        architect_input_received BOOLEAN DEFAULT FALSE,
+        architect_input_received_date DATE,
+        structure_input_received BOOLEAN DEFAULT FALSE,
+        structure_input_received_date DATE,
+        actual_completion_date DATE,
+        status VARCHAR(30) DEFAULT 'pending',
+        revision VARCHAR(10) DEFAULT 'R0',
+        revision_count INTEGER DEFAULT 0,
+        assigned_to_id INTEGER REFERENCES users(id),
+        completed_by_id INTEGER REFERENCES users(id),
+        sort_order INTEGER DEFAULT 0,
+        is_external_area BOOLEAN DEFAULT FALSE,
+        external_area_type VARCHAR(100),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ dds_items table initialized');
+
+    // Tasks table
+    await query(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        dds_item_id INTEGER REFERENCES dds_items(id) ON DELETE SET NULL,
+        title VARCHAR(500) NOT NULL,
+        description TEXT,
+        task_type VARCHAR(50) DEFAULT 'drawing',
+        assigned_by_id INTEGER NOT NULL REFERENCES users(id),
+        assigned_to_id INTEGER NOT NULL REFERENCES users(id),
+        assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        due_date DATE,
+        completed_at TIMESTAMP WITH TIME ZONE,
+        status VARCHAR(30) DEFAULT 'pending',
+        priority VARCHAR(20) DEFAULT 'normal',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ tasks table initialized');
 
     // Project team table
     await query(`
@@ -1521,6 +1631,17 @@ async function initializeDatabase() {
       console.log('ℹ electrical_load_calculations table migration: columns may already exist');
     }
 
+    // Add assignment tracking columns to RFC
+    const rfcAssignCols = [
+      'ALTER TABLE requests_for_change ADD COLUMN IF NOT EXISTS assigned_by_id INTEGER REFERENCES users(id)',
+      'ALTER TABLE requests_for_change ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP WITH TIME ZONE',
+      'ALTER TABLE requests_for_change ADD COLUMN IF NOT EXISTS due_date DATE',
+    ];
+    for (const sql of rfcAssignCols) {
+      try { await query(sql); } catch (err) { /* column may exist */ }
+    }
+    console.log('✓ requests_for_change assignment columns added');
+
     console.log('✅ All database tables initialized');
   } catch (error) {
     console.error('Error initializing database:', error.message);
@@ -1640,6 +1761,76 @@ app.get('/api/projects/:id', async (req, res) => {
   } catch (error) {
     console.error('Error fetching project:', error);
     res.status(500).json({ error: 'Failed to fetch project' });
+  }
+});
+
+// Project standard selections (per-project overrides)
+app.get('/api/projects/:projectId/standard-selections', verifyToken, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const result = await query(
+      `SELECT * FROM project_standard_selections
+       WHERE project_id = $1 AND is_active = true
+       ORDER BY standard_key`,
+      [projectId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching project standard selections:', error);
+    res.status(500).json({ error: 'Failed to fetch project standard selections' });
+  }
+});
+
+app.put('/api/projects/:projectId/standard-selections', verifyToken, requireRole('SUPER_ADMIN', 'L0', 'L1'), async (req, res) => {
+  const { projectId } = req.params;
+  const { selections } = req.body;
+
+  if (!Array.isArray(selections)) {
+    return res.status(400).json({ error: 'Selections must be an array' });
+  }
+
+  try {
+    await transaction(async (client) => {
+      for (const selection of selections) {
+        if (!selection.standard_key) continue;
+        const hasValue = Boolean(selection.standard_value || selection.standard_ref_id);
+        const isActive = selection.is_active ?? hasValue;
+
+        await client.query(
+          `INSERT INTO project_standard_selections
+            (project_id, standard_key, standard_value, standard_ref_id, notes, is_active, created_by, updated_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+           ON CONFLICT (project_id, standard_key)
+           DO UPDATE SET
+             standard_value = EXCLUDED.standard_value,
+             standard_ref_id = EXCLUDED.standard_ref_id,
+             notes = EXCLUDED.notes,
+             is_active = EXCLUDED.is_active,
+             updated_at = CURRENT_TIMESTAMP,
+             updated_by = $7`,
+          [
+            projectId,
+            selection.standard_key,
+            selection.standard_value || null,
+            selection.standard_ref_id || null,
+            selection.notes || null,
+            isActive,
+            req.user.email
+          ]
+        );
+      }
+    });
+
+    const updated = await query(
+      `SELECT * FROM project_standard_selections
+       WHERE project_id = $1 AND is_active = true
+       ORDER BY standard_key`,
+      [projectId]
+    );
+    res.json(updated.rows);
+  } catch (error) {
+    console.error('Error updating project standard selections:', error);
+    res.status(500).json({ error: 'Failed to update project standard selections' });
   }
 });
 
@@ -1982,9 +2173,11 @@ app.get('/api/mas/project/:projectId', async (req, res) => {
   try {
     const { projectId } = req.params;
     const text = `
-      SELECT * FROM material_approval_sheets
-      WHERE project_id = $1
-      ORDER BY updated_at DESC
+      SELECT m.*, au.full_name as assigned_to_name
+      FROM material_approval_sheets m
+      LEFT JOIN users au ON m.assigned_to_id = au.id
+      WHERE m.project_id = $1
+      ORDER BY m.updated_at DESC
     `;
     const result = await query(text, [projectId]);
     res.json(result.rows);
@@ -1999,9 +2192,10 @@ app.get('/api/rfi/project/:projectId', async (req, res) => {
   try {
     const { projectId } = req.params;
     const text = `
-      SELECT r.*, u.full_name as raised_by_name
+      SELECT r.*, u.full_name as raised_by_name, au.full_name as assigned_to_name
       FROM requests_for_information r
       LEFT JOIN users u ON r.raised_by_id = u.id
+      LEFT JOIN users au ON r.assigned_to_id = au.id
       WHERE r.project_id = $1
       ORDER BY r.updated_at DESC
     `;
@@ -2404,7 +2598,7 @@ app.get('/api/project-standards-documents/categories', async (req, res) => {
 
 // Create new project
 app.post('/api/projects', async (req, res) => {
-  const { name, location, latitude, longitude, buildings, societies, assignedLeadId, projectCategory, userEmail } = req.body;
+  const { name, location, latitude, longitude, state, buildings, societies, assignedLeadId, projectCategory, userEmail } = req.body;
   const buildingsList = Array.isArray(buildings) ? buildings : [];
   const societiesList = Array.isArray(societies) ? societies : [];
 
@@ -2418,10 +2612,10 @@ app.post('/api/projects', async (req, res) => {
 
     // Create project with optional assigned lead
     const projectResult = await query(
-      `INSERT INTO projects (name, description, lifecycle_stage, start_date, target_completion_date, assigned_lead_id, project_category)
-       VALUES ($1, $2, 'Concept', CURRENT_DATE, CURRENT_DATE + INTERVAL '12 months', $3, $4)
+      `INSERT INTO projects (name, description, state, lifecycle_stage, start_date, target_completion_date, assigned_lead_id, project_category)
+       VALUES ($1, $2, $3, 'Concept', CURRENT_DATE, CURRENT_DATE + INTERVAL '12 months', $4, $5)
        RETURNING id`,
-      [name, location, assignedLeadId || null, projectCategory || null]
+      [name, location, state || null, assignedLeadId || null, projectCategory || null]
     );
 
     const projectId = projectResult.rows[0].id;
@@ -2592,7 +2786,7 @@ app.post('/api/projects', async (req, res) => {
 // Update project - PATCH endpoint
 app.patch('/api/projects/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, location, latitude, longitude, buildings, societies, assignedLeadId, projectCategory } = req.body;
+  const { name, location, latitude, longitude, state, buildings, societies, assignedLeadId, projectCategory } = req.body;
   const buildingsList = Array.isArray(buildings) ? buildings : [];
   const societiesList = Array.isArray(societies) ? societies : [];
 
@@ -2609,9 +2803,9 @@ app.patch('/api/projects/:id', async (req, res) => {
     // Update project basic info including assigned lead
     await query(
       `UPDATE projects 
-       SET name = $1, description = $2, assigned_lead_id = $3, project_category = $4, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $5`,
-      [name, location, assignedLeadId || null, projectCategory || null, id]
+       SET name = $1, description = $2, state = $3, assigned_lead_id = $4, project_category = $5, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $6`,
+      [name, location, state || null, assignedLeadId || null, projectCategory || null, id]
     );
 
     // Delete existing buildings, floors, and flats (cascade will handle related records)
@@ -3306,23 +3500,27 @@ app.get('/api/rfi', async (req, res) => {
   const { status, projectId } = req.query;
 
   try {
-    let queryText = 'SELECT * FROM requests_for_information WHERE 1=1';
+    let queryText = `SELECT r.*, u.full_name as raised_by_name, au.full_name as assigned_to_name
+      FROM requests_for_information r
+      LEFT JOIN users u ON u.id = r.raised_by_id
+      LEFT JOIN users au ON au.id = r.assigned_to_id
+      WHERE 1=1`;
     const params = [];
     let paramIndex = 1;
 
     if (status && status !== 'All') {
-      queryText += ` AND status = $${paramIndex}`;
+      queryText += ` AND r.status = $${paramIndex}`;
       params.push(status);
       paramIndex++;
     }
 
     if (projectId) {
-      queryText += ` AND project_id = $${paramIndex}`;
+      queryText += ` AND r.project_id = $${paramIndex}`;
       params.push(projectId);
       paramIndex++;
     }
 
-    queryText += ' ORDER BY created_at DESC';
+    queryText += ' ORDER BY r.created_at DESC';
 
     const result = await query(queryText, params);
     res.json(result.rows);
@@ -3338,7 +3536,16 @@ app.get('/api/rfi/:id', async (req, res) => {
 
   try {
     const result = await query(
-      'SELECT * FROM requests_for_information WHERE id = $1',
+      `SELECT r.*, p.name as project_name,
+              u.full_name as raised_by_name,
+              au.full_name as assigned_to_name,
+              abu.full_name as assigned_by_name
+       FROM requests_for_information r
+       LEFT JOIN projects p ON p.id = r.project_id
+       LEFT JOIN users u ON u.id = r.raised_by_id
+       LEFT JOIN users au ON au.id = r.assigned_to_id
+       LEFT JOIN users abu ON abu.id = r.assigned_by_id
+       WHERE r.id = $1`,
       [id]
     );
 
@@ -3415,6 +3622,40 @@ app.patch('/api/rfi/:id', async (req, res) => {
   } catch (error) {
     console.error('Error updating RFI:', error);
     res.status(500).json({ error: 'Failed to update RFI' });
+  }
+});
+
+// Assign RFI to a user
+app.patch('/api/rfi/:id/assign', verifyToken, async (req, res) => {
+  try {
+    const { assigned_to_id, due_date, priority } = req.body;
+    const userId = req.user?.userId;
+
+    const result = await query(
+      `UPDATE requests_for_information SET
+        assigned_to_id = $1, assigned_by_id = $2, assigned_at = CURRENT_TIMESTAMP,
+        due_date = COALESCE($3, due_date),
+        priority = COALESCE($4, priority),
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5 RETURNING *`,
+      [assigned_to_id, userId, due_date || null, priority || null, req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'RFI not found' });
+
+    // Notify assignee
+    if (assigned_to_id) {
+      const rfi = result.rows[0];
+      await query(
+        `INSERT INTO notifications (user_id, project_id, title, message, notification_type, entity_type, entity_id)
+         VALUES ($1, $2, $3, $4, 'todo', 'rfi', $5)`,
+        [assigned_to_id, rfi.project_id, 'RFI Assigned', `You have been assigned RFI: ${rfi.rfi_subject || rfi.rfi_ref_no}`, rfi.id]
+      );
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error assigning RFI:', error);
+    res.status(500).json({ error: 'Failed to assign RFI' });
   }
 });
 
@@ -3506,35 +3747,39 @@ app.get('/api/mas', async (req, res) => {
   const { status, projectId, l2_status, l1_status } = req.query;
 
   try {
-    let queryText = 'SELECT * FROM material_approval_sheets WHERE 1=1';
+    let queryText = `SELECT m.*, 
+      au.full_name as assigned_to_name
+      FROM material_approval_sheets m
+      LEFT JOIN users au ON m.assigned_to_id = au.id
+      WHERE 1=1`;
     const params = [];
     let paramIndex = 1;
 
     if (status && status !== 'All') {
-      queryText += ` AND status = $${paramIndex}`;
+      queryText += ` AND m.status = $${paramIndex}`;
       params.push(status);
       paramIndex++;
     }
 
     if (l2_status && l2_status !== 'All') {
-      queryText += ` AND l2_status = $${paramIndex}`;
+      queryText += ` AND m.l2_status = $${paramIndex}`;
       params.push(l2_status);
       paramIndex++;
     }
 
     if (l1_status && l1_status !== 'All') {
-      queryText += ` AND l1_status = $${paramIndex}`;
+      queryText += ` AND m.l1_status = $${paramIndex}`;
       params.push(l1_status);
       paramIndex++;
     }
 
     if (projectId) {
-      queryText += ` AND project_id = $${paramIndex}`;
+      queryText += ` AND m.project_id = $${paramIndex}`;
       params.push(projectId);
       paramIndex++;
     }
 
-    queryText += ' ORDER BY created_at DESC';
+    queryText += ' ORDER BY m.created_at DESC';
 
     const result = await query(queryText, params);
     res.json(result.rows);
@@ -3550,9 +3795,13 @@ app.get('/api/mas/:id', async (req, res) => {
 
   try {
     const result = await query(
-      `SELECT m.*, p.name as project_name 
+      `SELECT m.*, p.name as project_name,
+              au.full_name as assigned_to_name,
+              abu.full_name as assigned_by_name
        FROM material_approval_sheets m
        LEFT JOIN projects p ON m.project_id = p.id
+       LEFT JOIN users au ON au.id = m.assigned_to_id
+       LEFT JOIN users abu ON abu.id = m.assigned_by_id
        WHERE m.id = $1`,
       [id]
     );
@@ -3743,6 +3992,39 @@ app.delete('/api/mas/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting MAS:', error);
     res.status(500).json({ error: 'Failed to delete MAS' });
+  }
+});
+
+// Assign MAS to a user
+app.patch('/api/mas/:id/assign', verifyToken, async (req, res) => {
+  try {
+    const { assigned_to_id, due_date } = req.body;
+    const userId = req.user?.userId;
+
+    const result = await query(
+      `UPDATE material_approval_sheets SET
+        assigned_to_id = $1, assigned_by_id = $2, assigned_at = CURRENT_TIMESTAMP,
+        due_date = COALESCE($3, due_date),
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4 RETURNING *`,
+      [assigned_to_id, userId, due_date || null, req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'MAS not found' });
+
+    // Notify assignee
+    if (assigned_to_id) {
+      const mas = result.rows[0];
+      await query(
+        `INSERT INTO notifications (user_id, project_id, title, message, notification_type, entity_type, entity_id)
+         VALUES ($1, $2, $3, $4, 'todo', 'mas', $5)`,
+        [assigned_to_id, mas.project_id, 'MAS Assigned', `You have been assigned MAS: ${mas.material_name || mas.mas_ref_no}`, mas.id]
+      );
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error assigning MAS:', error);
+    res.status(500).json({ error: 'Failed to assign MAS' });
   }
 });
 
@@ -4603,11 +4885,28 @@ app.post('/api/electrical-load-calculations', verifyToken, async (req, res) => {
       remarks
     } = req.body;
 
+    // Resolve project-level guideline selection
+    let guidelineSelection = inputParameters?.guideline || null;
+    if (!guidelineSelection && projectId) {
+      const guidelineRes = await query(
+        `SELECT standard_value
+         FROM project_standard_selections
+         WHERE project_id = $1 AND standard_key = $2 AND is_active = true
+         LIMIT 1`,
+        [projectId, 'electrical_load_guideline']
+      );
+      guidelineSelection = guidelineRes.rows[0]?.standard_value || null;
+    }
+
+    if (guidelineSelection) {
+      inputParameters.guideline = guidelineSelection;
+    }
+
     // Initialize calculator
     const calculator = new ElectricalLoadCalculator({ query });
 
     // Perform calculation with regulatory framework support
-    const results = await calculator.calculate(inputParameters, selectedBuildings, projectId);
+    const results = await calculator.calculate(inputParameters, selectedBuildings, projectId, guidelineSelection);
 
     // Extract regulatory compliance data
     const regulatoryCompliance = results.regulatoryCompliance || {};
@@ -4714,7 +5013,8 @@ app.post('/api/electrical-load-calculations', verifyToken, async (req, res) => {
       total_loads: results.totals,
       regulatory_compliance: regulatoryCompliance,
       regulatory_framework: results.regulatoryFramework,
-      factors_used: results.factorsUsed || null
+      factors_used: results.factorsUsed || null,
+      factors_guideline: results.factorsGuideline || null
     });
   } catch (error) {
     console.error('Error creating electrical load calculation:', error);

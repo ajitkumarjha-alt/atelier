@@ -73,9 +73,9 @@ function StandardsTable({ data, columns, onEdit, onDelete, canEdit }) {
   );
 }
 
-export default function StandardsManagement() {
+export default function StandardsManagement({ embedded = false, readOnly = false }) {
   const { userLevel } = useUser();
-  const canEdit = ['L1', 'SUPER_ADMIN'].includes(userLevel);
+  const canEdit = !readOnly && ['L0', 'L1', 'SUPER_ADMIN'].includes(userLevel);
 
   const [activeTab, setActiveTab] = useState('calc-standards');
   const [data, setData] = useState([]);
@@ -323,10 +323,10 @@ export default function StandardsManagement() {
     );
   });
 
-  return (
-    <Layout>
+  const pageContent = (
+    <div>
       {/* Header */}
-      <div className="mb-6">
+      <div className={embedded ? 'mb-6' : 'mb-6'}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="heading-primary">Reference Standards</h1>
@@ -452,6 +452,16 @@ export default function StandardsManagement() {
           </div>
         </div>
       )}
+    </div>
+  );
+
+  if (embedded) {
+    return <div>{pageContent}</div>;
+  }
+
+  return (
+    <Layout>
+      {pageContent}
     </Layout>
   );
 }

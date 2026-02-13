@@ -147,7 +147,7 @@ export default function ProjectDetail() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
         <button
           onClick={() => navigate(`/design-calculations/${id}`)}
           className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
@@ -177,6 +177,18 @@ export default function ProjectDetail() {
           className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
         >
           MAS Management
+        </button>
+        <button
+          onClick={() => navigate(`/projects/${id}/rfc`)}
+          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
+        >
+          RFC Management
+        </button>
+        <button
+          onClick={() => navigate(`/projects/${id}/rfi`)}
+          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
+        >
+          RFI Management
         </button>
       </div>
 

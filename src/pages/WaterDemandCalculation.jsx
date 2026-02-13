@@ -22,6 +22,7 @@ export default function WaterDemandCalculation() {
   const [selectedPolicyId, setSelectedPolicyId] = useState(null);
   const [policyLoading, setPolicyLoading] = useState(true);
   const [availablePolicies, setAvailablePolicies] = useState([]);
+  const [projectPolicyId, setProjectPolicyId] = useState(null);
   const [WATER_RATES, setWATER_RATES] = useState({});
   const [OCCUPANCY_FACTORS, setOCCUPANCY_FACTORS] = useState({});
   const [CALC_PARAMS, setCALC_PARAMS] = useState({});
@@ -47,6 +48,7 @@ export default function WaterDemandCalculation() {
 
   useEffect(() => {
     fetchProjectData();
+    fetchProjectStandards();
     fetchPolicyData();
     fetchAvailablePolicies();
     fetchSiteAreasSummary();
@@ -94,22 +96,23 @@ export default function WaterDemandCalculation() {
   const fetchPolicyData = async (policyId = null) => {
     try {
       setPolicyLoading(true);
+      const resolvedPolicyId = policyId || projectPolicyId;
       
       // Get policy data in the legacy format for backward compatibility
-      const data = await getPolicyDataLegacyFormat(policyId);
+      const data = await getPolicyDataLegacyFormat(resolvedPolicyId);
       
       setWATER_RATES(data.WATER_RATES);
       setOCCUPANCY_FACTORS(data.OCCUPANCY_FACTORS);
       setCALC_PARAMS(data.CALC_PARAMS);
       
       // Get the policy info
-      if (policyId) {
+      if (resolvedPolicyId) {
         const userEmail = localStorage.getItem('userEmail');
-        const response = await apiFetch(`/api/policy-versions/${policyId}`, {
+        const response = await apiFetch(`/api/policy-versions/${resolvedPolicyId}`, {
           headers: { 'x-dev-user-email': userEmail }
         });
         const policyInfo = await response.json();
-        setSelectedPolicyId(policyId);
+        setSelectedPolicyId(resolvedPolicyId);
         setPolicyData(policyInfo);
       } else {
         const defaultPolicy = await getDefaultPolicy();
@@ -141,6 +144,21 @@ export default function WaterDemandCalculation() {
       setAvailablePolicies(usablePolicies);
     } catch (error) {
       console.error('Error loading available policies:', error);
+    }
+  };
+
+  const fetchProjectStandards = async () => {
+    try {
+      const response = await apiFetch(`/api/projects/${projectId}/standard-selections`);
+      if (!response.ok) return;
+      const selections = await response.json();
+      const policySelection = selections.find(s => s.standard_key === 'phe_policy_version');
+      if (policySelection?.standard_ref_id) {
+        setProjectPolicyId(policySelection.standard_ref_id);
+        setSelectedPolicyId(policySelection.standard_ref_id);
+      }
+    } catch (error) {
+      console.error('Error loading project standards:', error);
     }
   };
 

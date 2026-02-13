@@ -1,11 +1,15 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Upload, X } from 'lucide-react';
 import Layout from '../components/Layout';
+import { apiFetchJson } from '../lib/api';
 
 export default function RFICreate() {
   const navigate = useNavigate();
+  const { projectId: urlProjectId } = useParams();
+  const isProjectScoped = Boolean(urlProjectId);
   const [currentPage, setCurrentPage] = useState(1);
+  const [projectName, setProjectName] = useState('');
   
   // Form state
   const [formData, setFormData] = useState({
@@ -51,6 +55,20 @@ export default function RFICreate() {
   });
 
   const [attachmentFiles, setAttachmentFiles] = useState([]);
+
+  // Fetch project name when project-scoped
+  useEffect(() => {
+    if (isProjectScoped) {
+      apiFetchJson('/api/projects').then(data => {
+        const list = Array.isArray(data) ? data : data.projects || [];
+        const p = list.find(pr => String(pr.id) === String(urlProjectId));
+        if (p) {
+          setProjectName(p.name);
+          setFormData(prev => ({ ...prev, projectName: p.name }));
+        }
+      }).catch(() => {});
+    }
+  }, [isProjectScoped, urlProjectId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -106,7 +124,7 @@ export default function RFICreate() {
           'x-dev-user-email': localStorage.getItem('devUserEmail') || 'cm@lodhagroup.com',
         },
         body: JSON.stringify({
-          projectId: 1, // In production, get from project selection
+          projectId: urlProjectId || 1,
           projectName: formData.projectName,
           recordNo: formData.recordNo,
           revision: formData.revision,
@@ -125,7 +143,11 @@ export default function RFICreate() {
       if (response.ok) {
         const data = await response.json();
         alert(`RFI created successfully! RFI Ref: ${data.rfi_ref_no}`);
-        navigate('/cm-dashboard');
+        if (isProjectScoped) {
+          navigate(`/projects/${urlProjectId}/rfi`);
+        } else {
+          navigate('/cm-dashboard');
+        }
       } else {
         const error = await response.json();
         alert(`Failed to create RFI: ${error.error}`);
@@ -141,11 +163,11 @@ export default function RFICreate() {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => navigate('/cm-dashboard')}
+          onClick={() => isProjectScoped ? navigate(`/projects/${urlProjectId}/rfi`) : navigate('/cm-dashboard')}
           className="flex items-center gap-2 text-lodha-gold hover:text-lodha-black transition-colors mb-4"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span className="font-jost font-semibold">Back to Dashboard</span>
+          <span className="font-jost font-semibold">{isProjectScoped ? 'Back to RFIs' : 'Back to Dashboard'}</span>
         </button>
         
         <div className="flex items-center justify-between">

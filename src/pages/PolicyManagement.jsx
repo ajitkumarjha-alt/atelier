@@ -1,32 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import PolicyCreationWizard from '../components/PolicyCreationWizard';
 import { apiFetch } from '../lib/api';
+import { useUser } from '../lib/UserContext';
 import { 
   FileText, Plus, Check, Archive, Eye, Edit, Upload, 
-  Database, TrendingUp, Settings, AlertCircle, CheckCircle2
+  Database, TrendingUp, Settings, AlertCircle, CheckCircle2, File
 } from 'lucide-react';
 import { showSuccess, showError, showLoading, dismissToast } from '../utils/toast';
 
-export default function PolicyManagement() {
+export default function PolicyManagement({ embedded = false, readOnly = false }) {
   const navigate = useNavigate();
+  const { userLevel } = useUser();
   const [policies, setPolicies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPolicy, setSelectedPolicy] = useState(null);
   const [activeTab, setActiveTab] = useState('list'); // list, view, edit, upload
-  const [userLevel, setUserLevel] = useState(null);
   const [showCreationWizard, setShowCreationWizard] = useState(false);
+
+  // Upload state
+  const fileInputRef = useRef(null);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     fetchPolicies();
-    checkUserLevel();
   }, []);
-
-  const checkUserLevel = () => {
-    const level = localStorage.getItem('userLevel');
-    setUserLevel(level);
-  };
 
   const fetchPolicies = async () => {
     try {
@@ -145,20 +146,27 @@ export default function PolicyManagement() {
   };
 
   if (loading) {
+    const loadingContent = (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lodha-gold mx-auto mb-4"></div>
+          <p className="text-lodha-grey">Loading policies...</p>
+        </div>
+      </div>
+    );
+
+    if (embedded) {
+      return loadingContent;
+    }
+
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lodha-gold mx-auto mb-4"></div>
-            <p className="text-lodha-grey">Loading policies...</p>
-          </div>
-        </div>
+        {loadingContent}
       </Layout>
     );
   }
 
-  return (
-    <Layout>
+  const pageContent = (
       <div className="w-full max-w-full overflow-x-hidden">
         {/* Header */}
         <div className="mb-6">
@@ -169,7 +177,7 @@ export default function PolicyManagement() {
                 Manage calculation parameters, water consumption rates, and occupancy factors
               </p>
             </div>
-            {['SUPER_ADMIN', 'L0', 'L1', 'L2'].includes(userLevel) && (
+            {['SUPER_ADMIN', 'L0', 'L1', 'L2'].includes(userLevel) && !readOnly && (
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={() => setShowCreationWizard(true)}
@@ -470,17 +478,103 @@ export default function PolicyManagement() {
           <div className="bg-white rounded-lg shadow p-4 md:p-6 w-full">
             <h2 className="text-lg md:text-xl font-semibold mb-3 md:mb-4">Upload New Policy Document</h2>
             <p className="text-sm md:text-base text-lodha-grey mb-4 md:mb-6">
-              Upload a policy PDF document. Our AI will extract water consumption rates, occupancy factors, and calculation parameters for your review.
+              Upload a policy PDF document to store it as a reference alongside your policy versions.
             </p>
-            <div className="border-2 border-dashed border-lodha-steel rounded-lg p-6 md:p-8 text-center">
-              <Upload className="w-10 h-10 md:w-12 md:h-12 text-lodha-steel mx-auto mb-3 md:mb-4" />
-              <p className="text-sm md:text-base text-lodha-grey mb-2">Drag and drop a PDF file here, or click to browse</p>
-              <p className="text-xs md:text-sm text-lodha-grey/70">Coming soon: AI-powered policy extraction</p>
+
+            {/* Drop zone */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                const file = e.dataTransfer.files[0];
+                if (file && file.type === 'application/pdf') {
+                  setUploadFile(file);
+                } else {
+                  showError('Please upload a PDF file');
+                }
+              }}
+              className={`border-2 border-dashed rounded-lg p-6 md:p-8 text-center cursor-pointer transition-colors ${
+                isDragging ? 'border-lodha-gold bg-lodha-gold/5' : uploadFile ? 'border-green-400 bg-green-50' : 'border-lodha-steel hover:border-lodha-gold/60'
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) setUploadFile(file);
+                }}
+              />
+
+              {uploadFile ? (
+                <div className="flex flex-col items-center gap-2">
+                  <File className="w-10 h-10 text-green-600" />
+                  <p className="text-sm font-medium text-lodha-black">{uploadFile.name}</p>
+                  <p className="text-xs text-lodha-grey">{(uploadFile.size / 1024).toFixed(1)} KB</p>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setUploadFile(null); }}
+                    className="text-xs text-red-500 hover:underline mt-1"
+                  >
+                    Remove file
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Upload className="w-10 h-10 md:w-12 md:h-12 text-lodha-steel mx-auto mb-3 md:mb-4" />
+                  <p className="text-sm md:text-base text-lodha-grey mb-1">Drag and drop a PDF file here, or click to browse</p>
+                  <p className="text-xs text-lodha-grey/60">Accepted format: PDF</p>
+                </>
+              )}
             </div>
+
+            {/* Upload button */}
+            {uploadFile && (
+              <div className="mt-4 flex justify-end">
+                <button
+                  disabled={uploading}
+                  onClick={async () => {
+                    setUploading(true);
+                    const toastId = showLoading('Uploading policy document...');
+                    try {
+                      const formData = new FormData();
+                      formData.append('files', uploadFile);
+                      formData.append('folder', 'policy-documents');
+
+                      const userEmail = localStorage.getItem('devUserEmail');
+                      const res = await fetch('/api/upload', {
+                        method: 'POST',
+                        headers: userEmail ? { 'x-dev-user-email': userEmail } : {},
+                        body: formData
+                      });
+
+                      if (!res.ok) throw new Error('Upload failed');
+                      const data = await res.json();
+                      dismissToast(toastId);
+                      showSuccess('Policy document uploaded successfully');
+                      setUploadFile(null);
+                      setActiveTab('list');
+                    } catch (err) {
+                      dismissToast(toastId);
+                      showError(err.message || 'Failed to upload document');
+                    } finally {
+                      setUploading(false);
+                    }
+                  }}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-lodha-gold text-white rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50"
+                >
+                  <Upload className="w-4 h-4" />
+                  {uploading ? 'Uploading...' : 'Upload Document'}
+                </button>
+              </div>
+            )}
           </div>
         )}
-      </div>
-
+      
       {/* Policy Creation Wizard Modal */}
       {showCreationWizard && (
         <PolicyCreationWizard
@@ -491,6 +585,16 @@ export default function PolicyManagement() {
           }}
         />
       )}
+    </div>
+  );
+
+  if (embedded) {
+    return pageContent;
+  }
+
+  return (
+    <Layout>
+      {pageContent}
     </Layout>
   );
 }

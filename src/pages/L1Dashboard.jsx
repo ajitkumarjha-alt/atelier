@@ -23,7 +23,7 @@ export default function L1Dashboard() {
       fetchUserLevel(currentUser.email);
     }
     // Fetch extra stats
-    apiFetchJson('/api/rfc/stats').then(setRfcStats).catch(() => {});
+    apiFetchJson('/api/rfc/summary').then(setRfcStats).catch(() => {});
     apiFetchJson('/api/tasks/stats').then(setTaskStats).catch(() => {});
   }, []);
 
@@ -74,7 +74,7 @@ export default function L1Dashboard() {
           <p className="text-sm font-jost font-semibold text-lodha-grey">MAS Approvals</p>
           <p className="text-xs text-lodha-grey/60 font-jost">Review materials</p>
         </button>
-        <button onClick={() => navigate('/standards-management')} className="bg-white border border-lodha-steel rounded-xl p-4 hover:shadow-md transition-all text-left">
+        <button onClick={() => navigate('/standards')} className="bg-white border border-lodha-steel rounded-xl p-4 hover:shadow-md transition-all text-left">
           <Database className="w-5 h-5 text-lodha-grey mb-2" />
           <p className="text-sm font-jost font-semibold text-lodha-grey">Standards</p>
           <p className="text-xs text-lodha-grey/60 font-jost">Manage policies</p>

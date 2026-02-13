@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Menu, X, LogOut, LayoutDashboard, 
-  Building2, FileText, AlertCircle, Settings, User, Users, FolderKanban, Database,
-  Calendar, ListChecks, Send, BookOpen
+  Building2, FileText, User, Users, FolderKanban,
+  ListChecks, BookOpen, ClipboardCheck
 } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { createOrUpdateUser } from '../services/userService';
@@ -37,43 +37,34 @@ export default function Layout({ children }) {
 
     // Dashboard - everyone gets their appropriate dashboard
     items.push({ name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard });
+    items.push({ name: 'My Assignments', path: '/my-assignments', icon: ClipboardCheck });
 
     // L0 specific
     if (userLevel === 'L0') {
       items.push({ name: 'L0 Dashboard', path: '/l0-dashboard', icon: FolderKanban });
-      items.push({ name: 'RFC Management', path: '/rfc-management', icon: Send });
       items.push({ name: 'Task Overview', path: '/task-management', icon: ListChecks });
-      items.push({ name: 'Reference Standards', path: '/standards-management', icon: BookOpen });
-      items.push({ name: 'Policy Management', path: '/policy-management', icon: Database });
+      items.push({ name: 'Standards', path: '/standards', icon: BookOpen });
     }
 
     // L1 specific
     if (userLevel === 'L1') {
       items.push({ name: 'Project Management', path: '/l1-dashboard', icon: Building2 });
       items.push({ name: 'Create Project', path: '/project-input', icon: FolderKanban });
-      items.push({ name: 'RFC Management', path: '/rfc-management', icon: Send });
       items.push({ name: 'Task Management', path: '/task-management', icon: ListChecks });
-      items.push({ name: 'Reference Standards', path: '/standards-management', icon: BookOpen });
-      items.push({ name: 'Policy Management', path: '/policy-management', icon: Database });
+      items.push({ name: 'Standards', path: '/standards', icon: BookOpen });
     }
 
     // L2, L3, L4 - Execution users
     if (['L2', 'L3', 'L4'].includes(userLevel)) {
       items.push({ name: 'MAS Management', path: '/mas-list', icon: FileText });
-      items.push({ name: 'RFI Management', path: '/cm-dashboard', icon: AlertCircle });
-      items.push({ name: 'RFC Management', path: '/rfc-management', icon: Send });
       items.push({ name: 'Task Management', path: '/task-management', icon: ListChecks });
+      items.push({ name: 'Standards', path: '/standards', icon: BookOpen });
     }
 
-    // L2 gets Policy Management (can create/test but not activate)
-    if (userLevel === 'L2') {
-      items.push({ name: 'Policy Management', path: '/policy-management', icon: Database });
-    }
+    // L2 gets standards via execution user list above
 
     // CM specific
-    if (userLevel === 'CM') {
-      items.push({ name: 'RFI Management', path: '/cm-dashboard', icon: AlertCircle });
-    }
+    // CM users access RFI through project detail page
 
     // VENDOR specific
     if (userLevel === 'VENDOR') {
@@ -86,11 +77,9 @@ export default function Layout({ children }) {
         { name: 'L0 Dashboard', path: '/l0-dashboard', icon: FolderKanban },
         { name: 'L1 Dashboard', path: '/l1-dashboard', icon: Building2 },
         { name: 'L2 Dashboard', path: '/l2-dashboard', icon: LayoutDashboard },
-        { name: 'RFC Management', path: '/rfc-management', icon: Send },
+
         { name: 'Task Management', path: '/task-management', icon: ListChecks },
-        { name: 'Reference Standards', path: '/standards-management', icon: BookOpen },
-        { name: 'Policy Management', path: '/policy-management', icon: Database },
-        { name: 'System Config', path: '/project-standards', icon: Settings },
+        { name: 'Standards', path: '/standards', icon: BookOpen },
         { name: 'User Management', path: '/super-admin-dashboard', icon: Users }
       );
     }

@@ -217,6 +217,7 @@ export default function MASPage() {
                   <th className="text-left py-4 px-6 text-lodha-grey font-garamond font-bold whitespace-nowrap">L2 Status</th>
                   <th className="text-left py-4 px-6 text-lodha-grey font-garamond font-bold whitespace-nowrap">L1 Status</th>
                   <th className="text-left py-4 px-6 text-lodha-grey font-garamond font-bold whitespace-nowrap">Final Status</th>
+                  <th className="text-left py-4 px-6 text-lodha-grey font-garamond font-bold whitespace-nowrap">Assigned To</th>
                   <th className="text-left py-4 px-6 text-lodha-grey font-garamond font-bold whitespace-nowrap">Date</th>
                 </tr>
               </thead>
@@ -274,6 +275,13 @@ export default function MASPage() {
                         {item.final_status === 'Pending' && <Clock className="w-3 h-3" />}
                         {item.final_status}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-lodha-grey font-jost text-sm">
+                      {item.assigned_to_name ? (
+                        <span className="text-lodha-gold font-medium">{item.assigned_to_name}</span>
+                      ) : (
+                        <span className="text-lodha-grey/40">—</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-lodha-grey/70 font-jost text-sm">
                       {new Date(item.created_at).toLocaleDateString('en-US', { 

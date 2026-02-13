@@ -12,20 +12,39 @@ class ElectricalLoadCalculator {
     this.db = db;
     this.factors = null; // Cache for electrical load factors
     this.regulations = null; // Cache for regulatory framework data
+    this.activeGuideline = null; // Cache current guideline
   }
 
   /**
    * Load electrical load factors from database
    * Factors are configurable by L0 users
    */
-  async loadFactors() {
-    if (this.factors) {
+  async loadFactors(guideline = null) {
+    if (this.factors && this.activeGuideline === guideline) {
       return this.factors; // Return cached factors
     }
 
-    const result = await this.db.query(
-      'SELECT * FROM electrical_load_factors WHERE is_active = true ORDER BY category, sub_category'
-    );
+    let resolvedGuideline = guideline;
+    if (!resolvedGuideline) {
+      const guideRes = await this.db.query(
+        `SELECT DISTINCT guideline
+         FROM electrical_load_factors
+         WHERE is_active = true
+         ORDER BY (guideline = 'MSEDCL 2016') DESC, guideline
+         LIMIT 1`
+      );
+      resolvedGuideline = guideRes.rows[0]?.guideline || null;
+    }
+
+    let queryText = 'SELECT * FROM electrical_load_factors WHERE is_active = true';
+    const params = [];
+    if (resolvedGuideline) {
+      queryText += ' AND guideline = $1';
+      params.push(resolvedGuideline);
+    }
+    queryText += ' ORDER BY category, sub_category, description';
+
+    const result = await this.db.query(queryText, params);
 
     // Organize factors by category and sub_category for easy lookup
     this.factors = {};
@@ -40,6 +59,7 @@ class ElectricalLoadCalculator {
       };
     }
 
+    this.activeGuideline = resolvedGuideline;
     return this.factors;
   }
 
@@ -400,13 +420,13 @@ class ElectricalLoadCalculator {
    * @param {number} projectId - Project ID for loading regulations
    * @returns {Object} - Complete calculation results
    */
-  async calculate(inputs, selectedBuildings, projectId = null) {
+  async calculate(inputs, selectedBuildings, projectId = null, guideline = null) {
     try {
       // Load regulations and factors from database
       if (projectId) {
         await this.loadRegulations(projectId);
       }
-      await this.loadFactors();
+      await this.loadFactors(guideline);
 
       // Validate inputs
       this.validateInputs(inputs);
@@ -512,7 +532,8 @@ class ElectricalLoadCalculator {
           regulatoryCompliance: regulatoryCompliance,
           regulatoryFramework: this.regulations?.primaryFramework || null,
           areaType: areaType,
-          factorsUsed: this.factors
+          factorsUsed: this.factors,
+          factorsGuideline: this.activeGuideline
         };
       }
 
@@ -540,7 +561,8 @@ class ElectricalLoadCalculator {
         regulatoryCompliance: regulatoryCompliance,
         regulatoryFramework: this.regulations?.primaryFramework || null,
         areaType: areaType,
-        factorsUsed: this.factors
+        factorsUsed: this.factors,
+        factorsGuideline: this.activeGuideline
       };
     } catch (error) {
       console.error('Calculation error:', error);

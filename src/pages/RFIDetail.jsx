@@ -6,8 +6,11 @@ import { apiFetch } from '../lib/api';
 import { auth } from '../lib/firebase';
 
 export default function RFIDetail() {
-  const { id } = useParams();
+  const { id, projectId: urlProjectId } = useParams();
   const navigate = useNavigate();
+  const isProjectScoped = Boolean(urlProjectId);
+  const backPath = isProjectScoped ? `/projects/${urlProjectId}/rfi` : '/cm-dashboard';
+  const backLabel = isProjectScoped ? 'Back to RFIs' : 'Back to CM Dashboard';
   const [rfi, setRfi] = useState(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
@@ -24,6 +27,13 @@ export default function RFIDetail() {
   const [showConsultantReferral, setShowConsultantReferral] = useState(false);
   const [selectedConsultantId, setSelectedConsultantId] = useState('');
   const [submittingReferral, setSubmittingReferral] = useState(false);
+
+  // Assignment State
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [assignUserId, setAssignUserId] = useState('');
+  const [assignDueDate, setAssignDueDate] = useState('');
+  const [assignPriority, setAssignPriority] = useState('normal');
+  const [submittingAssign, setSubmittingAssign] = useState(false);
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -81,6 +91,50 @@ export default function RFIDetail() {
       }
     } catch (error) {
       console.error('Error fetching consultants:', error);
+    }
+  };
+
+  // Fetch team members when RFI loads
+  useEffect(() => {
+    if (rfi?.project_id) {
+      apiFetch(`/api/projects/${rfi.project_id}/team`)
+        .then(r => r.ok ? r.json() : [])
+        .then(data => setTeamMembers(Array.isArray(data) ? data : []))
+        .catch(() => setTeamMembers([]));
+      setAssignUserId(rfi.assigned_to_id || '');
+      setAssignDueDate(rfi.due_date ? rfi.due_date.split('T')[0] : '');
+      setAssignPriority(rfi.priority || 'normal');
+    }
+  }, [rfi?.project_id, rfi?.assigned_to_id]);
+
+  const handleAssign = async () => {
+    if (!assignUserId) {
+      alert('Please select a user to assign');
+      return;
+    }
+    try {
+      setSubmittingAssign(true);
+      const response = await apiFetch(`/api/rfi/${id}/assign`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assigned_to_id: parseInt(assignUserId),
+          due_date: assignDueDate || null,
+          priority: assignPriority,
+        }),
+      });
+      if (response.ok) {
+        alert('RFI assigned successfully');
+        fetchRFIDetail();
+      } else {
+        const err = await response.json();
+        alert(`Error: ${err.error || 'Failed to assign'}`);
+      }
+    } catch (error) {
+      console.error('Error assigning RFI:', error);
+      alert('Error assigning RFI');
+    } finally {
+      setSubmittingAssign(false);
     }
   };
 
@@ -208,10 +262,10 @@ export default function RFIDetail() {
         <div className="text-center py-12">
           <p className="text-lodha-grey">RFI not found</p>
           <button
-            onClick={() => navigate('/cm-dashboard')}
+            onClick={() => navigate(backPath)}
             className="mt-4 text-lodha-gold hover:text-lodha-gold/80"
           >
-            Back to CM Dashboard
+            {backLabel}
           </button>
         </div>
       </Layout>
@@ -226,11 +280,11 @@ export default function RFIDetail() {
       {/* Header */}
       <div className="mb-8">
         <button
-          onClick={() => navigate('/cm-dashboard')}
+          onClick={() => navigate(backPath)}
           className="flex items-center text-lodha-grey hover:text-lodha-gold mb-4 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to CM Dashboard
+          {backLabel}
         </button>
         <div className="flex items-center justify-between">
           <div>
@@ -406,6 +460,60 @@ export default function RFIDetail() {
                       Cancel
                     </button>
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Assignment Section */}
+          {['L0', 'L1', 'L2', 'SUPER_ADMIN'].includes(userLevel) && (
+            <div className="section-card p-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-lodha-gold" /> Assignment
+              </h3>
+              {rfi?.assigned_to_name ? (
+                <div className="bg-lodha-sand/50 rounded-lg p-4 mb-4">
+                  <p className="text-sm font-semibold text-lodha-grey">{rfi.assigned_to_name}</p>
+                  <p className="text-xs text-lodha-grey/60">
+                    Assigned by {rfi.assigned_by_name || 'Unknown'}
+                    {rfi.due_date && ` • Due: ${new Date(rfi.due_date).toLocaleDateString()}`}
+                    {rfi.priority && ` • Priority: ${rfi.priority}`}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-lodha-grey/60 mb-3">Not yet assigned to anyone</p>
+              )}
+              {teamMembers.length > 0 && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-lodha-grey/70 mb-1">Assign to</label>
+                      <select value={assignUserId} onChange={(e) => setAssignUserId(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-lodha-steel rounded-lg text-sm">
+                        <option value="">Select user</option>
+                        {teamMembers.map(m => <option key={m.user_id} value={m.user_id}>{m.full_name} ({m.user_level})</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-lodha-grey/70 mb-1">Due date</label>
+                      <input type="date" value={assignDueDate} onChange={(e) => setAssignDueDate(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-lodha-steel rounded-lg text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-lodha-grey/70 mb-1">Priority</label>
+                      <select value={assignPriority} onChange={(e) => setAssignPriority(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-lodha-steel rounded-lg text-sm">
+                        <option value="low">Low</option>
+                        <option value="normal">Normal</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button onClick={handleAssign} disabled={submittingAssign || !assignUserId}
+                    className="btn-primary disabled:opacity-50">
+                    {submittingAssign ? 'Assigning...' : 'Assign RFI'}
+                  </button>
                 </div>
               )}
             </div>

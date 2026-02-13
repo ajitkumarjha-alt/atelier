@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS projects (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
+    state VARCHAR(100),
     status VARCHAR(50) NOT NULL DEFAULT 'Concept',
     lifecycle_stage VARCHAR(50) NOT NULL DEFAULT 'Concept',
     completion_percentage INTEGER NOT NULL DEFAULT 0,
@@ -87,6 +88,25 @@ CREATE TABLE IF NOT EXISTS project_standards_documents (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Create project_standard_selections table for per-project overrides
+CREATE TABLE IF NOT EXISTS project_standard_selections (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    standard_key VARCHAR(100) NOT NULL,
+    standard_value VARCHAR(255),
+    standard_ref_id INTEGER,
+    notes TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by VARCHAR(255),
+    updated_by VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(project_id, standard_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_standard_selections_project_id
+    ON project_standard_selections(project_id);
 
 -- Create buildings table
 CREATE TABLE IF NOT EXISTS buildings (

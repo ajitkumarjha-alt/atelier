@@ -57,6 +57,7 @@ export default function ElectricalLoadCalculation() {
   const [saving, setSaving] = useState(false);
   const [project, setProject] = useState(null);
   const [buildings, setBuildings] = useState([]);
+  const [selectedGuideline, setSelectedGuideline] = useState(null);
   
   // State for calculation
   const [selectedBuildings, setSelectedBuildings] = useState([]);
@@ -64,6 +65,7 @@ export default function ElectricalLoadCalculation() {
     // Regulatory Framework Settings
     areaType: 'URBAN',
     totalCarpetArea: 0,
+    guideline: '',
     
     // Project Level
     projectCategory: 'GOLD 2',
@@ -140,16 +142,24 @@ export default function ElectricalLoadCalculation() {
 
   const fetchProjectData = async () => {
     try {
-      const [projectRes, buildingsRes] = await Promise.all([
+      const [projectRes, buildingsRes, standardsRes] = await Promise.all([
         apiFetch(`/api/projects/${projectId}`),
-        apiFetch(`/api/projects/${projectId}/buildings`)
+        apiFetch(`/api/projects/${projectId}/buildings`),
+        apiFetch(`/api/projects/${projectId}/standard-selections`)
       ]);
       const projectData = await projectRes.json();
       const buildingsData = await buildingsRes.json();
+      const standardsData = standardsRes.ok ? await standardsRes.json() : [];
+      const guidelineSelection = standardsData.find(s => s.standard_key === 'electrical_load_guideline');
+      const guidelineValue = guidelineSelection?.standard_value || null;
       
       setProject(projectData);
       if (projectData?.project_category || projectData?.projectCategory) {
         handleInputChange('projectCategory', projectData.project_category || projectData.projectCategory);
+      }
+      if (guidelineValue) {
+        setSelectedGuideline(guidelineValue);
+        handleInputChange('guideline', guidelineValue);
       }
       setBuildings(Array.isArray(buildingsData) ? buildingsData : []);
     } catch (error) {
@@ -164,6 +174,9 @@ export default function ElectricalLoadCalculation() {
       const calc = await response.json();
       setSelectedBuildings(calc.selected_buildings);
       setInputParameters(calc.input_parameters);
+      if (calc.input_parameters?.guideline) {
+        setSelectedGuideline(calc.input_parameters.guideline);
+      }
       setCalculationResults({
         buildingCALoads: calc.building_ca_loads,
         flatLoads: calc.flat_loads || null,
@@ -249,10 +262,6 @@ export default function ElectricalLoadCalculation() {
         throw new Error('Invalid calculation results received from server');
       }
       
-      // Debug: Log building data to check twin status
-      console.log('Selected buildings:', result.selected_buildings);
-      console.log('Building breakdowns:', result.building_breakdowns);
-      
       setCalculationResults({
         buildingCALoads: result.building_ca_loads,
         flatLoads: result.flat_loads || null,
@@ -263,7 +272,8 @@ export default function ElectricalLoadCalculation() {
         regulatory_compliance: result.regulatory_compliance || result.calculation_metadata,
         regulatory_framework: result.regulatory_framework,
         areaType: result.area_type || inputParameters.areaType,
-        factors_used: result.factors_used || null
+        factors_used: result.factors_used || null,
+        factors_guideline: result.factors_guideline || inputParameters.guideline || selectedGuideline
       });
       setCurrentStep(3);
     } catch (error) {
@@ -416,6 +426,7 @@ export default function ElectricalLoadCalculation() {
         {currentStep === 3 && calculationResults && (
           <ResultsDisplay 
             results={calculationResults}
+            factorsGuideline={calculationResults?.factors_guideline || inputParameters.guideline || selectedGuideline}
             calculationName={calculationName}
             setCalculationName={setCalculationName}
             status={status}
@@ -551,6 +562,8 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
     </div>
   );
 
+  const appliedGuideline = inputParameters.guideline || selectedGuideline || 'MSEDCL 2016';
+
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-6">
@@ -609,8 +622,19 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
       </CollapsibleSection>
 
       {/* Regulatory Settings */}
-      <CollapsibleSection title="Regulatory Settings (MSEDCL Compliance)" section="regulatory" icon={FileText}>
+      <CollapsibleSection title="Regulatory Settings" section="regulatory" icon={FileText}>
         <div className="grid grid-cols-2 gap-4">
+          <FormField label="Guideline">
+            <input
+              type="text"
+              value={appliedGuideline}
+              readOnly
+              className="w-full px-3 py-2 border border-lodha-steel rounded-lg bg-lodha-sand/40"
+            />
+            <p className="text-xs text-lodha-grey/70 mt-1">
+              Managed in Standards. Project-specific selections override defaults.
+            </p>
+          </FormField>
           <FormField 
             label="Area Type" 
             hint="Select the area classification per MSEDCL guidelines. Determines DTC thresholds and requirements."
@@ -654,7 +678,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
         </div>
 
         <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm font-semibold text-blue-900 mb-2">MSEDCL 2016 Guidelines:</p>
+          <p className="text-sm font-semibold text-blue-900 mb-2">{appliedGuideline} Guidelines:</p>
           <ul className="text-xs text-blue-800 space-y-1">
             <li>• <strong>Residential:</strong> Minimum 75 W/sq.m carpet area</li>
             <li>• <strong>Commercial with AC:</strong> Minimum 200 W/sq.m carpet area</li>
@@ -1075,9 +1099,10 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
 }
 
 // Results Display Component  
-function ResultsDisplay({ results, calculationName, setCalculationName, status, setStatus, remarks, setRemarks, onSave, onBack, saving }) {
+function ResultsDisplay({ results, factorsGuideline, calculationName, setCalculationName, status, setStatus, remarks, setRemarks, onSave, onBack, saving }) {
   const [regulatoryOpen, setRegulatoryOpen] = useState(false);
   const [projectSummaryOpen, setProjectSummaryOpen] = useState(false);
+  const appliedGuideline = factorsGuideline || results?.factors_guideline || 'MSEDCL 2016';
   
   if (!results || !results.totals) {
     return (
@@ -1151,7 +1176,7 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
         </div>
       </div>
 
-      {/* Factors Used in Calculation (MSEDCL) */}
+      {/* Factors Used in Calculation */}
       {(results.factors_used || results.regulatory_compliance) && (
         <div className="bg-white rounded-lg shadow-lg border-2 border-blue-500">
           <button
@@ -1161,13 +1186,13 @@ function ResultsDisplay({ results, calculationName, setCalculationName, status, 
             <div>
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <FileText className="w-6 h-6" />
-                Calculation Factors — MSEDCL NSC Circular 35530
+                Calculation Factors — {appliedGuideline}
               </h3>
               <p className="text-sm text-blue-100 mt-1">Demand & diversity factors used in this calculation</p>
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => navigate('/project-standards')}
+                onClick={() => navigate('/standards')}
                 className="flex items-center gap-1 px-3 py-1 text-xs bg-white/20 hover:bg-white/30 text-white rounded transition"
                 title="Manage calculation factors (L0 only)"
               >

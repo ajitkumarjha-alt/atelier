@@ -16,7 +16,7 @@ export default function ProjectInputEnhanced() {
 
   // ===== PROJECT STATE =====
   const [projectData, setProjectData] = useState({
-    name: '', address: '', latitude: '', longitude: '', google_place_id: '',
+    name: '', address: '', state: '', latitude: '', longitude: '', google_place_id: '',
     projectCategory: '', assignedLeadId: null, start_date: '', target_completion_date: '',
     buildings: [], societies: [],
   });
@@ -77,6 +77,7 @@ export default function ProjectInputEnhanced() {
             const proj = await projRes.json();
             setProjectData({
               name: proj.name || '', address: proj.address || proj.description || '',
+              state: proj.state || '',
               latitude: proj.latitude || '', longitude: proj.longitude || '',
               google_place_id: proj.google_place_id || '',
               projectCategory: proj.lifecycle_stage || '',
@@ -365,6 +366,7 @@ export default function ProjectInputEnhanced() {
         name: projectData.name,
         description: projectData.address,
         address: projectData.address,
+        state: projectData.state,
         latitude: projectData.latitude,
         longitude: projectData.longitude,
         google_place_id: projectData.google_place_id,
@@ -580,6 +582,13 @@ export default function ProjectInputEnhanced() {
                   <MapPin className="w-4 h-4" /> Map
                 </button>
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-lodha-grey mb-1">State</label>
+              <input type="text" value={projectData.state}
+                onChange={(e) => updateProject('state', e.target.value)}
+                className="w-full px-3 py-2 border border-lodha-steel/40 rounded-lg focus:ring-2 focus:ring-lodha-gold/30"
+                placeholder="e.g., Maharashtra" />
             </div>
             {showMap && (
               <div className="md:col-span-2 h-64 rounded-lg overflow-hidden border border-lodha-steel/30">

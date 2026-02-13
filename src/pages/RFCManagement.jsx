@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   FileText, Clock, CheckCircle2, XCircle, AlertTriangle, Send,
   Filter, Search, ArrowLeft, MessageSquare, User, Calendar,
-  Building2, ChevronDown, ChevronUp, BarChart3, Eye
+  Building2, ChevronDown, ChevronUp, BarChart3, Eye, UserPlus
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import { apiFetchJson } from '../lib/api';
@@ -39,9 +39,12 @@ export default function RFCManagement() {
   const [showDetailModal, setShowDetailModal] = useState(null);
   const [reviewRemarks, setReviewRemarks] = useState('');
   const [projects, setProjects] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [assignUserId, setAssignUserId] = useState('');
+  const [assignDueDate, setAssignDueDate] = useState('');
   const [newRFC, setNewRFC] = useState({
     project_id: '', title: '', description: '', impact_level: 'medium',
-    discipline: '', cost_impact: '', schedule_impact: '',
+    discipline: '', cost_impact: '', schedule_impact: '', assigned_to_id: '', due_date: '',
   });
 
   const fetchRFCs = useCallback(async () => {
@@ -77,6 +80,26 @@ export default function RFCManagement() {
 
   useEffect(() => { fetchRFCs(); fetchStats(); fetchProjects(); }, [fetchRFCs, fetchStats, fetchProjects]);
 
+  // Fetch team members when project changes (for create modal)
+  useEffect(() => {
+    if (newRFC.project_id) {
+      apiFetchJson(`/api/projects/${newRFC.project_id}/team`)
+        .then(data => setTeamMembers(Array.isArray(data) ? data : []))
+        .catch(() => setTeamMembers([]));
+    }
+  }, [newRFC.project_id]);
+
+  // Fetch team members when detail modal opens
+  useEffect(() => {
+    if (showDetailModal?.project_id) {
+      apiFetchJson(`/api/projects/${showDetailModal.project_id}/team`)
+        .then(data => setTeamMembers(Array.isArray(data) ? data : []))
+        .catch(() => setTeamMembers([]));
+      setAssignUserId(showDetailModal.assigned_to_id || '');
+      setAssignDueDate(showDetailModal.due_date ? showDetailModal.due_date.split('T')[0] : '');
+    }
+  }, [showDetailModal]);
+
   const handleCreate = async () => {
     if (!newRFC.title || !newRFC.project_id) {
       toast.error('Title and project are required');
@@ -89,7 +112,7 @@ export default function RFCManagement() {
       });
       toast.success('RFC submitted successfully');
       setShowCreateModal(false);
-      setNewRFC({ project_id: '', title: '', description: '', impact_level: 'medium', discipline: '', cost_impact: '', schedule_impact: '' });
+      setNewRFC({ project_id: '', title: '', description: '', impact_level: 'medium', discipline: '', cost_impact: '', schedule_impact: '', assigned_to_id: '', due_date: '' });
       fetchRFCs();
       fetchStats();
     } catch (err) {
@@ -126,6 +149,24 @@ export default function RFCManagement() {
       fetchStats();
     } catch (err) {
       toast.error(err.message || 'Failed to submit decision');
+    }
+  };
+
+  const handleAssign = async (rfcId) => {
+    if (!assignUserId) {
+      toast.error('Please select a user to assign');
+      return;
+    }
+    try {
+      await apiFetchJson(`/api/rfc/${rfcId}/assign`, {
+        method: 'PATCH',
+        body: JSON.stringify({ assigned_to_id: parseInt(assignUserId), due_date: assignDueDate || null }),
+      });
+      toast.success('RFC assigned successfully');
+      setShowDetailModal(null);
+      fetchRFCs();
+    } catch (err) {
+      toast.error(err.message || 'Failed to assign RFC');
     }
   };
 
@@ -253,6 +294,11 @@ export default function RFCManagement() {
                           <User className="w-3 h-3" /> {rfc.created_by_name}
                         </span>
                       )}
+                      {rfc.assigned_to_name && (
+                        <span className="flex items-center gap-1 text-lodha-gold">
+                          <UserPlus className="w-3 h-3" /> {rfc.assigned_to_name}
+                        </span>
+                      )}
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" /> {new Date(rfc.created_at).toLocaleDateString()}
                       </span>
@@ -318,6 +364,22 @@ export default function RFCManagement() {
                   <input type="text" value={newRFC.schedule_impact} onChange={(e) => setNewRFC({...newRFC, schedule_impact: e.target.value})} className="w-full px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-sm font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30" placeholder="e.g., 2 weeks delay" />
                 </div>
               </div>
+              {/* Assignment */}
+              {newRFC.project_id && teamMembers.length > 0 && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-jost font-semibold text-lodha-grey mb-1">Assign To</label>
+                    <select value={newRFC.assigned_to_id} onChange={(e) => setNewRFC({...newRFC, assigned_to_id: e.target.value})} className="w-full px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-sm font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30">
+                      <option value="">Unassigned</option>
+                      {teamMembers.map(m => <option key={m.user_id} value={m.user_id}>{m.full_name} ({m.user_level})</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-jost font-semibold text-lodha-grey mb-1">Due Date</label>
+                    <input type="date" value={newRFC.due_date} onChange={(e) => setNewRFC({...newRFC, due_date: e.target.value})} className="w-full px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-sm font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30" />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-sm font-jost font-semibold text-lodha-grey hover:bg-lodha-sand rounded-lg transition-colors">Cancel</button>
@@ -393,6 +455,45 @@ export default function RFCManagement() {
                 </div>
               </div>
             )}
+
+            {/* Assignment Section */}
+            <div className="border-t border-lodha-steel/30 pt-4 mb-4">
+              <h4 className="text-sm font-jost font-semibold text-lodha-grey mb-3 flex items-center gap-2">
+                <UserPlus className="w-4 h-4" /> Assignment
+              </h4>
+              {showDetailModal.assigned_to_name ? (
+                <div className="bg-lodha-sand/50 rounded-lg p-3 mb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-jost font-semibold text-lodha-grey">{showDetailModal.assigned_to_name}</p>
+                      <p className="text-xs text-lodha-grey/60 font-jost">
+                        Assigned by {showDetailModal.assigned_by_name} {showDetailModal.due_date && `• Due: ${new Date(showDetailModal.due_date).toLocaleDateString()}`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-lodha-grey/60 font-jost mb-2">Not assigned yet</p>
+              )}
+              {['L0', 'L1', 'L2', 'SUPER_ADMIN'].includes(userLevel) && teamMembers.length > 0 && (
+                <div className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <label className="block text-xs font-jost text-lodha-grey/70 mb-1">Assign to</label>
+                    <select value={assignUserId} onChange={(e) => setAssignUserId(e.target.value)} className="w-full px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-sm font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30">
+                      <option value="">Select user</option>
+                      {teamMembers.map(m => <option key={m.user_id} value={m.user_id}>{m.full_name} ({m.user_level})</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-jost text-lodha-grey/70 mb-1">Due date</label>
+                    <input type="date" value={assignDueDate} onChange={(e) => setAssignDueDate(e.target.value)} className="px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-sm font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30" />
+                  </div>
+                  <button onClick={() => handleAssign(showDetailModal.id)} className="px-4 py-2 bg-lodha-gold text-white text-sm font-jost font-semibold rounded-lg hover:bg-lodha-grey transition-colors whitespace-nowrap">
+                    Assign
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Review Actions */}
             {showDetailModal.status === 'pending' && ['L2', 'SUPER_ADMIN'].includes(userLevel) && (
