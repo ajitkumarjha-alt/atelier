@@ -6,13 +6,13 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
   host: process.env.DB_HOST,
   database: process.env.DB_NAME,
-  port: 5432,
-  ssl: {
-    rejectUnauthorized: false // Required for Google Cloud SQL
-  },
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+  port: parseInt(process.env.DB_PORT, 10) || 5432,
+  ssl: process.env.DB_SSL === 'false'
+    ? false
+    : { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' },
+  max: parseInt(process.env.DB_POOL_MAX, 10) || 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
 });
 
 // Test the connection
@@ -22,7 +22,7 @@ pool.on('connect', () => {
 
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
-  process.exit(-1);
+  // Don't crash – let health checks detect the issue
 });
 
 /**

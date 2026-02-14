@@ -1,6 +1,6 @@
 /**
  * API fetch wrapper that adds authentication headers
- * Uses Firebase auth token when available, falls back to dev email header
+ * Uses Firebase auth token in production, dev email header in development
  */
 import { auth } from './firebase';
 
@@ -20,12 +20,22 @@ export const apiFetch = async (url, options = {}) => {
     headers['Content-Type'] = 'application/json';
   }
 
-  // In development mode, add x-dev-user-email header for protected endpoints
-  // Use the current Firebase user's email if authenticated
-  if (import.meta.env.DEV && url.includes('/api/')) {
+  // Add authentication headers for API endpoints
+  if (url.includes('/api/')) {
     const currentUser = auth.currentUser;
-    if (currentUser && currentUser.email) {
-      headers['x-dev-user-email'] = currentUser.email;
+    if (currentUser) {
+      try {
+        // Always try to send the Firebase ID token (works in both dev and prod)
+        const idToken = await currentUser.getIdToken();
+        headers['Authorization'] = `Bearer ${idToken}`;
+      } catch {
+        // Token retrieval failed - fall through to dev bypass below
+      }
+
+      // In development, also send x-dev-user-email as fallback
+      if (import.meta.env.DEV && currentUser.email) {
+        headers['x-dev-user-email'] = currentUser.email;
+      }
     }
   }
 

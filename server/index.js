@@ -29,6 +29,7 @@ import {
 import logger from './utils/logger.js';
 import { performHealthCheck } from './utils/health.js';
 import { sendOTPEmail, sendWelcomeEmail } from './utils/emailService.js';
+import createAuthMiddleware from './middleware/auth.js';
 import policyRoutes from './routes/policy.js';
 import ElectricalLoadCalculator from './services/electricalLoadService.js';
 import createSocietiesRouter from './routes/societies.js';
@@ -38,6 +39,17 @@ import createRFCRouter from './routes/rfc.js';
 import createStandardsRouter from './routes/standards.js';
 import createBuildingDetailsRouter from './routes/building-details.js';
 import createMyAssignmentsRouter from './routes/my-assignments.js';
+import createAuthRouter from './routes/auth.js';
+import createProjectsRouter from './routes/projects.js';
+import createUsersRouter from './routes/users.js';
+import createConsultantsRouter from './routes/consultants.js';
+import createVendorsRouter from './routes/vendors.js';
+import createMasRouter from './routes/mas.js';
+import createRfiRouter from './routes/rfi.js';
+import createDrawingSchedulesRouter from './routes/drawing-schedules.js';
+import createSiteAreasRouter from './routes/site-areas.js';
+import createChangeRequestsRouter from './routes/change-requests.js';
+import { validate as handleValidationErrors, validationRules } from './middleware/validation.js';
 
 const app = express();
 const port = process.env.PORT || 5175;
@@ -99,8 +111,16 @@ try {
 // Security headers
 app.use(securityHeaders);
 
-// CORS
-app.use(cors());
+// CORS - restrict origins
+const corsOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',')
+  : ['http://localhost:5173', 'http://localhost:5174'];
+app.use(cors({
+  origin: corsOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-dev-user-email', 'x-vendor-email', 'x-consultant-email'],
+}));
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
@@ -122,204 +142,18 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ============================================================================
-// Authentication Middleware
+// Authentication Middleware (extracted to server/middleware/auth.js)
 // ============================================================================
-
-/**
- * Verify Firebase ID token and attach user info to request
- * Attached: req.user = { uid, email, userLevel, claims }
- * 
- * Development Mode: If Firebase Admin SDK is not configured, requires x-dev-user-email header
- * to bypass auth verification (only in development, not in production).
- */
-const verifyToken = async (req, res, next) => {
-  // Skip auth for health check
-  if (req.path === '/api/health') {
-    return next();
-  }
-
-  // Get token from Authorization header
-  const authHeader = req.headers.authorization;
-  
-  // Development mode: allow x-dev-user-email header as bypass (only if Firebase Admin not initialized)
-  const devUserEmail = req.headers['x-dev-user-email'];
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    // Development bypass: if no auth header but dev email provided and Admin SDK not initialized
-    if (devUserEmail && !firebaseAdmin && process.env.NODE_ENV !== 'production') {
-      try {
-        console.log(`[DEV] Using dev user bypass for email: ${devUserEmail}`);
-        
-        // Fetch user from database to get user level
-        const userResult = await query(
-          'SELECT id, email, user_level FROM users WHERE email = $1',
-          [devUserEmail]
-        );
-
-        if (userResult.rows.length === 0) {
-          return res.status(403).json({
-            error: 'Forbidden',
-            message: `User "${devUserEmail}" not found in database. Contact administrator.`
-          });
-        }
-
-        const user = userResult.rows[0];
-
-        // Attach user info to request
-        req.user = {
-          uid: `dev-${user.id}`,
-          email: user.email,
-          userId: user.id,
-          userLevel: user.user_level,
-          isAdmin: user.user_level === 'SUPER_ADMIN',
-          isL1: user.user_level === 'L1',
-          isL2: user.user_level === 'L2',
-          isL3: user.user_level === 'L3',
-          isL4: user.user_level === 'L4'
-        };
-
-        return next();
-      } catch (error) {
-        console.error('Dev user lookup error:', error.message);
-        return res.status(401).json({
-          error: 'Unauthorized',
-          message: 'Failed to lookup dev user'
-        });
-      }
-    }
-    
-    return res.status(401).json({
-      error: 'Unauthorized',
-      message: 'No token provided. Send Authorization: Bearer <token> or x-dev-user-email header (dev only)'
-    });
-  }
-
-  const token = authHeader.substring(7); // Remove "Bearer " prefix
-
-  try {
-    // Verify token with Firebase Admin SDK
-    if (!firebaseAdmin) {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'Firebase Admin SDK not initialized. In development, you can use x-dev-user-email header instead of Bearer token.'
-      });
-    }
-
-    const decodedToken = await firebaseAdmin.auth().verifyIdToken(token);
-    
-    // Fetch user from database to get user level
-    const userResult = await query(
-      'SELECT id, email, user_level FROM users WHERE email = $1',
-      [decodedToken.email]
-    );
-
-    if (userResult.rows.length === 0) {
-      return res.status(403).json({
-        error: 'Forbidden',
-        message: 'User not found in database. Contact administrator.'
-      });
-    }
-
-    const user = userResult.rows[0];
-
-    // Attach user info to request
-    req.user = {
-      uid: decodedToken.uid,
-      email: decodedToken.email,
-      userId: user.id,
-      userLevel: user.user_level,
-      isAdmin: user.user_level === 'SUPER_ADMIN',
-      isL1: user.user_level === 'L1',
-      isL2: user.user_level === 'L2',
-      isL3: user.user_level === 'L3',
-      isL4: user.user_level === 'L4',
-      ...decodedToken.custom_claims || {}
-    };
-
-    next();
-  } catch (error) {
-    console.error('Token verification error:', error.message);
-    return res.status(401).json({
-      error: 'Unauthorized',
-      message: 'Invalid or expired token'
-    });
-  }
-};
-
-/**
- * Role-based access control
- * Usage: app.get('/api/admin-only', requireRole('SUPER_ADMIN'), handler)
- */
-const requireRole = (...allowedRoles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'User not authenticated'
-      });
-    }
-
-    const userLevel = req.user.userLevel;
-    if (!allowedRoles.includes(userLevel)) {
-      return res.status(403).json({
-        error: 'Forbidden',
-        message: `This action requires one of: ${allowedRoles.join(', ')}. Your level: ${userLevel}`
-      });
-    }
-
-    next();
-  };
-};
-
-/**
- * Check if user is a team member of the project or has higher access
- * Usage: app.get('/api/projects/:projectId/data', verifyToken, checkProjectAccess, handler)
- */
-const checkProjectAccess = async (req, res, next) => {
-  try {
-    const projectId = req.params.projectId || req.params.id;
-    const userId = req.user.id;
-    const userLevel = req.user.userLevel;
-
-    // SUPER_ADMIN and L1 have access to all projects
-    if (userLevel === 'SUPER_ADMIN' || userLevel === 'L1') {
-      return next();
-    }
-
-    // L2 users have access if they are the assigned lead
-    if (userLevel === 'L2') {
-      const projectCheck = await query(
-        'SELECT assigned_lead_id FROM projects WHERE id = $1',
-        [projectId]
-      );
-      if (projectCheck.rows.length > 0 && projectCheck.rows[0].assigned_lead_id === userId) {
-        return next();
-      }
-    }
-
-    // Check if user is a team member
-    const teamCheck = await query(
-      'SELECT id FROM project_team WHERE project_id = $1 AND user_id = $2',
-      [projectId, userId]
-    );
-
-    if (teamCheck.rows.length > 0) {
-      return next();
-    }
-
-    return res.status(403).json({
-      error: 'Forbidden',
-      message: 'You do not have access to this project'
-    });
-  } catch (error) {
-    logger.error('Error checking project access:', error);
-    return res.status(500).json({ error: 'Failed to verify project access' });
-  }
-};
+const { verifyToken, requireRole, checkProjectAccess } = createAuthMiddleware(firebaseAdmin);
 
 // ============================================================================
 // Routes
 // ============================================================================
+
+// Super Admin Emails - load from environment or use defaults
+const SUPER_ADMIN_EMAILS = process.env.SUPER_ADMIN_EMAILS 
+  ? process.env.SUPER_ADMIN_EMAILS.split(',').map(email => email.trim())
+  : ['ajit.kumarjha@lodhagroup.com'];
 
 // ============================================================================
 // Health Check Endpoints
@@ -369,31 +203,37 @@ app.use('/api', createStandardsRouter(routeDeps));
 app.use('/api', createBuildingDetailsRouter(routeDeps));
 app.use('/api', createMyAssignmentsRouter(routeDeps));
 
-// Cleanup endpoint - TEMPORARY for user cleanup
-app.post('/api/admin/cleanup-users', async (req, res) => {
-  try {
-    // Check current users
-    const current = await query('SELECT email, user_level FROM users');
-    console.log('Current users:', current.rows);
-    
-    // Delete all except ajit.kumarjha@lodhagroup.com
-    const deleteResult = await query(
-      "DELETE FROM users WHERE email != 'ajit.kumarjha@lodhagroup.com' RETURNING email"
-    );
-    
-    // Check remaining users
-    const remaining = await query('SELECT email, user_level FROM users');
-
-    res.json({
-      deleted: deleteResult.rowCount,
-      deletedUsers: deleteResult.rows,
-      remaining: remaining.rows
-    });
-  } catch (error) {
-    console.error('Cleanup error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+// ============================================================================
+// Extracted Domain Routes (previously inline in index.js)
+// ============================================================================
+const superAdminEmails = SUPER_ADMIN_EMAILS;
+app.use('/api', createAuthRouter({
+  authRateLimiter,
+  authSyncValidators: validationRules.userSync,
+  handleValidationErrors,
+  query,
+  superAdminEmails,
+}));
+app.use('/api', createProjectsRouter({
+  query, verifyToken, logger,
+  projectCreateValidators: validationRules.createProject,
+  projectUpdateValidators: validationRules.updateProject,
+  handleValidationErrors,
+  superAdminEmails,
+}));
+app.use('/api', createUsersRouter({ query, logger, verifyToken }));
+app.use('/api', createConsultantsRouter({ query, verifyToken }));
+app.use('/api', createVendorsRouter({ query, verifyToken }));
+app.use('/api', createMasRouter({ query, verifyToken }));
+app.use('/api', createRfiRouter({ query }));
+app.use('/api', createDrawingSchedulesRouter({ query, verifyToken }));
+app.use('/api', createSiteAreasRouter({
+  query,
+  siteAreaCreateValidators: [],
+  siteAreaUpdateValidators: [],
+  handleValidationErrors,
+}));
+app.use('/api', createChangeRequestsRouter({ query, verifyToken }));
 
 // ============================================================================
 // File Upload Endpoints
@@ -810,11 +650,6 @@ app.get('/api/llm/status', (req, res) => {
 // ============================================================================
 // End LLM Endpoints
 // ============================================================================
-
-// Super Admin Emails - load from environment or use defaults
-const SUPER_ADMIN_EMAILS = process.env.SUPER_ADMIN_EMAILS 
-  ? process.env.SUPER_ADMIN_EMAILS.split(',').map(email => email.trim())
-  : ['ajit.kumarjha@lodhagroup.com'];
 
 // Initialize database tables on server start
 async function initializeDatabase() {
@@ -2399,7 +2234,7 @@ app.get('/api/rfi/project/:projectId', async (req, res) => {
 });
 
 // User sync endpoint
-app.post('/api/auth/sync', async (req, res) => {
+app.post('/api/auth/sync', authRateLimiter, async (req, res) => {
   const { email, fullName } = req.body;
   
   try {
@@ -6363,7 +6198,7 @@ app.get('/api/consultants/list', verifyToken, async (req, res) => {
 });
 
 // Send OTP to consultant email
-app.post('/api/consultants/send-otp', async (req, res) => {
+app.post('/api/consultants/send-otp', authRateLimiter, async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -6411,7 +6246,7 @@ app.post('/api/consultants/send-otp', async (req, res) => {
 });
 
 // Verify OTP and login consultant
-app.post('/api/consultants/verify-otp', async (req, res) => {
+app.post('/api/consultants/verify-otp', authRateLimiter, async (req, res) => {
   try {
     const { email, otp } = req.body;
 
@@ -6878,7 +6713,7 @@ app.get('/api/vendors/list', verifyToken, async (req, res) => {
 });
 
 // Send OTP to vendor email
-app.post('/api/vendors/send-otp', async (req, res) => {
+app.post('/api/vendors/send-otp', authRateLimiter, async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -6926,7 +6761,7 @@ app.post('/api/vendors/send-otp', async (req, res) => {
 });
 
 // Verify OTP and login vendor
-app.post('/api/vendors/verify-otp', async (req, res) => {
+app.post('/api/vendors/verify-otp', authRateLimiter, async (req, res) => {
   try {
     const { email, otp } = req.body;
 

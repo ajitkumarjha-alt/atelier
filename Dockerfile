@@ -36,6 +36,12 @@ COPY server/ ./server/
 # Copy built frontend from stage 1
 COPY --from=frontend-builder /app/dist ./public
 
+# Expose port
+EXPOSE 8080
+
+# Run as non-root user
+USER node
+
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:8080/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
@@ -45,6 +51,3 @@ ENTRYPOINT ["/sbin/dumb-init", "--"]
 
 # Start Express server
 CMD ["node", "server/index.js"]
-
-# Expose port
-EXPOSE 8080
