@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import L1ProjectTable from '../components/L1ProjectTable';
 import AIChat from '../components/AIChat';
+import MyAssignmentsWidget from '../components/MyAssignmentsWidget';
 import { auth } from '../lib/firebase';
 import { Plus, MessageCircle, Calendar, Send, ListChecks, AlertTriangle, FileText, Database } from 'lucide-react';
 import { apiFetchJson } from '../lib/api';
@@ -56,6 +57,9 @@ export default function L1Dashboard() {
           Create New Project
         </button>
       </div>
+
+      {/* My Assignments Widget */}
+      <MyAssignmentsWidget />
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

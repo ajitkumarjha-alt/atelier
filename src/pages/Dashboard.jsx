@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader } from 'lucide-react';
 import Layout from '../components/Layout';
 import ProjectCard from '../components/ProjectCard';
+import MyAssignmentsWidget from '../components/MyAssignmentsWidget';
 import { CardGridSkeleton } from '../components/SkeletonLoader';
 import { apiFetchJson } from '../lib/api';
 
@@ -63,6 +64,9 @@ export default function Dashboard() {
           Monitoring {projects.length} active {projects.length === 1 ? 'project' : 'projects'}. Click on a card to view details.
         </p>
       </div>
+
+      {/* My Assignments Widget */}
+      <MyAssignmentsWidget />
 
       {/* Projects Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

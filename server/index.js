@@ -360,7 +360,7 @@ app.use('/api', policyRoutes);
 // ============================================================================
 // MEP Design Suite Routes
 // ============================================================================
-const routeDeps = { query, verifyToken, logger };
+const routeDeps = { query, verifyToken, logger, transaction };
 app.use('/api', createSocietiesRouter(routeDeps));
 app.use('/api', createDDSRouter(routeDeps));
 app.use('/api', createTasksRouter(routeDeps));
@@ -1448,6 +1448,128 @@ async function initializeDatabase() {
     `);
     console.log('✓ dds_items table initialized');
 
+    // DDS items — add policy-engine columns
+    await query(`ALTER TABLE dds_items ADD COLUMN IF NOT EXISTS phase VARCHAR(100)`);
+    await query(`ALTER TABLE dds_items ADD COLUMN IF NOT EXISTS section VARCHAR(200)`);
+    await query(`ALTER TABLE dds_items ADD COLUMN IF NOT EXISTS trade VARCHAR(100)`);
+    await query(`ALTER TABLE dds_items ADD COLUMN IF NOT EXISTS level_type VARCHAR(100)`);
+    await query(`ALTER TABLE dds_items ADD COLUMN IF NOT EXISTS doc_type VARCHAR(50)`);
+    await query(`ALTER TABLE dds_items ADD COLUMN IF NOT EXISTS policy_week_offset INTEGER`);
+    console.log('✓ dds_items policy columns migrated');
+
+    // DDS — add policy reference and metadata
+    await query(`ALTER TABLE dds ADD COLUMN IF NOT EXISTS policy_id INTEGER`);
+    await query(`ALTER TABLE dds ADD COLUMN IF NOT EXISTS policy_name VARCHAR(255)`);
+    await query(`ALTER TABLE dds ADD COLUMN IF NOT EXISTS generation_metadata JSONB`);
+    await query(`ALTER TABLE dds ADD COLUMN IF NOT EXISTS tower_stagger_weeks INTEGER DEFAULT 4`);
+    console.log('✓ dds policy columns migrated');
+
+    // Buildings — add height for policy engine
+    await query(`ALTER TABLE buildings ADD COLUMN IF NOT EXISTS building_height DECIMAL(8,2)`);
+    await query(`ALTER TABLE buildings ADD COLUMN IF NOT EXISTS tower_index INTEGER DEFAULT 0`);
+    await query(`ALTER TABLE buildings ADD COLUMN IF NOT EXISTS podium_count INTEGER DEFAULT 0`);
+    await query(`ALTER TABLE buildings ADD COLUMN IF NOT EXISTS basement_count INTEGER DEFAULT 0`);
+    console.log('✓ buildings policy columns migrated');
+
+    // DDS Policies table
+    await query(`
+      CREATE TABLE IF NOT EXISTS dds_policies (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        version INTEGER DEFAULT 1,
+        policy_number VARCHAR(50),
+        policy_data JSONB NOT NULL,
+        building_type VARCHAR(100),
+        is_active BOOLEAN DEFAULT TRUE,
+        created_by_id INTEGER REFERENCES users(id),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ dds_policies table initialized');
+
+    // DDS History table
+    await query(`
+      CREATE TABLE IF NOT EXISTS dds_history (
+        id SERIAL PRIMARY KEY,
+        dds_id INTEGER NOT NULL REFERENCES dds(id) ON DELETE CASCADE,
+        action VARCHAR(50) NOT NULL,
+        changed_by_id INTEGER REFERENCES users(id),
+        changes JSONB,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ dds_history table initialized');
+
+    // DDS Item Revisions table
+    await query(`
+      CREATE TABLE IF NOT EXISTS dds_item_revisions (
+        id SERIAL PRIMARY KEY,
+        dds_item_id INTEGER NOT NULL REFERENCES dds_items(id) ON DELETE CASCADE,
+        revision VARCHAR(10) NOT NULL,
+        revised_by_id INTEGER REFERENCES users(id),
+        reason TEXT,
+        previous_completion_date DATE,
+        new_completion_date DATE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ dds_item_revisions table initialized');
+
+    // DDS Drawing List table — floor-wise VFC/DD drawing register + BOQ
+    await query(`
+      CREATE TABLE IF NOT EXISTS dds_drawings (
+        id SERIAL PRIMARY KEY,
+        dds_id INTEGER NOT NULL REFERENCES dds(id) ON DELETE CASCADE,
+        building_id INTEGER REFERENCES buildings(id) ON DELETE SET NULL,
+        list_type VARCHAR(10) NOT NULL DEFAULT 'VFC',
+        sr_no INTEGER NOT NULL,
+        trade VARCHAR(100) NOT NULL,
+        doc_type VARCHAR(50) NOT NULL DEFAULT 'Drawing',
+        tower VARCHAR(100),
+        level VARCHAR(200),
+        description TEXT NOT NULL,
+        document_number VARCHAR(200),
+        revision VARCHAR(10) DEFAULT 'R0',
+        paper_size VARCHAR(10),
+        drawing_scale VARCHAR(50),
+        dds_date DATE,
+        status VARCHAR(30) DEFAULT 'pending',
+        remarks TEXT,
+        category VARCHAR(200),
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ dds_drawings table initialized');
+
+    // DDS BOQ Items table — Bill of Quantities for tender trades
+    await query(`
+      CREATE TABLE IF NOT EXISTS dds_boq_items (
+        id SERIAL PRIMARY KEY,
+        dds_id INTEGER NOT NULL REFERENCES dds(id) ON DELETE CASCADE,
+        building_id INTEGER REFERENCES buildings(id) ON DELETE SET NULL,
+        sr_no INTEGER NOT NULL,
+        trade VARCHAR(100) NOT NULL,
+        category VARCHAR(200),
+        description TEXT NOT NULL,
+        unit VARCHAR(50),
+        quantity DECIMAL(12,2),
+        rate DECIMAL(12,2),
+        amount DECIMAL(14,2),
+        specification TEXT,
+        status VARCHAR(30) DEFAULT 'draft',
+        remarks TEXT,
+        tender_item_ref VARCHAR(200),
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ dds_boq_items table initialized');
+
     // Tasks table
     await query(`
       CREATE TABLE IF NOT EXISTS tasks (
@@ -1618,6 +1740,75 @@ async function initializeDatabase() {
         notes = EXCLUDED.notes
     `);
     console.log('✓ electrical_load_factors table synced with latest defaults');
+
+    // Design Factor: Substation Space Requirements per Transformer Rating (MSEDCL)
+    await query(`
+      CREATE TABLE IF NOT EXISTS design_factor_substation_space (
+        id SERIAL PRIMARY KEY,
+        installation_type VARCHAR(50) NOT NULL,
+        rating_kva INTEGER NOT NULL,
+        room_length_m DECIMAL(6, 2),
+        room_width_m DECIMAL(6, 2),
+        total_area_sqm DECIMAL(8, 2) NOT NULL,
+        clearance_m DECIMAL(4, 2) DEFAULT 1.00,
+        ventilation_notes TEXT,
+        description TEXT,
+        source VARCHAR(255) DEFAULT 'MSEDCL NSC Circular 35530',
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(installation_type, rating_kva)
+      )
+    `);
+    console.log('✓ design_factor_substation_space table initialized');
+
+    // Seed MSEDCL substation space requirements per transformer rating
+    await query(`
+      INSERT INTO design_factor_substation_space 
+        (installation_type, rating_kva, room_length_m, room_width_m, total_area_sqm, clearance_m, ventilation_notes, description, source) VALUES
+        -- Outdoor DTC (Distribution Transformer Centre) - compound space
+        ('DTC_OUTDOOR', 100, 3.00, 3.00, 15.00, 1.00, 'Natural ventilation, min 1m clearance all sides', '100 kVA Outdoor DTC Compound', 'MSEDCL Standards for Supply'),
+        ('DTC_OUTDOOR', 200, 3.50, 3.50, 18.00, 1.00, 'Natural ventilation, min 1m clearance all sides', '200 kVA Outdoor DTC Compound', 'MSEDCL Standards for Supply'),
+        ('DTC_OUTDOOR', 315, 4.00, 3.50, 20.00, 1.00, 'Natural ventilation, min 1m clearance all sides', '315 kVA Outdoor DTC Compound', 'MSEDCL Standards for Supply'),
+        ('DTC_OUTDOOR', 500, 4.50, 4.00, 25.00, 1.00, 'Natural ventilation, min 1m clearance all sides', '500 kVA Outdoor DTC Compound', 'MSEDCL Standards for Supply'),
+        ('DTC_OUTDOOR', 630, 5.00, 4.00, 28.00, 1.00, 'Natural ventilation, min 1.5m clearance all sides', '630 kVA Outdoor DTC Compound', 'MSEDCL Standards for Supply'),
+        ('DTC_OUTDOOR', 1000, 6.00, 5.00, 40.00, 1.50, 'Forced ventilation recommended, min 1.5m clearance', '1000 kVA Outdoor DTC Compound', 'MSEDCL Standards for Supply'),
+        
+        -- Indoor DTC (transformer room inside building)
+        ('DTC_INDOOR', 100, 3.50, 3.50, 20.00, 1.00, 'Mechanical ventilation required, fire-rated walls', '100 kVA Indoor Transformer Room', 'MSEDCL Standards for Supply'),
+        ('DTC_INDOOR', 200, 4.00, 3.50, 25.00, 1.00, 'Mechanical ventilation required, fire-rated walls', '200 kVA Indoor Transformer Room', 'MSEDCL Standards for Supply'),
+        ('DTC_INDOOR', 315, 4.50, 4.00, 28.00, 1.00, 'Mechanical ventilation required, fire-rated walls', '315 kVA Indoor Transformer Room', 'MSEDCL Standards for Supply'),
+        ('DTC_INDOOR', 500, 5.00, 4.50, 35.00, 1.00, 'Mechanical ventilation with exhaust, fire-rated walls 2h', '500 kVA Indoor Transformer Room', 'MSEDCL Standards for Supply'),
+        ('DTC_INDOOR', 630, 5.50, 4.50, 38.00, 1.50, 'Mechanical ventilation with exhaust, fire-rated walls 2h', '630 kVA Indoor Transformer Room', 'MSEDCL Standards for Supply'),
+        ('DTC_INDOOR', 1000, 6.50, 5.00, 50.00, 1.50, 'Forced ventilation with exhaust fans, fire-rated walls 2h, oil soak pit', '1000 kVA Indoor Transformer Room', 'MSEDCL Standards for Supply'),
+        
+        -- Compact Substation (CSS/Package Substation)
+        ('DTC_COMPACT', 315, 3.00, 2.50, 12.00, 0.50, 'Factory-sealed, natural cooling', '315 kVA Compact Substation (CSS)', 'MSEDCL Standards for Supply'),
+        ('DTC_COMPACT', 500, 3.50, 2.50, 15.00, 0.50, 'Factory-sealed, natural cooling', '500 kVA Compact Substation (CSS)', 'MSEDCL Standards for Supply'),
+        ('DTC_COMPACT', 630, 3.50, 3.00, 16.00, 0.50, 'Factory-sealed, natural/forced cooling', '630 kVA Compact Substation (CSS)', 'MSEDCL Standards for Supply'),
+        ('DTC_COMPACT', 1000, 4.50, 3.00, 20.00, 0.50, 'Factory-sealed, forced cooling', '1000 kVA Compact Substation (CSS)', 'MSEDCL Standards for Supply'),
+        
+        -- HT Metering + Panel Room (required alongside DTC)
+        ('HT_PANEL_ROOM', 500, 4.00, 3.00, 15.00, 1.00, 'Air-conditioned, dust-free environment preferred', 'HT Metering & Panel Room (up to 500 kVA)', 'MSEDCL Standards for Supply'),
+        ('HT_PANEL_ROOM', 1000, 5.00, 4.00, 25.00, 1.00, 'Air-conditioned, dust-free environment required', 'HT Metering & Panel Room (up to 1000 kVA)', 'MSEDCL Standards for Supply'),
+        ('HT_PANEL_ROOM', 2000, 6.00, 4.00, 30.00, 1.00, 'Air-conditioned, dust-free, separate entry', 'HT Metering & Panel Room (up to 2000 kVA)', 'MSEDCL Standards for Supply'),
+        
+        -- 33/11 kV Substation types (for larger loads >3 MVA)
+        ('SUBSTATION_33_11_OUTDOOR', 10000, 40.00, 30.00, 3500.00, 3.00, 'Open-air, safety perimeter wall', '33/11 kV Outdoor Substation (2x10 MVA)', 'MSEDCL NSC Circular 35530'),
+        ('SUBSTATION_33_11_HYBRID', 10000, 35.00, 25.00, 2500.00, 3.00, 'Partial indoor, transformer outdoor', '33/11 kV Hybrid Substation (2x10 MVA)', 'MSEDCL NSC Circular 35530'),
+        ('SUBSTATION_33_11_INDOOR', 10000, 30.00, 20.00, 1000.00, 2.00, 'Fully indoor, forced ventilation, fire-rated', '33/11 kV Indoor Substation (2x10 MVA) - Metro/Major Cities', 'MSEDCL NSC Circular 35530'),
+        ('SUBSTATION_GIS', 10000, 25.00, 15.00, 600.00, 2.00, 'Gas-insulated, minimal ventilation, SF6 gas monitoring', '33/11 kV GIS Substation (2x10 MVA) - Metro/Major Cities', 'MSEDCL NSC Circular 35530')
+      ON CONFLICT (installation_type, rating_kva) DO UPDATE SET
+        room_length_m = EXCLUDED.room_length_m,
+        room_width_m = EXCLUDED.room_width_m,
+        total_area_sqm = EXCLUDED.total_area_sqm,
+        clearance_m = EXCLUDED.clearance_m,
+        ventilation_notes = EXCLUDED.ventilation_notes,
+        description = EXCLUDED.description,
+        source = EXCLUDED.source,
+        updated_at = CURRENT_TIMESTAMP
+    `);
+    console.log('✓ design_factor_substation_space table synced with MSEDCL data');
 
     // Add flat_loads and building_breakdowns columns to electrical_load_calculations
     try {
@@ -5371,6 +5562,80 @@ app.delete('/api/electrical-load-factors/:id', verifyToken, async (req, res) => 
   } catch (error) {
     console.error('Error deleting electrical load factor:', error);
     res.status(500).json({ error: 'Failed to delete electrical load factor' });
+  }
+});
+
+// ============= DESIGN FACTOR: SUBSTATION SPACE REQUIREMENTS =============
+
+// Get all substation space requirements
+app.get('/api/design-factors/substation-space', verifyToken, async (req, res) => {
+  try {
+    const { installation_type } = req.query;
+    let queryText = 'SELECT * FROM design_factor_substation_space WHERE is_active = true';
+    const params = [];
+    if (installation_type) {
+      queryText += ' AND installation_type = $1';
+      params.push(installation_type);
+    }
+    queryText += ' ORDER BY installation_type, rating_kva';
+    const result = await query(queryText, params);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching substation space factors:', error);
+    res.status(500).json({ error: 'Failed to fetch substation space factors' });
+  }
+});
+
+// Get space requirements for a specific transformer rating
+app.get('/api/design-factors/substation-space/by-rating/:ratingKVA', verifyToken, async (req, res) => {
+  try {
+    const ratingKVA = parseInt(req.params.ratingKVA);
+    if (isNaN(ratingKVA) || ratingKVA <= 0) {
+      return res.status(400).json({ error: 'Invalid transformer rating' });
+    }
+
+    // Find exact or next larger rating for each installation type
+    const result = await query(`
+      SELECT DISTINCT ON (installation_type) *
+      FROM design_factor_substation_space
+      WHERE is_active = true AND rating_kva >= $1
+      ORDER BY installation_type, rating_kva ASC
+    `, [ratingKVA]);
+
+    res.json({
+      requestedRatingKVA: ratingKVA,
+      spaceOptions: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching space for rating:', error);
+    res.status(500).json({ error: 'Failed to fetch space requirements' });
+  }
+});
+
+// Update substation space factor (L0 only)
+app.put('/api/design-factors/substation-space/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { room_length_m, room_width_m, total_area_sqm, clearance_m, ventilation_notes, description } = req.body;
+    const result = await query(`
+      UPDATE design_factor_substation_space SET
+        room_length_m = COALESCE($1, room_length_m),
+        room_width_m = COALESCE($2, room_width_m),
+        total_area_sqm = COALESCE($3, total_area_sqm),
+        clearance_m = COALESCE($4, clearance_m),
+        ventilation_notes = COALESCE($5, ventilation_notes),
+        description = COALESCE($6, description),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $7 RETURNING *
+    `, [room_length_m, room_width_m, total_area_sqm, clearance_m, ventilation_notes, description, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Space factor not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating substation space factor:', error);
+    res.status(500).json({ error: 'Failed to update substation space factor' });
   }
 });
 

@@ -13,6 +13,7 @@ class ElectricalLoadCalculator {
     this.factors = null; // Cache for electrical load factors
     this.regulations = null; // Cache for regulatory framework data
     this.activeGuideline = null; // Cache current guideline
+    this.substationSpaceData = null; // Cache for substation space requirements
   }
 
   /**
@@ -186,6 +187,95 @@ class ElectricalLoadCalculator {
   }
 
   /**
+   * Load substation space requirements from design_factor_substation_space table
+   * Contains MSEDCL-specified space per transformer rating and installation type
+   */
+  async loadSubstationSpaceData() {
+    if (this.substationSpaceData) return this.substationSpaceData;
+    try {
+      const result = await this.db.query(
+        'SELECT * FROM design_factor_substation_space WHERE is_active = true ORDER BY installation_type, rating_kva'
+      );
+      this.substationSpaceData = result.rows;
+      return this.substationSpaceData;
+    } catch (error) {
+      console.warn('Could not load substation space data:', error.message);
+      this.substationSpaceData = [];
+      return this.substationSpaceData;
+    }
+  }
+
+  /**
+   * Get space requirement for a specific transformer rating and installation type
+   * @param {number} ratingKVA - Transformer rating in kVA
+   * @param {string} installationType - DTC_OUTDOOR, DTC_INDOOR, DTC_COMPACT, etc.
+   * @returns {Object|null} - Space requirement data or null
+   */
+  getSpaceForTransformer(ratingKVA, installationType = 'DTC_INDOOR') {
+    if (!this.substationSpaceData || this.substationSpaceData.length === 0) return null;
+
+    // Find exact match first
+    let match = this.substationSpaceData.find(s =>
+      s.installation_type === installationType && parseInt(s.rating_kva) === ratingKVA
+    );
+
+    if (!match) {
+      // Find next larger rating for this installation type
+      const typeEntries = this.substationSpaceData
+        .filter(s => s.installation_type === installationType)
+        .sort((a, b) => parseInt(a.rating_kva) - parseInt(b.rating_kva));
+
+      match = typeEntries.find(s => parseInt(s.rating_kva) >= ratingKVA);
+
+      // If still no match, take the largest available
+      if (!match && typeEntries.length > 0) {
+        match = typeEntries[typeEntries.length - 1];
+      }
+    }
+
+    if (!match) return null;
+
+    return {
+      installationType: match.installation_type,
+      ratingKVA: parseInt(match.rating_kva),
+      roomLength: parseFloat(match.room_length_m),
+      roomWidth: parseFloat(match.room_width_m),
+      totalArea: parseFloat(match.total_area_sqm),
+      clearance: parseFloat(match.clearance_m),
+      ventilationNotes: match.ventilation_notes,
+      description: match.description,
+      source: match.source
+    };
+  }
+
+  /**
+   * Get all space options for a given transformer rating across installation types
+   * @param {number} ratingKVA - Transformer rating in kVA
+   * @returns {Array} - Space requirements for all applicable installation types
+   */
+  getSpaceOptionsForRating(ratingKVA) {
+    if (!this.substationSpaceData || this.substationSpaceData.length === 0) return [];
+
+    const dtcTypes = ['DTC_OUTDOOR', 'DTC_INDOOR', 'DTC_COMPACT'];
+    const options = [];
+
+    for (const type of dtcTypes) {
+      const space = this.getSpaceForTransformer(ratingKVA, type);
+      if (space) {
+        options.push(space);
+      }
+    }
+
+    // Also add HT Panel Room requirement
+    const panelRoom = this.getSpaceForTransformer(ratingKVA, 'HT_PANEL_ROOM');
+    if (panelRoom) {
+      options.push(panelRoom);
+    }
+
+    return options;
+  }
+
+  /**
    * Calculate minimum load per regulations (e.g., MSEDCL 75 W/sq.m)
    * @param {number} carpetArea - Carpet area in sq.m
    * @param {string} premiseType - RESIDENTIAL, COMMERCIAL_AC, COMMERCIAL_NO_AC
@@ -292,6 +382,13 @@ class ElectricalLoadCalculator {
       spec.area_type_code === areaType
     );
 
+    // Get per-transformer space requirements from design factor table
+    const transformerRatingKVA = this.getStandardTransformerSize(dtcCapacity);
+    const spacePerTransformer = this.getSpaceOptionsForRating(transformerRatingKVA);
+    const htPanelRoom = this.getSpaceForTransformer(
+      dtcCount * transformerRatingKVA, 'HT_PANEL_ROOM'
+    );
+
     return {
       needed,
       threshold: thresholdKVA,
@@ -299,10 +396,13 @@ class ElectricalLoadCalculator {
       dtcCount,
       dtcCapacityPerUnit: dtcCapacity,
       totalCapacity: dtcCount * dtcCapacity,
+      transformerRatingKVA,
       landRequired: totalLand,
       action: threshold.action_required,
       individualTransformerRequired: !!individualTransformerReq,
-      ringMainRequired: !!ringMainReq
+      ringMainRequired: !!ringMainReq,
+      spacePerTransformer,
+      htPanelRoom
     };
   }
 
@@ -365,8 +465,44 @@ class ElectricalLoadCalculator {
       feederCapacity: selectedReq.feeder_capacity_mva,
       specialRequirements: selectedReq.special_requirements || [],
       landRequired: landReq ? parseFloat(landReq.land_required_sqm) : null,
-      description: selectedReq.description
+      description: selectedReq.description,
+      // Substation space options from design factor table
+      spaceOptions: this.getSubstationSpaceOptions(areaType)
     };
+  }
+
+  /**
+   * Get substation space options (33/11 kV) for area type
+   * @param {string} areaType - METRO, MAJOR_CITIES, URBAN, RURAL
+   * @returns {Array} - Space options for different substation types
+   */
+  getSubstationSpaceOptions(areaType) {
+    if (!this.substationSpaceData || this.substationSpaceData.length === 0) return [];
+
+    const substationTypes = ['SUBSTATION_33_11_OUTDOOR', 'SUBSTATION_33_11_HYBRID'];
+    // Metro/Major Cities also get indoor and GIS options
+    if (areaType === 'METRO' || areaType === 'MAJOR_CITIES') {
+      substationTypes.push('SUBSTATION_33_11_INDOOR', 'SUBSTATION_GIS');
+    }
+
+    const options = [];
+    for (const type of substationTypes) {
+      const match = this.substationSpaceData.find(s => s.installation_type === type);
+      if (match) {
+        options.push({
+          installationType: match.installation_type,
+          ratingKVA: parseInt(match.rating_kva),
+          roomLength: parseFloat(match.room_length_m),
+          roomWidth: parseFloat(match.room_width_m),
+          totalArea: parseFloat(match.total_area_sqm),
+          clearance: parseFloat(match.clearance_m),
+          ventilationNotes: match.ventilation_notes,
+          description: match.description,
+          source: match.source
+        });
+      }
+    }
+    return options;
   }
 
   /**
@@ -427,6 +563,7 @@ class ElectricalLoadCalculator {
         await this.loadRegulations(projectId);
       }
       await this.loadFactors(guideline);
+      await this.loadSubstationSpaceData();
 
       // Validate inputs
       this.validateInputs(inputs);
@@ -664,6 +801,11 @@ class ElectricalLoadCalculator {
       // Land Requirements
       land: landRequirements,
 
+      // Transformer / Substation Space Requirements (per MSEDCL design factors)
+      spaceRequirements: this.buildSpaceRequirementsSummary(
+        totals, dtcRequirements, substationRequirements, buildingCount
+      ),
+
       // Lease Terms
       lease: leaseTerms ? {
         duration: `${leaseTerms.lease_duration_years} years`,
@@ -713,6 +855,91 @@ class ElectricalLoadCalculator {
       breakdown: breakdown,
       unit: 'sq.m'
     };
+  }
+
+  /**
+   * Build comprehensive space requirements summary
+   * Combines DTC space (per transformer rating) + substation space + HT panel room
+   * @param {Object} totals - Calculation totals
+   * @param {Object} dtcReqs - DTC requirements
+   * @param {Object} substationReqs - Substation requirements
+   * @param {number} buildingCount - Number of buildings
+   * @returns {Object} - Space requirements summary
+   */
+  buildSpaceRequirementsSummary(totals, dtcReqs, substationReqs, buildingCount) {
+    const summary = {
+      transformerRatingKVA: totals.transformerSizeKVA,
+      dtcSpaceOptions: [],
+      htPanelRoom: null,
+      substationSpace: null,
+      totalSpaceEstimates: [],
+      recommendations: []
+    };
+
+    // DTC space per transformer rating
+    if (dtcReqs.needed && dtcReqs.spacePerTransformer) {
+      summary.dtcSpaceOptions = dtcReqs.spacePerTransformer.filter(
+        s => s.installationType !== 'HT_PANEL_ROOM'
+      );
+      summary.htPanelRoom = dtcReqs.htPanelRoom || null;
+    } else if (totals.transformerSizeKVA) {
+      // Even if DTC not formally "needed" per threshold, show space for the transformer
+      const options = this.getSpaceOptionsForRating(totals.transformerSizeKVA);
+      summary.dtcSpaceOptions = options.filter(s => s.installationType !== 'HT_PANEL_ROOM');
+      summary.htPanelRoom = options.find(s => s.installationType === 'HT_PANEL_ROOM') || null;
+    }
+
+    // Substation space (for loads >3 MVA)
+    if (substationReqs.needed && substationReqs.spaceOptions) {
+      summary.substationSpace = substationReqs.spaceOptions;
+    }
+
+    // Calculate total space estimates per installation type
+    const dtcCount = dtcReqs.dtcCount || 1;
+    for (const opt of summary.dtcSpaceOptions) {
+      const dtcTotal = opt.totalArea * dtcCount;
+      const panelArea = summary.htPanelRoom ? summary.htPanelRoom.totalArea : 0;
+      summary.totalSpaceEstimates.push({
+        installationType: opt.installationType,
+        description: opt.description,
+        perTransformerArea: opt.totalArea,
+        transformerCount: dtcCount,
+        totalDTCArea: dtcTotal,
+        htPanelArea: panelArea,
+        grandTotalArea: dtcTotal + panelArea,
+        dimensions: `${opt.roomLength}m × ${opt.roomWidth}m per transformer`,
+        ventilation: opt.ventilationNotes
+      });
+    }
+
+    // Recommendations
+    if (summary.dtcSpaceOptions.length > 0) {
+      const indoor = summary.dtcSpaceOptions.find(s => s.installationType === 'DTC_INDOOR');
+      const compact = summary.dtcSpaceOptions.find(s => s.installationType === 'DTC_COMPACT');
+      
+      if (indoor) {
+        summary.recommendations.push(
+          `Indoor transformer room: ${indoor.totalArea} sq.m per ${indoor.ratingKVA} kVA transformer (${indoor.roomLength}m × ${indoor.roomWidth}m)`
+        );
+      }
+      if (compact) {
+        summary.recommendations.push(
+          `Compact substation option: ${compact.totalArea} sq.m per unit (space-efficient alternative)`
+        );
+      }
+      if (summary.htPanelRoom) {
+        summary.recommendations.push(
+          `HT Panel/Metering Room: ${summary.htPanelRoom.totalArea} sq.m (${summary.htPanelRoom.roomLength}m × ${summary.htPanelRoom.roomWidth}m)`
+        );
+      }
+      if (dtcCount > 1) {
+        summary.recommendations.push(
+          `${dtcCount} transformers required — consider ring main system for redundancy`
+        );
+      }
+    }
+
+    return summary;
   }
 
   /**

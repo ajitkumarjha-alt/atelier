@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import L2TopStats from '../components/L2TopStats';
 import ProjectStatusBoard from '../components/ProjectStatusBoard';
 import AIChat from '../components/AIChat';
+import MyAssignmentsWidget from '../components/MyAssignmentsWidget';
 import { auth } from '../lib/firebase';
 
 export default function L2Dashboard() {
@@ -49,6 +50,9 @@ export default function L2Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* My Assignments Widget */}
+      <MyAssignmentsWidget />
 
       {/* Top Stats with Lodha Colors */}
       {user && (

@@ -4,6 +4,7 @@ import { FolderKanban, AlertCircle, FileText, Trash2, Calendar, RefreshCw, ListC
 import Layout from '../components/Layout';
 import ProjectCard from '../components/ProjectCard';
 import AIReports from '../components/AIReports';
+import MyAssignmentsWidget from '../components/MyAssignmentsWidget';
 import { apiFetchJson } from '../lib/api';
 
 export default function L0Dashboard() {
@@ -120,6 +121,9 @@ export default function L0Dashboard() {
           </button>
         </div>
       </div>
+
+      {/* My Assignments Widget */}
+      <MyAssignmentsWidget />
 
       {/* Executive Stats - Priority Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

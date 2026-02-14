@@ -10,7 +10,10 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
-  Settings
+  Settings,
+  Warehouse,
+  Info,
+  AlertTriangle
 } from 'lucide-react';
 import Layout from '../../components/Layout';
 import { apiFetch } from '../../lib/api';
@@ -562,7 +565,7 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
     </div>
   );
 
-  const appliedGuideline = inputParameters.guideline || selectedGuideline || 'MSEDCL 2016';
+  const appliedGuideline = inputs.guideline || 'MSEDCL 2016';
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -1100,8 +1103,10 @@ function InputParametersForm({ inputs, onChange, onCalculate, onBack, loading, s
 
 // Results Display Component  
 function ResultsDisplay({ results, factorsGuideline, calculationName, setCalculationName, status, setStatus, remarks, setRemarks, onSave, onBack, saving }) {
+  const navigate = useNavigate();
   const [regulatoryOpen, setRegulatoryOpen] = useState(false);
-  const [projectSummaryOpen, setProjectSummaryOpen] = useState(false);
+  const [projectSummaryOpen, setProjectSummaryOpen] = useState(true);
+  const [spaceRequirementsOpen, setSpaceRequirementsOpen] = useState(true);
   const appliedGuideline = factorsGuideline || results?.factors_guideline || 'MSEDCL 2016';
   
   if (!results || !results.totals) {
@@ -1175,6 +1180,142 @@ function ResultsDisplay({ results, factorsGuideline, calculationName, setCalcula
           <div className="text-xs text-lodha-grey/70">Based on 0.9 power factor</div>
         </div>
       </div>
+
+      {/* Infrastructure & Space Requirements */}
+      {results.regulatory_compliance?.spaceRequirements && (
+        <div className="bg-white rounded-lg shadow-lg border-2 border-purple-400">
+          <button
+            onClick={() => setSpaceRequirementsOpen(!spaceRequirementsOpen)}
+            className="w-full text-left bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-4 rounded-t-lg flex items-center justify-between"
+          >
+            <div>
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Warehouse className="w-6 h-6" />
+                Substation Space Requirements — {totals.transformerSizeKVA} kVA
+              </h3>
+              <p className="text-sm text-purple-100 mt-1">MSEDCL space allocation per transformer rating (design factor)</p>
+            </div>
+            {spaceRequirementsOpen ? <ChevronUp className="w-5 h-5 text-white" /> : <ChevronDown className="w-5 h-5 text-white" />}
+          </button>
+
+          {spaceRequirementsOpen && (
+          <div className="p-5 space-y-5">
+            {/* Space Options Table */}
+            {results.regulatory_compliance.spaceRequirements.totalSpaceEstimates?.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-lodha-black mb-3 flex items-center gap-2">
+                  <Info className="w-4 h-4 text-purple-600" />
+                  Space Options for {totals.transformerSizeKVA} kVA Transformer
+                  {(results.regulatory_compliance.dtc?.dtcCount || 0) > 1 && (
+                    <span className="text-sm font-normal text-lodha-grey">
+                      ({results.regulatory_compliance.dtc.dtcCount} transformers required)
+                    </span>
+                  )}
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-purple-50">
+                        <th className="text-left py-2 px-3 border-b-2 border-purple-200 font-semibold text-purple-900">Installation Type</th>
+                        <th className="text-right py-2 px-3 border-b-2 border-purple-200 font-semibold text-purple-900">Per Transformer (sq.m)</th>
+                        <th className="text-center py-2 px-3 border-b-2 border-purple-200 font-semibold text-purple-900">Dimensions</th>
+                        <th className="text-right py-2 px-3 border-b-2 border-purple-200 font-semibold text-purple-900">No. of Transformers</th>
+                        <th className="text-right py-2 px-3 border-b-2 border-purple-200 font-semibold text-purple-900">Total DTC Area (sq.m)</th>
+                        <th className="text-right py-2 px-3 border-b-2 border-purple-200 font-semibold text-purple-900">HT Panel Room (sq.m)</th>
+                        <th className="text-right py-2 px-3 border-b-2 border-purple-200 font-semibold text-purple-900 bg-purple-100">Grand Total (sq.m)</th>
+                        <th className="text-left py-2 px-3 border-b-2 border-purple-200 font-semibold text-purple-900">Ventilation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.regulatory_compliance.spaceRequirements.totalSpaceEstimates.map((estimate, idx) => {
+                        const typeLabels = {
+                          'DTC_OUTDOOR': 'Outdoor DTC Compound',
+                          'DTC_INDOOR': 'Indoor Transformer Room',
+                          'DTC_COMPACT': 'Compact Substation (CSS)'
+                        };
+                        return (
+                          <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-purple-50/50'}>
+                            <td className="py-2 px-3 border-b border-purple-100 font-medium">{typeLabels[estimate.installationType] || estimate.installationType}</td>
+                            <td className="py-2 px-3 border-b border-purple-100 text-right font-mono">{estimate.perTransformerArea}</td>
+                            <td className="py-2 px-3 border-b border-purple-100 text-center text-xs text-lodha-grey">{estimate.dimensions}</td>
+                            <td className="py-2 px-3 border-b border-purple-100 text-right">{estimate.transformerCount}</td>
+                            <td className="py-2 px-3 border-b border-purple-100 text-right font-mono">{estimate.totalDTCArea.toFixed(1)}</td>
+                            <td className="py-2 px-3 border-b border-purple-100 text-right font-mono">{estimate.htPanelArea > 0 ? estimate.htPanelArea.toFixed(1) : '—'}</td>
+                            <td className="py-2 px-3 border-b border-purple-100 text-right font-bold bg-purple-50 font-mono">{estimate.grandTotalArea.toFixed(1)}</td>
+                            <td className="py-2 px-3 border-b border-purple-100 text-xs text-lodha-grey">{estimate.ventilation}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* 33/11 kV Substation Space (if load > 3 MVA) */}
+            {results.regulatory_compliance.substation?.needed && results.regulatory_compliance.substation?.spaceOptions?.length > 0 && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <h4 className="font-semibold text-orange-800 mb-2 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  33/11 kV Substation Required — Load {results.regulatory_compliance.substation.loadAfterDF_MVA} MVA
+                </h4>
+                <p className="text-sm text-orange-700 mb-3">{results.regulatory_compliance.substation.description}</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-orange-100">
+                        <th className="text-left py-2 px-3 border-b border-orange-200">Substation Type</th>
+                        <th className="text-right py-2 px-3 border-b border-orange-200">Area (sq.m)</th>
+                        <th className="text-center py-2 px-3 border-b border-orange-200">Dimensions</th>
+                        <th className="text-left py-2 px-3 border-b border-orange-200">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.regulatory_compliance.substation.spaceOptions.map((opt, idx) => {
+                        const labels = {
+                          'SUBSTATION_33_11_OUTDOOR': '33/11 kV Outdoor Substation',
+                          'SUBSTATION_33_11_HYBRID': '33/11 kV Hybrid (Indoor/Outdoor)',
+                          'SUBSTATION_33_11_INDOOR': '33/11 kV Indoor Substation',
+                          'SUBSTATION_GIS': '33/11 kV GIS Substation'
+                        };
+                        return (
+                          <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-orange-50/50'}>
+                            <td className="py-2 px-3 border-b border-orange-100 font-medium">{labels[opt.installationType] || opt.description}</td>
+                            <td className="py-2 px-3 border-b border-orange-100 text-right font-bold font-mono">{opt.totalArea.toFixed(0)}</td>
+                            <td className="py-2 px-3 border-b border-orange-100 text-center text-xs text-lodha-grey">{opt.roomLength}m × {opt.roomWidth}m</td>
+                            <td className="py-2 px-3 border-b border-orange-100 text-xs text-lodha-grey">{opt.ventilationNotes}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Recommendations */}
+            {results.regulatory_compliance.spaceRequirements.recommendations?.length > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                  <Lightbulb className="w-4 h-4" />
+                  Recommendations
+                </h4>
+                <ul className="space-y-1">
+                  {results.regulatory_compliance.spaceRequirements.recommendations.map((rec, idx) => (
+                    <li key={idx} className="text-sm text-blue-700 flex items-start gap-2">
+                      <span className="text-blue-400 mt-0.5">•</span>
+                      {rec}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            <p className="text-xs text-lodha-grey/60 italic">Source: MSEDCL Standards for Supply / NSC Circular 35530</p>
+          </div>
+          )}
+        </div>
+      )}
 
       {/* Factors Used in Calculation */}
       {(results.factors_used || results.regulatory_compliance) && (
@@ -1429,7 +1570,7 @@ function ResultsDisplay({ results, factorsGuideline, calculationName, setCalcula
 }
 
 function BuildingBreakdownCard({ building, twins, index }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   
   return (
     <div className="bg-white rounded-lg shadow">
@@ -1467,16 +1608,54 @@ function BuildingBreakdownCard({ building, twins, index }) {
       </button>
       
       {expanded && (
-        <div className="px-5 pb-5 border-t border-lodha-steel/30">
+        <div className="px-5 pb-5 border-t border-lodha-steel/30 space-y-1">
+          {/* Flat / Residential Loads */}
           {building.flatLoads && building.flatLoads.items && building.flatLoads.items.length > 0 && (
             <div className="mt-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-px flex-1 bg-blue-200" />
+                <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">Flat / Residential Loads</span>
+                <div className="h-px flex-1 bg-blue-200" />
+              </div>
               <LoadCategoryTable category={building.flatLoads} />
             </div>
           )}
           
-          {building.buildingCALoads?.map((category, idx) => (
-            <LoadCategoryTable key={`${building.buildingId}-ca-${idx}`} category={category} />
-          ))}
+          {/* Building Common Area Loads */}
+          {building.buildingCALoads && building.buildingCALoads.length > 0 && (
+            <div className="mt-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-px flex-1 bg-amber-200" />
+                <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Building Common Area Loads</span>
+                <div className="h-px flex-1 bg-amber-200" />
+              </div>
+              {building.buildingCALoads.map((category, idx) => (
+                <LoadCategoryTable key={`${building.buildingId}-ca-${idx}`} category={category} />
+              ))}
+            </div>
+          )}
+
+          {/* Building Totals Row */}
+          <div className="mt-3 bg-gradient-to-r from-lodha-sand to-lodha-cream rounded-lg p-3">
+            <div className="grid grid-cols-4 gap-4 text-center">
+              <div>
+                <div className="text-xs text-lodha-grey">Connected Load</div>
+                <div className="text-lg font-bold text-lodha-black">{building.totals?.tcl?.toFixed(2) || '0.00'} kW</div>
+              </div>
+              <div>
+                <div className="text-xs text-lodha-grey">Max Demand</div>
+                <div className="text-lg font-bold text-blue-600">{building.totals?.maxDemand?.toFixed(2) || '0.00'} kW</div>
+              </div>
+              <div>
+                <div className="text-xs text-lodha-grey">Essential</div>
+                <div className="text-lg font-bold text-green-600">{building.totals?.essential?.toFixed(2) || '0.00'} kW</div>
+              </div>
+              <div>
+                <div className="text-xs text-lodha-grey">Fire Load</div>
+                <div className="text-lg font-bold text-red-600">{building.totals?.fire?.toFixed(2) || '0.00'} kW</div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1484,7 +1663,7 @@ function BuildingBreakdownCard({ building, twins, index }) {
 }
 
 function LoadCategoryTable({ category }) {
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
   const hasItems = category.items && category.items.length > 0;
 
   return (

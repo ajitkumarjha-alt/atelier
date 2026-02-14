@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Menu, X, LogOut, LayoutDashboard, 
   Building2, FileText, User, Users, FolderKanban,
-  ListChecks, BookOpen, ClipboardCheck
+  BookOpen
 } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { createOrUpdateUser } from '../services/userService';
@@ -37,12 +37,10 @@ export default function Layout({ children }) {
 
     // Dashboard - everyone gets their appropriate dashboard
     items.push({ name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard });
-    items.push({ name: 'My Assignments', path: '/my-assignments', icon: ClipboardCheck });
 
     // L0 specific
     if (userLevel === 'L0') {
       items.push({ name: 'L0 Dashboard', path: '/l0-dashboard', icon: FolderKanban });
-      items.push({ name: 'Task Overview', path: '/task-management', icon: ListChecks });
       items.push({ name: 'Standards', path: '/standards', icon: BookOpen });
     }
 
@@ -50,14 +48,12 @@ export default function Layout({ children }) {
     if (userLevel === 'L1') {
       items.push({ name: 'Project Management', path: '/l1-dashboard', icon: Building2 });
       items.push({ name: 'Create Project', path: '/project-input', icon: FolderKanban });
-      items.push({ name: 'Task Management', path: '/task-management', icon: ListChecks });
       items.push({ name: 'Standards', path: '/standards', icon: BookOpen });
     }
 
     // L2, L3, L4 - Execution users
     if (['L2', 'L3', 'L4'].includes(userLevel)) {
       items.push({ name: 'MAS Management', path: '/mas-list', icon: FileText });
-      items.push({ name: 'Task Management', path: '/task-management', icon: ListChecks });
       items.push({ name: 'Standards', path: '/standards', icon: BookOpen });
     }
 
@@ -77,8 +73,6 @@ export default function Layout({ children }) {
         { name: 'L0 Dashboard', path: '/l0-dashboard', icon: FolderKanban },
         { name: 'L1 Dashboard', path: '/l1-dashboard', icon: Building2 },
         { name: 'L2 Dashboard', path: '/l2-dashboard', icon: LayoutDashboard },
-
-        { name: 'Task Management', path: '/task-management', icon: ListChecks },
         { name: 'Standards', path: '/standards', icon: BookOpen },
         { name: 'User Management', path: '/super-admin-dashboard', icon: Users }
       );
