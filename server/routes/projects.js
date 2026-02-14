@@ -565,82 +565,132 @@ const createProjectsRouter = ({
     const { id } = req.params;
 
     try {
-      const projectResult = await query('SELECT * FROM projects WHERE id = $1', [id]);
+      // Run all 5 queries in parallel — no N+1 problem
+      const [projectResult, societiesResult, buildingsResult, floorsResult, flatsResult] = await Promise.all([
+        query('SELECT * FROM projects WHERE id = $1', [id]),
+        query('SELECT * FROM societies WHERE project_id = $1 ORDER BY name', [id]),
+        query(
+          `SELECT buildings.*, societies.name AS society_name
+           FROM buildings
+           LEFT JOIN societies ON societies.id = buildings.society_id
+           WHERE buildings.project_id = $1
+           ORDER BY buildings.id`,
+          [id]
+        ),
+        query(
+          `SELECT floors.* FROM floors
+           INNER JOIN buildings ON floors.building_id = buildings.id
+           WHERE buildings.project_id = $1
+           ORDER BY floors.building_id, floors.floor_number`,
+          [id]
+        ),
+        query(
+          `SELECT flats.* FROM flats
+           INNER JOIN floors ON flats.floor_id = floors.id
+           INNER JOIN buildings ON floors.building_id = buildings.id
+           WHERE buildings.project_id = $1
+           ORDER BY flats.floor_id`,
+          [id]
+        ),
+      ]);
+
       if (projectResult.rows.length === 0) {
         return res.status(404).json({ error: 'Project not found' });
       }
 
       const project = projectResult.rows[0];
-      const buildingsResult = await query('SELECT * FROM buildings WHERE project_id = $1', [id]);
 
-      const buildings = [];
+      // Build lookup maps
       const buildingIdToNameMap = {};
-      buildingsResult.rows.forEach(b => {
-        buildingIdToNameMap[b.id] = b.name;
+      buildingsResult.rows.forEach(b => { buildingIdToNameMap[b.id] = b.name; });
+
+      const floorIdToNameMap = {};
+      floorsResult.rows.forEach(f => { floorIdToNameMap[f.id] = f.floor_name; });
+
+      // Group flats by floor_id
+      const flatsByFloorId = {};
+      flatsResult.rows.forEach(flat => {
+        if (!flatsByFloorId[flat.floor_id]) flatsByFloorId[flat.floor_id] = [];
+        flatsByFloorId[flat.floor_id].push({
+          id: flat.id,
+          type: flat.flat_type,
+          area: flat.area_sqft,
+          count: flat.number_of_flats,
+          flat_type: flat.flat_type,
+          area_sqft: flat.area_sqft,
+          number_of_flats: flat.number_of_flats,
+        });
       });
 
-      for (const building of buildingsResult.rows) {
-        const floorsResult = await query('SELECT * FROM floors WHERE building_id = $1', [building.id]);
-
-        const floors = [];
-        const floorIdToNameMap = {};
-        floorsResult.rows.forEach(f => {
-          floorIdToNameMap[f.id] = f.floor_name;
+      // Group floors by building_id
+      const floorsByBuildingId = {};
+      floorsResult.rows.forEach(floor => {
+        if (!floorsByBuildingId[floor.building_id]) floorsByBuildingId[floor.building_id] = [];
+        floorsByBuildingId[floor.building_id].push({
+          id: floor.id,
+          floorNumber: floor.floor_number,
+          floorName: floor.floor_name,
+          floorHeight: floor.floor_height,
+          typicalLobbyArea: floor.typical_lobby_area,
+          twinOfFloorId: floor.twin_of_floor_id,
+          twinOfFloorName: floor.twin_of_floor_id ? floorIdToNameMap[floor.twin_of_floor_id] : null,
+          floor_number: floor.floor_number,
+          floor_name: floor.floor_name,
+          floor_height: floor.floor_height,
+          typical_lobby_area: floor.typical_lobby_area,
+          twin_of_floor_id: floor.twin_of_floor_id,
+          flats: flatsByFloorId[floor.id] || [],
         });
+      });
 
-        for (const floor of floorsResult.rows) {
-          const flatsResult = await query('SELECT * FROM flats WHERE floor_id = $1', [floor.id]);
+      // Build societies array
+      const societies = societiesResult.rows.map(society => ({
+        id: society.id,
+        name: society.name,
+        description: society.description,
+        project_id: society.project_id,
+      }));
 
-          floors.push({
-            id: floor.id,
-            floorNumber: floor.floor_number,
-            floorName: floor.floor_name,
-            floorHeight: floor.floor_height,
-            typicalLobbyArea: floor.typical_lobby_area,
-            twinOfFloorId: floor.twin_of_floor_id,
-            twinOfFloorName: floor.twin_of_floor_id ? floorIdToNameMap[floor.twin_of_floor_id] : null,
-            floor_number: floor.floor_number,
-            floor_name: floor.floor_name,
-            floor_height: floor.floor_height,
-            typical_lobby_area: floor.typical_lobby_area,
-            twin_of_floor_id: floor.twin_of_floor_id,
-            flats: flatsResult.rows.map(f => ({
-              id: f.id,
-              type: f.flat_type,
-              area: f.area_sqft,
-              count: f.number_of_flats,
-              flat_type: f.flat_type,
-              area_sqft: f.area_sqft,
-              number_of_flats: f.number_of_flats
-            }))
-          });
-        }
-
-        buildings.push({
-          id: building.id,
-          name: building.name,
-          applicationType: building.application_type,
-          application_type: building.application_type,
-          residentialType: building.residential_type,
-          villaType: building.villa_type,
-          villaCount: building.villa_count,
-          isTwin: building.is_twin,
-          twinOfBuildingId: building.twin_of_building_id,
-          twinOfBuildingName: building.twin_of_building_id ? buildingIdToNameMap[building.twin_of_building_id] : null,
-          twin_of_building_id: building.twin_of_building_id,
-          gfEntranceLobby: building.gf_entrance_lobby,
-          gf_entrance_lobby: building.gf_entrance_lobby,
-          floors
-        });
-      }
+      // Build buildings array
+      const buildings = buildingsResult.rows.map(building => ({
+        id: building.id,
+        name: building.name,
+        applicationType: building.application_type,
+        application_type: building.application_type,
+        residentialType: building.residential_type,
+        villaType: building.villa_type,
+        villaCount: building.villa_count,
+        isTwin: building.is_twin,
+        twinOfBuildingId: building.twin_of_building_id,
+        twinOfBuildingName: building.twin_of_building_id ? buildingIdToNameMap[building.twin_of_building_id] : null,
+        twin_of_building_id: building.twin_of_building_id,
+        societyId: building.society_id,
+        society_id: building.society_id,
+        societyName: building.society_name,
+        gfEntranceLobby: building.gf_entrance_lobby,
+        gf_entrance_lobby: building.gf_entrance_lobby,
+        floors: floorsByBuildingId[building.id] || [],
+      }));
 
       res.json({
         id: project.id,
         name: project.name,
         location: project.description,
+        description: project.description,
+        completion_percentage: project.completion_percentage,
+        floors_completed: project.floors_completed,
+        total_floors: project.total_floors,
+        material_stock_percentage: project.material_stock_percentage,
+        mep_status: project.mep_status,
+        lifecycle_stage: project.lifecycle_stage,
+        assigned_lead_name: project.lead_name,
+        start_date: project.created_at,
+        target_completion_date: project.created_at,
+        status: project.project_status,
         latitude: buildingsResult.rows[0]?.location_latitude || '',
         longitude: buildingsResult.rows[0]?.location_longitude || '',
-        buildings
+        buildings,
+        societies,
       });
     } catch (error) {
       console.error('Error fetching project:', error);
