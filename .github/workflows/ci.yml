@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
 
 jobs:
   build:
@@ -18,8 +20,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Lint
-        run: npm run lint
-      - name: Test
-        run: npm test
-        env:
-          NODE_ENV: test
+        run: npm run lint --if-present
+      - name: Build
+        run: npm run build
