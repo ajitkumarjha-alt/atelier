@@ -27,8 +27,8 @@ const createMyAssignmentsRouter = ({ query, verifyToken, logger }) => {
         }
       };
 
-      // 1. Tasks assigned to user
-      {
+      // Build all 5 queries with their params, then run in parallel
+      const buildTaskQuery = () => {
         let sql = `SELECT t.id, t.title, t.description, t.status, t.priority, t.due_date,
                      t.created_at, t.assigned_at, t.completed_at,
                      p.name as project_name, p.id as project_id,
@@ -41,24 +41,14 @@ const createMyAssignmentsRouter = ({ query, verifyToken, logger }) => {
                    WHERE t.assigned_to_id = $1`;
         const params = [userId];
         let paramCount = 1;
-
         if (project_id) { paramCount++; sql += ` AND t.project_id = $${paramCount}`; params.push(project_id); }
         if (status === 'active') sql += ` AND t.status != 'completed'`;
         else if (status === 'completed') sql += ` AND t.status = 'completed'`;
-
         sql += ' ORDER BY t.created_at DESC';
-        const result = await safeQuery(sql, params);
+        return { sql, params };
+      };
 
-        // Add overdue flag
-        const now = new Date();
-        result.rows.forEach(row => {
-          row.is_overdue = row.status !== 'completed' && row.due_date && new Date(row.due_date) < now;
-          assignments.push(row);
-        });
-      }
-
-      // 2. DDS items assigned to user
-      {
+      const buildDdsQuery = () => {
         let sql = `SELECT di.id, di.item_name as title, di.item_category as description,
                      di.status, 'normal' as priority, di.expected_completion_date as due_date,
                      di.created_at, NULL as assigned_at, di.actual_completion_date as completed_at,
@@ -72,22 +62,14 @@ const createMyAssignmentsRouter = ({ query, verifyToken, logger }) => {
                    WHERE di.assigned_to_id = $1`;
         const params = [userId];
         let paramCount = 1;
-
         if (project_id) { paramCount++; sql += ` AND d.project_id = $${paramCount}`; params.push(project_id); }
         if (status === 'active') sql += ` AND di.status != 'completed'`;
         else if (status === 'completed') sql += ` AND di.status = 'completed'`;
-
         sql += ' ORDER BY di.created_at DESC';
-        const result = await safeQuery(sql, params);
-        const now = new Date();
-        result.rows.forEach(row => {
-          row.is_overdue = row.status !== 'completed' && row.due_date && new Date(row.due_date) < now;
-          assignments.push(row);
-        });
-      }
+        return { sql, params };
+      };
 
-      // 3. RFCs assigned to user
-      {
+      const buildRfcQuery = () => {
         let sql = `SELECT r.id, r.title, r.description, r.status, r.priority, r.due_date,
                      r.created_at, r.assigned_at, NULL as completed_at,
                      p.name as project_name, r.project_id,
@@ -100,22 +82,14 @@ const createMyAssignmentsRouter = ({ query, verifyToken, logger }) => {
                    WHERE r.assigned_to_id = $1`;
         const params = [userId];
         let paramCount = 1;
-
         if (project_id) { paramCount++; sql += ` AND r.project_id = $${paramCount}`; params.push(project_id); }
         if (status === 'active') sql += ` AND r.status NOT IN ('approved', 'rejected', 'implemented')`;
         else if (status === 'completed') sql += ` AND r.status IN ('approved', 'rejected', 'implemented')`;
-
         sql += ' ORDER BY r.created_at DESC';
-        const result = await safeQuery(sql, params);
-        const now = new Date();
-        result.rows.forEach(row => {
-          row.is_overdue = !['approved','rejected','implemented'].includes(row.status) && row.due_date && new Date(row.due_date) < now;
-          assignments.push(row);
-        });
-      }
+        return { sql, params };
+      };
 
-      // 4. RFIs assigned to user
-      {
+      const buildRfiQuery = () => {
         let sql = `SELECT r.id, COALESCE(r.rfi_subject, r.rfi_ref_no) as title,
                      r.rfi_description as description, r.status, r.priority, r.due_date,
                      r.created_at, r.assigned_at, NULL as completed_at,
@@ -129,22 +103,14 @@ const createMyAssignmentsRouter = ({ query, verifyToken, logger }) => {
                    WHERE r.assigned_to_id = $1`;
         const params = [userId];
         let paramCount = 1;
-
         if (project_id) { paramCount++; sql += ` AND r.project_id = $${paramCount}`; params.push(project_id); }
         if (status === 'active') sql += ` AND r.status NOT IN ('Closed', 'Resolved', 'Approved')`;
         else if (status === 'completed') sql += ` AND r.status IN ('Closed', 'Resolved', 'Approved')`;
-
         sql += ' ORDER BY r.created_at DESC';
-        const result = await safeQuery(sql, params);
-        const now = new Date();
-        result.rows.forEach(row => {
-          row.is_overdue = !['Closed','Resolved','Approved'].includes(row.status) && row.due_date && new Date(row.due_date) < now;
-          assignments.push(row);
-        });
-      }
+        return { sql, params };
+      };
 
-      // 5. MAS assigned to user
-      {
+      const buildMasQuery = () => {
         let sql = `SELECT m.id, m.material_name as title,
                      COALESCE(m.material_category, '') as description,
                      m.status, 'normal' as priority, m.due_date,
@@ -159,19 +125,50 @@ const createMyAssignmentsRouter = ({ query, verifyToken, logger }) => {
                    WHERE m.assigned_to_id = $1`;
         const params = [userId];
         let paramCount = 1;
-
         if (project_id) { paramCount++; sql += ` AND m.project_id = $${paramCount}`; params.push(project_id); }
         if (status === 'active') sql += ` AND m.final_status = 'Pending'`;
         else if (status === 'completed') sql += ` AND m.final_status != 'Pending'`;
-
         sql += ' ORDER BY m.created_at DESC';
-        const result = await safeQuery(sql, params);
-        const now = new Date();
-        result.rows.forEach(row => {
-          row.is_overdue = row.final_status === 'Pending' && row.due_date && new Date(row.due_date) < now;
-          assignments.push(row);
-        });
-      }
+        return { sql, params };
+      };
+
+      const taskQ = buildTaskQuery();
+      const ddsQ = buildDdsQuery();
+      const rfcQ = buildRfcQuery();
+      const rfiQ = buildRfiQuery();
+      const masQ = buildMasQuery();
+
+      // Run all 5 queries in parallel instead of sequentially
+      const [taskResult, ddsResult, rfcResult, rfiResult, masResult] = await Promise.all([
+        safeQuery(taskQ.sql, taskQ.params),
+        safeQuery(ddsQ.sql, ddsQ.params),
+        safeQuery(rfcQ.sql, rfcQ.params),
+        safeQuery(rfiQ.sql, rfiQ.params),
+        safeQuery(masQ.sql, masQ.params),
+      ]);
+
+      const now = new Date();
+
+      taskResult.rows.forEach(row => {
+        row.is_overdue = row.status !== 'completed' && row.due_date && new Date(row.due_date) < now;
+        assignments.push(row);
+      });
+      ddsResult.rows.forEach(row => {
+        row.is_overdue = row.status !== 'completed' && row.due_date && new Date(row.due_date) < now;
+        assignments.push(row);
+      });
+      rfcResult.rows.forEach(row => {
+        row.is_overdue = !['approved','rejected','implemented'].includes(row.status) && row.due_date && new Date(row.due_date) < now;
+        assignments.push(row);
+      });
+      rfiResult.rows.forEach(row => {
+        row.is_overdue = !['Closed','Resolved','Approved'].includes(row.status) && row.due_date && new Date(row.due_date) < now;
+        assignments.push(row);
+      });
+      masResult.rows.forEach(row => {
+        row.is_overdue = row.final_status === 'Pending' && row.due_date && new Date(row.due_date) < now;
+        assignments.push(row);
+      });
 
       // Filter by type if requested
       let filtered = assignments;

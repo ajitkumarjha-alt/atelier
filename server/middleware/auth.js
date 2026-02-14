@@ -57,6 +57,30 @@ export default function createAuthMiddleware(firebaseAdmin) {
 
     try {
       if (!firebaseAdmin) {
+        // Firebase Admin not configured – fall through to dev bypass if available
+        if (devUserEmail && process.env.NODE_ENV !== 'production') {
+          try {
+            logger.info(`[DEV] Firebase Admin unavailable, using dev user bypass for email: ${devUserEmail}`);
+            const userResult = await query(
+              'SELECT id, email, user_level FROM users WHERE email = $1',
+              [devUserEmail]
+            );
+
+            if (userResult.rows.length === 0) {
+              return res.status(403).json({
+                error: 'Forbidden',
+                message: `User "${devUserEmail}" not found in database. Contact administrator.`,
+              });
+            }
+
+            const user = userResult.rows[0];
+            req.user = buildUserPayload(user, `dev-${user.id}`);
+            return next();
+          } catch (error) {
+            logger.error('Dev user lookup error:', error.message);
+            return res.status(401).json({ error: 'Unauthorized', message: 'Failed to lookup dev user' });
+          }
+        }
         return res.status(401).json({
           error: 'Unauthorized',
           message: 'Firebase Admin SDK not initialized. In development, use x-dev-user-email header.',

@@ -31,46 +31,43 @@ const createProjectsRouter = ({
   router.get('/projects', verifyToken, async (req, res) => {
     try {
       const userEmail = req.user.email;
+      // userLevel is already set by verifyToken middleware — no extra DB call needed
+      const userLevel = req.user.userLevel || 'L4';
 
-      let queryText = `
-        SELECT p.*, u.full_name as assigned_lead_name
-        FROM projects p
-        LEFT JOIN users u ON p.assigned_lead_id = u.id
-        WHERE p.is_archived = FALSE
-        ORDER BY p.updated_at DESC
-      `;
+      let queryText;
+      let params = [];
 
-      if (userEmail) {
-        const userLevel = await getUserLevel(userEmail);
-
-        if (userLevel === 'L2') {
-          queryText = `
-            SELECT p.*, u.full_name as assigned_lead_name
-            FROM projects p
-            LEFT JOIN users u ON p.assigned_lead_id = u.id
-            WHERE p.assigned_lead_id = (SELECT id FROM users WHERE email = $1)
-            AND p.is_archived = FALSE
-            ORDER BY p.updated_at DESC
-          `;
-          const result = await query(queryText, [userEmail]);
-          return res.json(result.rows);
-        }
-
-        if (userLevel === 'L3' || userLevel === 'L4') {
-          queryText = `
-            SELECT p.*, u.full_name as assigned_lead_name
-            FROM projects p
-            LEFT JOIN users u ON p.assigned_lead_id = u.id
-            WHERE p.is_archived = FALSE
-            ORDER BY p.updated_at DESC
-            LIMIT 10
-          `;
-          const result = await query(queryText);
-          return res.json(result.rows);
-        }
+      if (userLevel === 'L2') {
+        queryText = `
+          SELECT p.*, u.full_name as assigned_lead_name
+          FROM projects p
+          LEFT JOIN users u ON p.assigned_lead_id = u.id
+          WHERE p.assigned_lead_id = $1
+          AND p.is_archived = FALSE
+          ORDER BY p.updated_at DESC
+        `;
+        params = [req.user.userId];
+      } else if (userLevel === 'L3' || userLevel === 'L4') {
+        queryText = `
+          SELECT p.*, u.full_name as assigned_lead_name
+          FROM projects p
+          LEFT JOIN users u ON p.assigned_lead_id = u.id
+          WHERE p.is_archived = FALSE
+          ORDER BY p.updated_at DESC
+          LIMIT 10
+        `;
+      } else {
+        // SUPER_ADMIN and L1 see all projects
+        queryText = `
+          SELECT p.*, u.full_name as assigned_lead_name
+          FROM projects p
+          LEFT JOIN users u ON p.assigned_lead_id = u.id
+          WHERE p.is_archived = FALSE
+          ORDER BY p.updated_at DESC
+        `;
       }
 
-      const result = await query(queryText);
+      const result = await query(queryText, params);
       res.json(result.rows);
     } catch (error) {
       console.error('Error fetching projects:', error);
