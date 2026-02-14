@@ -483,7 +483,7 @@ export default function DDSManagement() {
           <div className="flex items-center gap-1 min-w-max">
             {[
               { key: 'schedule', label: 'DDS Schedule', icon: Calendar },
-              { key: 'drawings', label: 'Drawing Lists', icon: FileText },
+              { key: 'drawings', label: 'VFC / DD Drawings', icon: FileText },
               { key: 'boq', label: 'BOQ', icon: Clipboard },
               { key: 'progress', label: 'Progress Chart', icon: BarChart3 },
             ].map(tab => {

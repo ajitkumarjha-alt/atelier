@@ -302,7 +302,7 @@ export default function DrawingSchedule() {
         </button>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="heading-primary mb-2">Drawing Schedule</h1>
+            <h1 className="heading-primary mb-2">Submission Tracker</h1>
             <p className="text-body">{project?.project_name || 'Project'}</p>
           </div>
           <button

@@ -170,7 +170,7 @@ export default function ProjectDetail() {
           className="py-3 px-4 border-2 border-lodha-gold text-lodha-gold hover:bg-lodha-gold hover:text-white rounded-lg transition-colors font-jost font-semibold text-sm flex items-center justify-center gap-2"
         >
           <FileText className="w-4 h-4" />
-          Drawing Schedule
+          Submission Tracker
         </button>
         <button
           onClick={() => navigate(`/projects/${id}/rfc`)}
