@@ -6,6 +6,9 @@ import ProjectCard from '../components/ProjectCard';
 import AIReports from '../components/AIReports';
 import MyAssignmentsWidget from '../components/MyAssignmentsWidget';
 import { apiFetchJson } from '../lib/api';
+import { showError } from '../utils/toast';
+import { useConfirm } from '../hooks/useDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function L0Dashboard() {
   const [projects, setProjects] = useState([]);
@@ -18,6 +21,7 @@ export default function L0Dashboard() {
   const [taskStats, setTaskStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { confirm, dialogProps } = useConfirm();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -78,9 +82,12 @@ export default function L0Dashboard() {
   const handleDeleteProject = async (event, project) => {
     event.stopPropagation();
 
-    const confirmed = window.confirm(
-      `Delete project "${project.name}"? This will remove all related data.`
-    );
+    const confirmed = await confirm({
+      title: 'Delete Project',
+      message: 'This will permanently delete this project and all associated data. This cannot be undone.',
+      variant: 'danger',
+      confirmLabel: 'Delete Project'
+    });
     if (!confirmed) return;
 
     try {
@@ -99,7 +106,7 @@ export default function L0Dashboard() {
       setProjects(prev => prev.filter(p => p.id !== project.id));
     } catch (error) {
       console.error('Error deleting project:', error);
-      alert(error.message || 'Failed to delete project');
+      showError(error.message || 'Failed to delete project');
     }
   };
 
@@ -329,6 +336,7 @@ export default function L0Dashboard() {
           </div>
         </>
       )}
+      <ConfirmDialog {...dialogProps} />
     </Layout>
   );
 }

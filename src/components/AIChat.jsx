@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, X, Minimize2, Maximize2, Sparkles, FileText, Calendar, Upload } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { usePrompt } from '../hooks/useDialog';
+import PromptDialog from '../components/PromptDialog';
 
 export default function AIChat({ isOpen, onClose, userLevel = 'L2', projectId = null, user }) {
   const [sessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
@@ -41,6 +43,7 @@ Ask me anything about your projects! I'll only use data from your database and u
   const [showActions, setShowActions] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const { prompt: promptDialog, dialogProps: promptDialogProps } = usePrompt();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -106,7 +109,7 @@ Ask me anything about your projects! I'll only use data from your database and u
   };
 
   const handleCreateDesignSheet = async () => {
-    const requirements = prompt('Enter design sheet requirements:');
+    const requirements = await promptDialog({ title: 'Design Sheet Requirements', message: 'Enter the requirements for the design sheet', inputType: 'textarea', placeholder: 'e.g., Electrical load calculation for Tower A...' });
     if (!requirements) return;
 
     setLoading(true);
@@ -388,6 +391,7 @@ Ask me anything about your projects! I'll only use data from your database and u
           </>
         )}
       </div>
+      <PromptDialog {...promptDialogProps} />
     </div>
   );
 }

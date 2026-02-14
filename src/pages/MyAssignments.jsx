@@ -5,6 +5,8 @@ import {
   FileText, Package, ArrowRight, Calendar, User
 } from 'lucide-react';
 import Layout from '../components/Layout';
+import Spinner from '../components/Spinner';
+import StatusBadge from '../components/StatusBadge';
 import { auth } from '../lib/firebase';
 import { apiFetchJson } from '../lib/api';
 
@@ -14,26 +16,6 @@ const TYPE_CONFIG = {
   rfc: { label: 'RFC', color: 'bg-teal-100 text-teal-700 border-teal-200', icon: FileText },
   rfi: { label: 'RFI', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: FileText },
   mas: { label: 'MAS', color: 'bg-pink-100 text-pink-700 border-pink-200', icon: Package },
-};
-
-const STATUS_STYLES = {
-  completed: 'bg-green-100 text-green-700',
-  approved: 'bg-green-100 text-green-700',
-  Approved: 'bg-green-100 text-green-700',
-  resolved: 'bg-green-100 text-green-700',
-  Resolved: 'bg-green-100 text-green-700',
-  closed: 'bg-green-100 text-green-700',
-  Closed: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
-  Rejected: 'bg-red-100 text-red-700',
-  pending: 'bg-amber-100 text-amber-700',
-  Pending: 'bg-amber-100 text-amber-700',
-  open: 'bg-blue-100 text-blue-700',
-  Open: 'bg-blue-100 text-blue-700',
-  'in-progress': 'bg-indigo-100 text-indigo-700',
-  'In Progress': 'bg-indigo-100 text-indigo-700',
-  draft: 'bg-gray-100 text-gray-700',
-  Draft: 'bg-gray-100 text-gray-700',
 };
 
 export default function MyAssignments() {
@@ -108,20 +90,15 @@ export default function MyAssignments() {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return null;
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-      day: '2-digit', month: 'short', year: 'numeric'
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric'
     });
   };
 
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lodha-gold mx-auto mb-4"></div>
-            <p className="text-lodha-grey">Loading your assignments...</p>
-          </div>
-        </div>
+        <Spinner fullPage label="Loading your assignments..." />
       </Layout>
     );
   }
@@ -145,7 +122,10 @@ export default function MyAssignments() {
             <div
               key={key}
               onClick={() => setTypeFilter(typeFilter === key ? 'all' : key)}
-              className={`section-card p-4 text-center cursor-pointer transition-all hover:shadow-md ${
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setTypeFilter(typeFilter === key ? 'all' : key)}
+              role="button"
+              tabIndex={0}
+              className={`section-card p-4 text-center cursor-pointer transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-lodha-gold/30 ${
                 typeFilter === key ? 'ring-2 ring-lodha-gold' : ''
               }`}
             >
@@ -235,7 +215,10 @@ export default function MyAssignments() {
               <div
                 key={`${item.item_type}-${item.id}-${idx}`}
                 onClick={() => navigateToItem(item)}
-                className={`group section-card p-5 hover:shadow-lg transition-all cursor-pointer ${
+                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigateToItem(item)}
+                role="link"
+                tabIndex={0}
+                className={`group section-card p-5 hover:shadow-lg transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-lodha-gold/30 ${
                   item.is_overdue ? 'border-l-4 border-l-red-400' : ''
                 }`}
               >
@@ -257,11 +240,7 @@ export default function MyAssignments() {
                           {cfg.label}
                         </span>
                         {/* Status Badge */}
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          STATUS_STYLES[item.status] || 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {item.status}
-                        </span>
+                        <StatusBadge status={item.status} />
                       </div>
                     </div>
 

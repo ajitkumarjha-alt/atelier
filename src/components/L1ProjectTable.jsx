@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ChevronDown, Loader, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetchJson, apiFetch } from '../lib/api';
+import { showError } from '../utils/toast';
 
 export default function L1ProjectTable({ userEmail, userLevel }) {
   const [projects, setProjects] = useState([]);
@@ -64,7 +65,7 @@ export default function L1ProjectTable({ userEmail, userLevel }) {
       ));
     } catch (err) {
       console.error('Error assigning lead:', err);
-      alert('Failed to assign lead');
+      showError('Failed to assign lead');
     } finally {
       setAssigningProjectId(null);
     }

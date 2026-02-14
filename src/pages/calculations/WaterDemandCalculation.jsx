@@ -5,6 +5,9 @@ import Layout from '../../components/Layout';
 import { apiFetch } from '../../lib/api';
 import { useUser } from '../../lib/UserContext';
 import { getPolicyDataLegacyFormat, getDefaultPolicy } from '../../services/policyService';
+import { showSuccess, showError, showWarning } from '../../utils/toast';
+import { useConfirm } from '../../hooks/useDialog';
+import ConfirmDialog from '../../components/ConfirmDialog';
 
 // Legacy to new residential type mapping
 const RESIDENTIAL_TYPE_MAPPING = {
@@ -40,6 +43,7 @@ export default function WaterDemandCalculation() {
   const { projectId, calculationId } = useParams();
   const navigate = useNavigate();
   const { userLevel } = useUser();
+  const { confirm, dialogProps } = useConfirm();
   
   const [project, setProject] = useState(null);
   const [buildings, setBuildings] = useState([]);
@@ -316,17 +320,17 @@ export default function WaterDemandCalculation() {
 
   const handleSave = async () => {
     if (!calculationName.trim()) {
-      alert('Please enter a calculation name');
+      showWarning('Please enter a calculation name');
       return;
     }
 
     if (selectedBuildings.length === 0) {
-      alert('Please select at least one building');
+      showWarning('Please select at least one building');
       return;
     }
 
     if (!showCalculations || calculationResults.length === 0) {
-      alert('Please calculate water demand before saving');
+      showWarning('Please calculate water demand before saving');
       return;
     }
 
@@ -379,14 +383,14 @@ export default function WaterDemandCalculation() {
       }
       
       const savedData = await response.json();
-      alert('Calculation saved successfully!');
+      showSuccess('Calculation saved successfully!');
       
       // Navigate back to design calculations
       navigate(`/design-calculations/${projectId}`);
     } catch (err) {
       console.error('Save error:', err);
       setError(err.message);
-      alert('Failed to save calculation: ' + err.message);
+      showError('Failed to save calculation: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -394,13 +398,16 @@ export default function WaterDemandCalculation() {
 
   const handleDelete = async () => {
     if (!calculationId || calculationId === 'new') {
-      alert('Cannot delete a calculation that hasn\'t been saved yet');
+      showWarning('Cannot delete a calculation that hasn\'t been saved yet');
       return;
     }
 
-    const confirmDelete = window.confirm(
-      `Are you sure you want to delete the calculation "${calculationName}"? This action cannot be undone.`
-    );
+    const confirmDelete = await confirm({
+      title: 'Delete Calculation',
+      message: `Are you sure you want to delete the calculation "${calculationName}"? This action cannot be undone.`,
+      variant: 'danger',
+      confirmLabel: 'Delete'
+    });
 
     if (!confirmDelete) return;
 
@@ -413,11 +420,11 @@ export default function WaterDemandCalculation() {
 
       if (!response.ok) throw new Error('Failed to delete calculation');
       
-      alert('Calculation deleted successfully!');
+      showSuccess('Calculation deleted successfully!');
       navigate(`/project/${projectId}`);
     } catch (err) {
       setError(err.message);
-      alert('Failed to delete calculation: ' + err.message);
+      showError('Failed to delete calculation: ' + err.message);
     } finally {
       setDeleting(false);
     }
@@ -913,6 +920,7 @@ export default function WaterDemandCalculation() {
             <span>{saving ? 'Saving...' : 'Confirm and Save'}</span>
           </button>
         </div>
+        <ConfirmDialog {...dialogProps} />
       </div>
     </Layout>
   );

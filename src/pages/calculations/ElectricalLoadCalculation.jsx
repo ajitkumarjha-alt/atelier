@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import Layout from '../../components/Layout';
 import { apiFetch } from '../../lib/api';
+import { showSuccess, showError, showWarning } from '../../utils/toast';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🚀 WORK RESUMPTION MARKER - February 9, 2026
@@ -235,7 +236,7 @@ export default function ElectricalLoadCalculation() {
 
   const handleCalculate = async () => {
     if (selectedBuildings.length === 0) {
-      alert('Please select at least one building');
+      showWarning('Please select at least one building');
       return;
     }
 
@@ -281,7 +282,7 @@ export default function ElectricalLoadCalculation() {
       setCurrentStep(3);
     } catch (error) {
       console.error('Calculation error:', error);
-      alert(`Failed to calculate electrical load: ${error.message}\n\nPlease check your inputs and try again.`);
+      showError(`Failed to calculate electrical load: ${error.message}. Please check your inputs and try again.`);
     } finally {
       setLoading(false);
     }
@@ -289,7 +290,7 @@ export default function ElectricalLoadCalculation() {
 
   const handleSave = async () => {
     if (!calculationName.trim()) {
-      alert('Please enter a calculation name');
+      showWarning('Please enter a calculation name');
       return;
     }
 
@@ -313,11 +314,11 @@ export default function ElectricalLoadCalculation() {
         })
       });
 
-      alert('Calculation saved successfully!');
+      showSuccess('Calculation saved successfully!');
       navigate(`/design-calculations/${projectId}`);
     } catch (error) {
       console.error('Save error:', error);
-      alert('Failed to save calculation');
+      showError('Failed to save calculation');
     } finally {
       setSaving(false);
     }
@@ -388,7 +389,7 @@ export default function ElectricalLoadCalculation() {
             onToggle={handleBuildingToggle}
             onNext={() => {
               if (selectedBuildings.length === 0) {
-                alert('Please select at least one building');
+                showWarning('Please select at least one building');
                 return;
               }
               const derivedHeights = selectedBuildings.map(b => Number(b.total_height_m) || 0);

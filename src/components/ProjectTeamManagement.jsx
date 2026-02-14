@@ -3,6 +3,8 @@ import { Users, Plus, Trash2, UserPlus, X, CheckCircle, AlertCircle } from 'luci
 import { apiFetch } from '../lib/api';
 import ConsultantRegistration from './ConsultantRegistration';
 import VendorRegistration from './VendorRegistration';
+import { useConfirm } from '../hooks/useDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function ProjectTeamManagement({ projectId, currentUserLevel, currentUserId }) {
   const [teamMembers, setTeamMembers] = useState([]);
@@ -16,6 +18,7 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
   const [selectedRole, setSelectedRole] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const { confirm, dialogProps } = useConfirm();
 
   // Predefined roles
   const roleOptions = [
@@ -113,9 +116,8 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
   };
 
   const handleRemoveMember = async (userId) => {
-    if (!confirm('Are you sure you want to remove this team member?')) {
-      return;
-    }
+    const confirmed = await confirm({ title: 'Remove Team Member', message: 'Are you sure you want to remove this team member?', variant: 'danger', confirmLabel: 'Remove' });
+    if (!confirmed) return;
 
     try {
       const response = await apiFetch(`/api/projects/${projectId}/team/${userId}`, {
@@ -450,6 +452,7 @@ export default function ProjectTeamManagement({ projectId, currentUserLevel, cur
           onClose={() => setShowVendorModal(false)}
         />
       )}
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

@@ -20,15 +20,12 @@ export const UserProvider = ({ children }) => {
   const [isActive, setIsActive] = useState(null);
 
   useEffect(() => {
-    console.log('Setting up auth state listener');
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('Auth state changed:', user ? user.email : 'No user');
       setUser(user);
       
       if (user) {
         try {
           const userData = await createOrUpdateUser(user.email, user.displayName);
-          console.log('User data from backend:', userData);
           
           // Check if user is not registered
           if (userData.error === 'Not registered' || userData.user_level === null) {

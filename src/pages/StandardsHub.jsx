@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BookOpen, Database, Settings, ClipboardList, MapPin, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { BookOpen, Database, Settings, ClipboardList, MapPin, AlertTriangle } from 'lucide-react';
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
 import { useUser } from '../lib/UserContext';
+import { showSuccess, showError } from '../utils/toast';
 import ProjectStandardsManagement from './ProjectStandardsManagement';
 import PolicyManagement from './PolicyManagement';
 import StandardsManagement from './StandardsManagement';
@@ -25,8 +26,6 @@ function ProjectStandardsSection({ canEdit }) {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
 
   const selectedProject = useMemo(() => {
     return projects.find(p => String(p.id) === String(selectedProjectId)) || null;
@@ -60,7 +59,7 @@ function ProjectStandardsSection({ canEdit }) {
           setSelectedProjectId(String(projectsData[0].id));
         }
       } catch (err) {
-        setError('Failed to load standards data');
+        showError('Failed to load standards data');
       } finally {
         setLoading(false);
       }
@@ -73,7 +72,6 @@ function ProjectStandardsSection({ canEdit }) {
     const fetchSelections = async () => {
       if (!selectedProjectId) return;
       try {
-        setMessage('');
         const response = await apiFetch(`/api/projects/${selectedProjectId}/standard-selections`);
         const selections = response.ok ? await response.json() : [];
         const guidelineSelection = selections.find(s => s.standard_key === 'electrical_load_guideline');
@@ -84,7 +82,7 @@ function ProjectStandardsSection({ canEdit }) {
           policyVersionId: policySelection?.standard_ref_id ? String(policySelection.standard_ref_id) : ''
         });
       } catch (err) {
-        setError('Failed to load project selections');
+        showError('Failed to load project selections');
       }
     };
 
@@ -94,8 +92,6 @@ function ProjectStandardsSection({ canEdit }) {
   const handleSave = async () => {
     if (!selectedProjectId) return;
     setSaving(true);
-    setError('');
-    setMessage('');
 
     try {
       const selections = [
@@ -121,9 +117,9 @@ function ProjectStandardsSection({ canEdit }) {
         throw new Error(errData.error || 'Failed to save selections');
       }
 
-      setMessage('Project standards updated');
+      showSuccess('Project standards updated');
     } catch (err) {
-      setError(err.message || 'Failed to save selections');
+      showError(err.message || 'Failed to save selections');
     } finally {
       setSaving(false);
     }
@@ -156,19 +152,6 @@ function ProjectStandardsSection({ canEdit }) {
             </span>
           )}
         </div>
-
-        {error && (
-          <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {message && (
-          <div className="mt-4 p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-700 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" />
-            {message}
-          </div>
-        )}
 
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div>

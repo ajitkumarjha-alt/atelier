@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo } from 'react';
 import Layout from '../components/Layout';
 import { Plus, Trash2, Edit2, Check, X, Upload, FileText, Download, Calculator, Settings, Search, Filter, XCircle } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { useConfirm } from '../hooks/useDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { showSuccess, showError, showWarning } from '../utils/toast';
 
 export default function ProjectStandardsManagement({ embedded = false, readOnly = false }) {
   const [standards, setStandards] = useState([]);
@@ -61,6 +64,8 @@ export default function ProjectStandardsManagement({ embedded = false, readOnly 
     notes: '',
     is_active: true
   });
+
+  const { confirm, dialogProps } = useConfirm();
 
   const calculationStructure = {
     'Electrical': ['Electrical Load', 'Cable Selection', 'Transformers', 'Earthing', 'LPS'],
@@ -310,16 +315,17 @@ export default function ProjectStandardsManagement({ embedded = false, readOnly 
         setShowAddFactorModal(false);
         setEditingFactorId(null);
         resetFactorForm();
-        alert('Factor saved successfully');
+        showSuccess('Factor saved successfully');
       }
     } catch (err) { 
       console.error('Error saving factor:', err);
-      alert('Failed to save factor');
+      showError('Failed to save factor');
     }
   };
   
   const handleDeleteElectricalFactor = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this factor?')) return;
+    const confirmed = await confirm({ title: 'Delete Factor', message: 'Are you sure you want to delete this factor?', variant: 'danger', confirmLabel: 'Delete' });
+    if (!confirmed) return;
     try {
       const response = await apiFetch(`/api/electrical-load-factors/${id}`, {
         method: 'PUT',
@@ -327,11 +333,11 @@ export default function ProjectStandardsManagement({ embedded = false, readOnly 
       });
       if (response.ok) {
         await fetchElectricalFactors();
-        alert('Factor deleted successfully');
+        showSuccess('Factor deleted successfully');
       }
     } catch (err) { 
       console.error('Error deleting factor:', err);
-      alert('Failed to delete factor');
+      showError('Failed to delete factor');
     }
   };
   
@@ -368,7 +374,7 @@ export default function ProjectStandardsManagement({ embedded = false, readOnly 
   };
 
   const handleFileUpload = async () => {
-    if (!uploadFile) return alert('Please select a file');
+    if (!uploadFile) return showWarning('Please select a file');
     setUploading(true);
     try {
       const formData = new FormData();
@@ -380,21 +386,22 @@ export default function ProjectStandardsManagement({ embedded = false, readOnly 
         await fetchDocuments();
         setUploadFile(null);
         setUploadDescription('');
-        alert('Document uploaded successfully');
+        showSuccess('Document uploaded successfully');
       }
-    } catch (err) { alert(err.message); } finally { setUploading(false); }
+    } catch (err) { showError(err.message); } finally { setUploading(false); }
   };
 
   const handleDeleteDocument = async (docId) => {
-    if (!window.confirm('Are you sure?')) return;
+    const confirmed = await confirm({ title: 'Delete Document', message: 'Are you sure you want to delete this document?', variant: 'danger', confirmLabel: 'Delete' });
+    if (!confirmed) return;
     try {
       const response = await apiFetch(`/api/project-standards-documents/${docId}`, { method: 'DELETE' });
       if (response.ok) await fetchDocuments();
-    } catch (err) { alert(err.message); }
+    } catch (err) { showError(err.message); }
   };
 
   const handleAddStandard = async () => {
-    if (!newEntry.value.trim()) return alert('Please enter a value');
+    if (!newEntry.value.trim()) return showWarning('Please enter a value');
     try {
       const response = await apiFetch('/api/project-standards', {
         method: 'POST',
@@ -404,7 +411,7 @@ export default function ProjectStandardsManagement({ embedded = false, readOnly 
         await fetchAllStandards();
         setNewEntry({ ...newEntry, value: '', description: '' });
       }
-    } catch (err) { alert(err.message); }
+    } catch (err) { showError(err.message); }
   };
 
   const handleUpdateStandard = async (id) => {
@@ -417,15 +424,16 @@ export default function ProjectStandardsManagement({ embedded = false, readOnly 
         await fetchAllStandards();
         setEditingId(null);
       }
-    } catch (err) { alert(err.message); }
+    } catch (err) { showError(err.message); }
   };
 
   const handleDeleteStandard = async (id) => {
-    if (!window.confirm('Are you sure?')) return;
+    const confirmed = await confirm({ title: 'Delete Standard', message: 'Are you sure you want to delete this standard?', variant: 'danger', confirmLabel: 'Delete' });
+    if (!confirmed) return;
     try {
       const response = await apiFetch(`/api/project-standards/${id}`, { method: 'DELETE' });
       if (response.ok) await fetchAllStandards();
-    } catch (err) { alert(err.message); }
+    } catch (err) { showError(err.message); }
   };
 
   const handleToggleActive = async (id, currentStatus) => {
@@ -435,7 +443,7 @@ export default function ProjectStandardsManagement({ embedded = false, readOnly 
         body: JSON.stringify({ is_active: !currentStatus }),
       });
       await fetchAllStandards();
-    } catch (err) { alert(err.message); }
+    } catch (err) { showError(err.message); }
   };
 
   const filteredStandards = standards.filter(s => s.category === selectedCategory);
@@ -1187,6 +1195,7 @@ export default function ProjectStandardsManagement({ embedded = false, readOnly 
           </div>
         </div>
       )}
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 

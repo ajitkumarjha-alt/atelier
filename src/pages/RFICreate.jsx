@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Upload, X } from 'lucide-react';
 import Layout from '../components/Layout';
 import { apiFetchJson } from '../lib/api';
+import { showSuccess, showError, showWarning } from '../utils/toast';
 
 export default function RFICreate() {
   const navigate = useNavigate();
@@ -102,7 +103,7 @@ export default function RFICreate() {
     
     // Validate required fields
     if (!formData.projectName || !formData.rfiSubject) {
-      alert('Please fill in all required fields (Project Name and RFI Subject)');
+      showWarning('Please fill in all required fields (Project Name and RFI Subject)');
       return;
     }
 
@@ -142,7 +143,7 @@ export default function RFICreate() {
 
       if (response.ok) {
         const data = await response.json();
-        alert(`RFI created successfully! RFI Ref: ${data.rfi_ref_no}`);
+        showSuccess(`RFI created successfully! RFI Ref: ${data.rfi_ref_no}`);
         if (isProjectScoped) {
           navigate(`/projects/${urlProjectId}/rfi`);
         } else {
@@ -150,11 +151,11 @@ export default function RFICreate() {
         }
       } else {
         const error = await response.json();
-        alert(`Failed to create RFI: ${error.error}`);
+        showError(`Failed to create RFI: ${error.error}`);
       }
     } catch (error) {
       console.error('Error creating RFI:', error);
-      alert('An error occurred while creating the RFI. Please try again.');
+      showError('An error occurred while creating the RFI. Please try again.');
     }
   };
 

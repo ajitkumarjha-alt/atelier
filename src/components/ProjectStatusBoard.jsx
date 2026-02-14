@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Loader, Archive, Building2, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetchJson } from '../lib/api';
+import { showError } from '../utils/toast';
+import EmptyState from './EmptyState';
 
 export default function ProjectStatusBoard({ userEmail }) {
   const [projects, setProjects] = useState([]);
@@ -56,7 +58,7 @@ export default function ProjectStatusBoard({ userEmail }) {
       setArchivedProjects([archivedProject, ...archivedProjects]);
     } catch (err) {
       console.error('Error archiving project:', err);
-      alert('Failed to archive project');
+      showError('Failed to archive project');
     } finally {
       setArchivingProjectId(null);
     }
@@ -168,7 +170,11 @@ export default function ProjectStatusBoard({ userEmail }) {
       <div>
         <h2 className="heading-secondary mb-6">Active Projects</h2>
         {projects.length === 0 ? (
-          <p className="text-center text-lodha-grey font-jost py-8">No active projects assigned</p>
+          <EmptyState
+            icon={Building2}
+            title="No active projects assigned"
+            description="Projects assigned to you will appear here once they are created."
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map(project => (

@@ -9,6 +9,8 @@ import {
 import { apiFetchJson } from '../lib/api';
 import { useUser } from '../lib/UserContext';
 import toast from 'react-hot-toast';
+import { useConfirm } from '../hooks/useDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const TRADE_ICONS = {
   'Electrical': Zap, 'PHE': Droplets, 'Plumbing': Droplets, 'Fire Fighting': Flame,
@@ -68,6 +70,7 @@ export default function DDSBoqList({ ddsId }) {
   const [expandedTrades, setExpandedTrades] = useState(new Set());
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const { confirm, dialogProps } = useConfirm();
 
   const fetchBoq = useCallback(async () => {
     if (!ddsId) return;
@@ -103,7 +106,8 @@ export default function DDSBoqList({ ddsId }) {
   };
 
   const handleRegenerate = async () => {
-    if (!confirm('Delete existing BOQ and regenerate? All quantities and rates will be lost.')) return;
+    const confirmed = await confirm({ title: 'Regenerate BOQ', message: 'Delete existing BOQ and regenerate? All quantities and rates will be lost.', variant: 'danger', confirmLabel: 'Regenerate' });
+    if (!confirmed) return;
     try {
       setGenerating(true);
       await apiFetchJson(`/api/dds/${ddsId}/boq`, { method: 'DELETE' });
@@ -446,6 +450,7 @@ export default function DDSBoqList({ ddsId }) {
           </div>
         )}
       </div>
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

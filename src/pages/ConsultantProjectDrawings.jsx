@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader, Download, Eye, ArrowLeft, FileText } from 'lucide-react';
+import { showError } from '../utils/toast';
 
 export default function ConsultantProjectDrawings() {
   const { projectId } = useParams();
@@ -95,7 +96,7 @@ export default function ConsultantProjectDrawings() {
       document.body.removeChild(a);
     } catch (err) {
       console.error('Error downloading drawing:', err);
-      alert('Failed to download drawing');
+      showError('Failed to download drawing');
     }
   };
 

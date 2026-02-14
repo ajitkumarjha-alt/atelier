@@ -5,6 +5,9 @@ import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
 import { useUser } from '../lib/UserContext';
 import { getEffectiveUserLevel, canCreateEditCalculations } from '../lib/userLevel';
+import { showSuccess, showError, showInfo } from '../utils/toast';
+import { useConfirm } from '../hooks/useDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function DesignCalculations() {
   const { projectId } = useParams();
@@ -19,6 +22,8 @@ export default function DesignCalculations() {
   const [editingCalculation, setEditingCalculation] = useState(null);
   const [stats, setStats] = useState(null);
   
+  const { confirm, dialogProps } = useConfirm();
+
   // Filters
   const [typeFilter, setTypeFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -234,7 +239,7 @@ export default function DesignCalculations() {
       });
 
       if (response.ok) {
-        alert(editingCalculation ? 'Calculation updated successfully!' : 'Calculation created successfully!');
+        showSuccess(editingCalculation ? 'Calculation updated successfully!' : 'Calculation created successfully!');
         setShowCreateModal(false);
         setEditingCalculation(null);
         resetForm();
@@ -242,11 +247,11 @@ export default function DesignCalculations() {
         fetchStats();
       } else {
         const error = await response.json();
-        alert(`Error: ${error.message || 'Failed to save calculation'}`);
+        showError(`Error: ${error.message || 'Failed to save calculation'}`);
       }
     } catch (error) {
       console.error('Error saving calculation:', error);
-      alert('Error saving calculation. Please try again.');
+      showError('Error saving calculation. Please try again.');
     }
   };
 
@@ -287,7 +292,7 @@ export default function DesignCalculations() {
       window.open(fileUrl, '_blank');
     } catch (error) {
       console.error('Error downloading file:', error);
-      alert('Error downloading file');
+      showError('Error downloading file');
     }
   };
 
@@ -330,13 +335,16 @@ export default function DesignCalculations() {
     
     // Check permissions - only L0, L1, L2, SUPER_ADMIN
     if (!['SUPER_ADMIN', 'L0', 'L1', 'L2'].includes(userLevel)) {
-      alert('You do not have permission to delete calculations');
+      showError('You do not have permission to delete calculations');
       return;
     }
 
-    const confirmDelete = window.confirm(
-      `Are you sure you want to delete "${calculation.title}"? This action cannot be undone.`
-    );
+    const confirmDelete = await confirm({
+      title: 'Delete Calculation',
+      message: `Are you sure you want to delete "${calculation.title}"? This action cannot be undone.`,
+      variant: 'danger',
+      confirmLabel: 'Delete'
+    });
 
     if (!confirmDelete) return;
 
@@ -354,13 +362,13 @@ export default function DesignCalculations() {
         throw new Error('Failed to delete calculation');
       }
 
-      alert('Calculation deleted successfully');
+      showSuccess('Calculation deleted successfully');
       
       // Refresh the calculations list
       fetchCalculations();
     } catch (error) {
       console.error('Error deleting calculation:', error);
-      alert('Failed to delete calculation: ' + error.message);
+      showError('Failed to delete calculation: ' + error.message);
     }
   };
 
@@ -482,7 +490,7 @@ export default function DesignCalculations() {
               </button>
 
               <button
-                onClick={() => alert('HVAC Load Calculator - Coming Soon!')}
+                onClick={() => showInfo('HVAC Load Calculator - Coming Soon!')}
                 className="flex items-center gap-3 p-3 sm:p-4 bg-white border border-lodha-steel/30 rounded-xl hover:bg-lodha-sand/40 hover:border-lodha-gold/30 transition-all group cursor-not-allowed opacity-60"
                 disabled
               >
@@ -671,6 +679,8 @@ export default function DesignCalculations() {
         </div>
 
         {/* Create/Edit Modal */}
+        <ConfirmDialog {...dialogProps} />
+
         {showCreateModal && (
           <div className="modal-overlay">
             <div className="modal-card">

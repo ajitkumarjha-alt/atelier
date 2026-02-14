@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader } from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
 import Layout from '../components/Layout';
+import EmptyState from '../components/EmptyState';
 import ProjectCard from '../components/ProjectCard';
 import MyAssignmentsWidget from '../components/MyAssignmentsWidget';
 import { CardGridSkeleton } from '../components/SkeletonLoader';
@@ -46,8 +47,14 @@ export default function Dashboard() {
   if (error) {
     return (
       <Layout>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-          {error}
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 flex items-center justify-between">
+          <span>{error}</span>
+          <button
+            onClick={() => { setError(null); setLoading(true); apiFetchJson('/api/projects').then(setProjects).catch(() => setError('Failed to load projects. Please try again later.')).finally(() => setLoading(false)); }}
+            className="ml-4 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-800 rounded-lg text-sm font-jost font-semibold transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </Layout>
     );
@@ -74,7 +81,10 @@ export default function Dashboard() {
           <div 
             key={project.id}
             onClick={() => navigate(`/project/${project.id}`)}
-            className="cursor-pointer"
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigate(`/project/${project.id}`)}
+            role="button"
+            tabIndex={0}
+            className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-lodha-gold/30 rounded-xl"
           >
             <ProjectCard project={project} />
           </div>
@@ -83,9 +93,13 @@ export default function Dashboard() {
 
       {/* Empty State */}
       {projects.length === 0 && !loading && !error && (
-        <div className="empty-state">
-          <p className="text-lodha-grey">No projects found.</p>
-        </div>
+        <EmptyState
+          icon={Building2}
+          title="No projects found"
+          description="Create your first project to get started with Atelier."
+          actionLabel="Create Project"
+          onAction={() => navigate('/projects/new')}
+        />
       )}
     </Layout>
   );

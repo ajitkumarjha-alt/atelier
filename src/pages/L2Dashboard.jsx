@@ -12,6 +12,7 @@ export default function L2Dashboard() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [viewMode, setViewMode] = useState('board'); // 'board' or 'list'
   const [filterStatus, setFilterStatus] = useState('All');
+  const [showComingSoon, setShowComingSoon] = useState(true);
 
   useEffect(() => {
     setUser(auth.currentUser);
@@ -26,7 +27,7 @@ export default function L2Dashboard() {
             <h1 className="heading-primary mb-1">Execution Dashboard</h1>
             <p className="text-body">Lead-level project tracking and monitoring</p>
           </div>
-          <div className="hidden md:flex items-center gap-2 bg-white border border-lodha-steel rounded-lg p-1">
+          <div className="flex items-center gap-2 bg-white border border-lodha-steel rounded-lg p-1">
             <button
               onClick={() => setViewMode('board')}
               className={`px-4 py-2 rounded-md text-sm font-jost font-semibold transition-all ${
@@ -71,9 +72,7 @@ export default function L2Dashboard() {
             <p className="font-jost font-semibold text-lodha-grey text-sm">Recent Activity</p>
             <p className="text-xs text-lodha-grey/60 font-jost">Last updated: {new Date().toLocaleTimeString()}</p>
           </div>
-          <button className="text-xs text-lodha-gold hover:text-lodha-grey font-jost font-semibold whitespace-nowrap">
-            View All →
-          </button>
+
         </div>
       </div>
 
@@ -106,20 +105,25 @@ export default function L2Dashboard() {
       )}
 
       {/* Insights Section - Placeholder for future charts */}
-      <div className="bg-white border border-lodha-steel rounded-lg p-6 mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-lodha-muted-gold/20 rounded-lg flex items-center justify-center">
-            <TrendingUp className="w-5 h-5 text-lodha-muted-gold" />
-          </div>
-          <div>
-            <h2 className="font-garamond text-xl font-bold text-lodha-grey">Performance Insights</h2>
-            <p className="text-sm text-lodha-grey/60 font-jost">Project velocity and trends</p>
+      {showComingSoon && (
+        <div className="bg-white border border-lodha-steel rounded-lg p-4 mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-lodha-muted-gold/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <TrendingUp className="w-4 h-4 text-lodha-muted-gold" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-garamond text-base font-bold text-lodha-grey">Performance Insights</p>
+              <p className="text-xs text-lodha-grey/60 font-jost">Charts and analytics coming soon</p>
+            </div>
+            <button
+              onClick={() => setShowComingSoon(false)}
+              className="text-xs text-lodha-grey/60 hover:text-lodha-grey font-jost font-semibold px-3 py-1 rounded-md hover:bg-lodha-sand transition-colors whitespace-nowrap"
+            >
+              Dismiss
+            </button>
           </div>
         </div>
-        <div className="bg-lodha-sand/30 border border-lodha-muted-gold/20 rounded-lg p-8 text-center">
-          <p className="text-lodha-grey/60 font-jost">Performance charts and analytics coming soon</p>
-        </div>
-      </div>
+      )}
 
       {/* Floating AI Chat Button with Lodha styling */}
       <button

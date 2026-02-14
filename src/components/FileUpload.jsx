@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Upload, X, File, Image, FileText, Download } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { useConfirm } from '../hooks/useDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { showError } from '../utils/toast';
 
 export default function FileUpload({ 
   folder = 'general', 
@@ -13,6 +16,7 @@ export default function FileUpload({
   const [uploading, setUploading] = useState(false);
   const [files, setFiles] = useState(existingFiles || []);
   const [error, setError] = useState('');
+  const { confirm, dialogProps } = useConfirm();
 
   const handleFileSelect = async (event) => {
     const selectedFiles = Array.from(event.target.files);
@@ -58,7 +62,8 @@ export default function FileUpload({
   };
 
   const handleRemoveFile = async (fileUrl, index) => {
-    if (!confirm('Are you sure you want to remove this file?')) return;
+    const confirmed = await confirm({ title: 'Remove File', message: 'Are you sure you want to remove this file?', variant: 'danger', confirmLabel: 'Remove' });
+    if (!confirmed) return;
 
     try {
       // Delete from cloud storage
@@ -75,11 +80,11 @@ export default function FileUpload({
           onFilesChange(newFiles);
         }
       } else {
-        alert('Failed to delete file');
+        showError('Failed to delete file');
       }
     } catch (err) {
       console.error('Delete error:', err);
-      alert('Failed to delete file');
+      showError('Failed to delete file');
     }
   };
 
@@ -181,6 +186,7 @@ export default function FileUpload({
           </div>
         </div>
       )}
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

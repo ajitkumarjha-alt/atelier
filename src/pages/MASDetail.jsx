@@ -4,6 +4,7 @@ import { ArrowLeft, FileText, Calendar, User, Building, Package, CheckCircle, XC
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
 import { auth } from '../lib/firebase';
+import { showSuccess, showError, showWarning } from '../utils/toast';
 
 export default function MASDetail() {
   const { id } = useParams();
@@ -101,7 +102,7 @@ export default function MASDetail() {
 
   const handleAssign = async () => {
     if (!assignUserId) {
-      alert('Please select a team member to assign');
+      showWarning('Please select a team member to assign');
       return;
     }
     try {
@@ -118,17 +119,17 @@ export default function MASDetail() {
         }),
       });
       if (response.ok) {
-        alert('Assignment updated successfully');
+        showSuccess('Assignment updated successfully');
         setAssignUserId('');
         setAssignDueDate('');
         fetchMASDetail();
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to assign'}`);
+        showError(`Error: ${errorData.error || 'Failed to assign'}`);
       }
     } catch (error) {
       console.error('Error assigning MAS:', error);
-      alert('Error assigning MAS');
+      showError('Error assigning MAS');
     } finally {
       setSubmittingAssign(false);
     }
@@ -152,7 +153,7 @@ export default function MASDetail() {
 
   const handleL2Review = async () => {
     if (!l2Status) {
-      alert('Please select a review status');
+      showWarning('Please select a review status');
       return;
     }
 
@@ -172,16 +173,16 @@ export default function MASDetail() {
       });
 
       if (response.ok) {
-        alert('L2 Review submitted successfully');
+        showSuccess('L2 Review submitted successfully');
         setShowL2Review(false);
         fetchMASDetail(); // Refresh data
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to submit L2 review'}`);
+        showError(`Error: ${errorData.error || 'Failed to submit L2 review'}`);
       }
     } catch (error) {
       console.error('Error submitting L2 review:', error);
-      alert('Error submitting L2 review');
+      showError('Error submitting L2 review');
     } finally {
       setSubmittingL2(false);
     }
@@ -189,7 +190,7 @@ export default function MASDetail() {
 
   const handleL1Review = async () => {
     if (!l1Status) {
-      alert('Please select a review status');
+      showWarning('Please select a review status');
       return;
     }
 
@@ -209,16 +210,16 @@ export default function MASDetail() {
       });
 
       if (response.ok) {
-        alert('L1 Review submitted successfully');
+        showSuccess('L1 Review submitted successfully');
         setShowL1Review(false);
         fetchMASDetail(); // Refresh data
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to submit L1 review'}`);
+        showError(`Error: ${errorData.error || 'Failed to submit L1 review'}`);
       }
     } catch (error) {
       console.error('Error submitting L1 review:', error);
-      alert('Error submitting L1 review');
+      showError('Error submitting L1 review');
     } finally {
       setSubmittingL1(false);
     }
@@ -226,7 +227,7 @@ export default function MASDetail() {
 
   const handleReferToConsultant = async () => {
     if (!selectedConsultantId) {
-      alert('Please select a consultant');
+      showWarning('Please select a consultant');
       return;
     }
 
@@ -244,17 +245,17 @@ export default function MASDetail() {
       });
 
       if (response.ok) {
-        alert('Successfully referred to consultant');
+        showSuccess('Successfully referred to consultant');
         setShowConsultantReferral(false);
         setSelectedConsultantId('');
         fetchMASDetail(); // Refresh data
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to refer to consultant'}`);
+        showError(`Error: ${errorData.error || 'Failed to refer to consultant'}`);
       }
     } catch (error) {
       console.error('Error referring to consultant:', error);
-      alert('Error referring to consultant');
+      showError('Error referring to consultant');
     } finally {
       setSubmittingReferral(false);
     }

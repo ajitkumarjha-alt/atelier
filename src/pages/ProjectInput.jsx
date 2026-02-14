@@ -2,7 +2,11 @@ import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import GoogleMapComponent from '../components/GoogleMapComponent';
-import { Plus, Trash2, Edit2, MapPin, Copy, AlertCircle, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, MapPin, Copy, AlertCircle, CheckCircle, ChevronRight, ChevronLeft, Building2, Map, Users, Landmark } from 'lucide-react';
+import { showSuccess, showError, showWarning } from '../utils/toast';
+import { useConfirm, usePrompt } from '../hooks/useDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
+import PromptDialog from '../components/PromptDialog';
 
 const stableStringify = (value) => {
   if (value === null || typeof value !== 'object') {
@@ -55,6 +59,18 @@ export default function ProjectInput() {
   const [l1Users, setL1Users] = useState([]);
   const [initialProjectSnapshot, setInitialProjectSnapshot] = useState('');
   const [initialSiteAreasSnapshot, setInitialSiteAreasSnapshot] = useState('');
+
+  const { confirm, dialogProps: confirmDialogProps } = useConfirm();
+  const { prompt: promptDialog, dialogProps: promptDialogProps } = usePrompt();
+
+  // Wizard stepper
+  const [currentStep, setCurrentStep] = useState(0);
+  const STEPS = [
+    { key: 'details', label: 'Project Details', icon: Landmark, description: 'Name, location & category' },
+    { key: 'site', label: 'Site Areas', icon: Map, description: 'Landscape, amenities & parking' },
+    { key: 'societies', label: 'Societies', icon: Users, description: 'Group buildings into societies' },
+    { key: 'buildings', label: 'Buildings', icon: Building2, description: 'Towers, floors & flats' },
+  ];
 
   // Fetch standards from database
   useEffect(() => {
@@ -234,8 +250,8 @@ export default function ProjectInput() {
     }
   };
 
-  const addBuilding = () => {
-    const buildingName = prompt('Enter building name:');
+  const addBuilding = async () => {
+    const buildingName = await promptDialog({ title: 'Enter Building Name', placeholder: 'e.g., Tower A' });
     if (!buildingName || !buildingName.trim()) return;
     
     const trimmedBuildingName = buildingName.trim();
@@ -243,7 +259,7 @@ export default function ProjectInput() {
     // Check if building name already exists
     const existingBuilding = projectData.buildings.find(b => b.name.toLowerCase() === trimmedBuildingName.toLowerCase());
     if (existingBuilding) {
-      alert('A building with this name already exists!');
+      showError('A building with this name already exists!');
       return;
     }
 
@@ -253,27 +269,31 @@ export default function ProjectInput() {
     let isTwinBuilding = false;
 
     if (nonTwinBuildings.length > 0) {
-      const options = [
-        'Create new building from scratch',
-        'Copy data from previous building (editable)',
-        'Make twin of previous building (shares data)'
-      ];
-      
-      const choice = prompt(
-        `Choose an option:\n1. ${options[0]}\n2. ${options[1]}\n3. ${options[2]}\n\nEnter 1, 2, or 3:`
-      );
+      const choice = await promptDialog({
+        title: 'Building Configuration',
+        message: 'Enter "copy" to copy from existing building, or "twin" to create a twin building. Leave empty for default setup.',
+        placeholder: 'copy / twin / (empty for default)'
+      });
 
-      if (choice === '2' || choice === '3') {
+      if (choice !== null && (choice.toLowerCase() === 'copy' || choice.toLowerCase() === 'twin')) {
         // Show available buildings to copy/twin from
         const buildingList = nonTwinBuildings.map((b, i) => `${i + 1}. ${b.name}`).join('\n');
-        const buildingChoice = prompt(
-          `Select building to ${choice === '2' ? 'copy from' : 'twin with'}:\n${buildingList}\n\nEnter number:`
-        );
+        const buildingChoice = await promptDialog({
+          title: 'Select Building',
+          message: `Select building to ${choice.toLowerCase() === 'copy' ? 'copy from' : 'twin with'}:\n${buildingList}`,
+          placeholder: 'e.g., Tower A or 1'
+        });
         
         const buildingIndex = parseInt(buildingChoice) - 1;
         if (buildingIndex >= 0 && buildingIndex < nonTwinBuildings.length) {
           sourceBuilding = nonTwinBuildings[buildingIndex];
-          isTwinBuilding = choice === '3';
+          isTwinBuilding = choice.toLowerCase() === 'twin';
+        } else {
+          const matchedBuilding = nonTwinBuildings.find(b => b.name.toLowerCase() === buildingChoice?.toLowerCase()?.trim());
+          if (matchedBuilding) {
+            sourceBuilding = matchedBuilding;
+            isTwinBuilding = choice.toLowerCase() === 'twin';
+          }
         }
       }
     }
@@ -370,14 +390,14 @@ export default function ProjectInput() {
     }));
   };
 
-  const addSociety = () => {
-    const societyName = prompt('Enter society name:');
+  const addSociety = async () => {
+    const societyName = await promptDialog({ title: 'Enter Society Name', placeholder: 'e.g., Paradise Society' });
     if (!societyName || !societyName.trim()) return;
 
     const trimmedName = societyName.trim();
     const exists = projectData.societies.find(s => s.name.toLowerCase() === trimmedName.toLowerCase());
     if (exists) {
-      alert('A society with this name already exists!');
+      showError('A society with this name already exists!');
       return;
     }
 
@@ -402,15 +422,18 @@ export default function ProjectInput() {
     }));
   };
 
-  const deleteSociety = (societyId) => {
+  const deleteSociety = async (societyId) => {
     const society = projectData.societies.find(s => s.id === societyId);
     if (!society) return;
 
     const assignedBuildings = projectData.buildings.filter(b => b.societyId === societyId);
     if (assignedBuildings.length > 0) {
-      const confirmed = window.confirm(
-        `This society has ${assignedBuildings.length} building(s) assigned. Remove the society anyway?`
-      );
+      const confirmed = await confirm({
+        title: 'Remove Society',
+        message: `This society has ${assignedBuildings.length} building(s) assigned. Remove the society anyway?`,
+        variant: 'danger',
+        confirmLabel: 'Remove'
+      });
       if (!confirmed) return;
     }
 
@@ -496,16 +519,16 @@ export default function ProjectInput() {
     setSelectedSiteArea(prev => (prev === areaId ? null : areaId));
   };
 
-  const addFloor = (buildingId) => {
+  const addFloor = async (buildingId) => {
     const building = projectData.buildings.find(b => b.id === buildingId);
     
-    const floorName = prompt('Enter floor name:');
+    const floorName = await promptDialog({ title: 'Enter Floor Name', placeholder: 'e.g., Ground Floor' });
     if (!floorName || !floorName.trim()) return;
 
-    const floorHeightInput = prompt('Enter floor height in meters (e.g., 3.5):', '3.5');
+    const floorHeightInput = await promptDialog({ title: 'Floor Height', message: 'Enter height in meters', placeholder: '3.5', defaultValue: '3.5', inputType: 'number' });
     const parsedFloorHeight = parseFloat(floorHeightInput);
     if (!floorHeightInput || Number.isNaN(parsedFloorHeight) || parsedFloorHeight <= 0) {
-      alert('Please enter a valid floor height in meters.');
+      showWarning('Please enter a valid floor height in meters.');
       return;
     }
     
@@ -514,11 +537,11 @@ export default function ProjectInput() {
     // Check if floor name already exists
     const existingFloor = building.floors.find(f => f.floorName.toLowerCase() === trimmedFloorName.toLowerCase());
     if (existingFloor) {
-      alert('A floor with this name already exists!');
+      showError('A floor with this name already exists!');
       return;
     }
     
-    const twinFloorNames = prompt('Enter twin floor names (comma-separated, optional):');
+    const twinFloorNames = await promptDialog({ title: 'Twin Floor Names', message: 'Enter comma-separated names (optional)', placeholder: 'e.g., Floor 2A, Floor 2B' });
     const baseId = Math.floor(Math.random() * 1000000000);
     const baseFloorNumber = building.floors.length + 1;
     
@@ -542,15 +565,15 @@ export default function ProjectInput() {
       for (const name of twinNames) {
         const lowerName = name.toLowerCase();
         if (lowerName === trimmedFloorName.toLowerCase()) {
-          alert(`Twin floor name "${name}" cannot be the same as parent floor!`);
+          showError(`Twin floor name "${name}" cannot be the same as parent floor!`);
           return;
         }
         if (twinNamesSet.has(lowerName)) {
-          alert(`Duplicate twin floor name: "${name}"`);
+          showError(`Duplicate twin floor name: "${name}"`);
           return;
         }
         if (building.floors.find(f => f.floorName.toLowerCase() === lowerName)) {
-          alert(`Floor with name "${name}" already exists!`);
+          showError(`Floor with name "${name}" already exists!`);
           return;
         }
         twinNamesSet.add(lowerName);
@@ -984,7 +1007,7 @@ export default function ProjectInput() {
       await syncSiteAreas(savedProjectId);
       setInitialSiteAreas(siteAreas);
 
-      alert(`Project ${isEditing ? 'updated' : 'created'} successfully!`);
+      showSuccess(`Project ${isEditing ? 'updated' : 'created'} successfully!`);
       
       // Redirect to L1 dashboard after successful creation
       navigate('/l1-dashboard');
@@ -1018,9 +1041,47 @@ export default function ProjectInput() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Form Section - 2/3 width */}
         <div className="lg:col-span-2">
-          <h1 className="heading-primary mb-6">
+          <h1 className="heading-primary mb-2">
             {isEditing ? 'Edit Project' : 'Create New Project'}
           </h1>
+
+          {/* ── Wizard Stepper ──────────────────────────────── */}
+          <nav className="mb-6" aria-label="Form progress">
+            <ol className="flex items-center gap-1 overflow-x-auto pb-2">
+              {STEPS.map((step, idx) => {
+                const StepIcon = step.icon;
+                const isActive = idx === currentStep;
+                const isCompleted = idx < currentStep;
+                return (
+                  <li key={step.key} className="flex items-center min-w-0">
+                    <button
+                      onClick={() => setCurrentStep(idx)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-jost font-medium transition-all whitespace-nowrap
+                        ${isActive
+                          ? 'bg-lodha-gold text-white shadow-sm'
+                          : isCompleted
+                          ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                          : 'bg-white text-lodha-grey hover:bg-lodha-sand border border-lodha-steel/30'
+                        }`}
+                      aria-current={isActive ? 'step' : undefined}
+                    >
+                      <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold
+                        ${isActive ? 'bg-white/20' : isCompleted ? 'bg-emerald-500 text-white' : 'bg-lodha-sand'}`}>
+                        {isCompleted ? <CheckCircle className="w-4 h-4" /> : idx + 1}
+                      </span>
+                      <span className="hidden sm:inline">{step.label}</span>
+                    </button>
+                    {idx < STEPS.length - 1 && (
+                      <ChevronRight className="w-4 h-4 text-lodha-steel mx-1 flex-shrink-0" aria-hidden="true" />
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+            <p className="text-xs text-lodha-grey mt-1 font-jost">
+              Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].description}
+            </p>
+          </nav>
 
           {error && (
             <div className="mb-4 p-4 bg-lodha-sand border-2 border-lodha-gold text-lodha-black rounded-lg">{error}</div>
@@ -1046,6 +1107,7 @@ export default function ProjectInput() {
           )}
 
           {/* Project Basic Info */}
+          {currentStep === 0 && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 className="heading-secondary mb-4">Project Details</h2>
 
@@ -1179,8 +1241,10 @@ export default function ProjectInput() {
               )}
             </div>
           </div>
+          )}
 
-          {/* Buildings Section */}
+          {/* Site Areas Section */}
+          {currentStep === 1 && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex justify-between items-center mb-4">
               <div>
@@ -1472,8 +1536,10 @@ export default function ProjectInput() {
               </div>
             )}
           </div>
+          )}
 
           {/* Societies Section */}
+          {currentStep === 2 && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex justify-between items-center mb-4">
               <div>
@@ -1533,8 +1599,10 @@ export default function ProjectInput() {
               </div>
             )}
           </div>
+          )}
 
           {/* Buildings Section */}
+          {currentStep === 3 && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="heading-secondary">Buildings</h2>
@@ -1584,13 +1652,49 @@ export default function ProjectInput() {
                     onCopyBuilding={copyBuildingData}
                     onDeleteFloor={deleteFloor}
                     onUpdateFloor={updateFloor}
+                    onConfirm={confirm}
                   />
                 );
               })}
             </div>
           </div>
+          )}
 
-          {/* Submit Button */}
+          {/* ── Step Navigation ──────────────────────────── */}
+          <div className="flex items-center justify-between mt-2 mb-4">
+            <button
+              onClick={() => setCurrentStep(s => Math.max(0, s - 1))}
+              disabled={currentStep === 0}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-jost font-medium text-sm transition-all ${
+                currentStep === 0
+                  ? 'text-lodha-grey/40 cursor-not-allowed'
+                  : 'text-lodha-grey hover:bg-lodha-sand border border-lodha-steel/30'
+              }`}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </button>
+
+            <span className="text-xs font-jost text-lodha-grey">
+              {currentStep + 1} / {STEPS.length}
+            </span>
+
+            {currentStep < STEPS.length - 1 ? (
+              <button
+                onClick={() => setCurrentStep(s => Math.min(STEPS.length - 1, s + 1))}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-jost font-semibold text-sm
+                           bg-lodha-gold text-white hover:bg-lodha-deep transition-all"
+              >
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <span /> /* Placeholder to maintain flex spacing */
+            )}
+          </div>
+
+          {/* Submit Button — visible on last step or always for editing */}
+          {(currentStep === STEPS.length - 1 || isEditing) && (
           <div className="flex gap-4">
             <button
               onClick={handleSubmit}
@@ -1626,6 +1730,7 @@ export default function ProjectInput() {
               Cancel
             </button>
           </div>
+          )}
         </div>
 
         {/* Live Preview Section - 1/3 width */}
@@ -1656,6 +1761,8 @@ export default function ProjectInput() {
           </div>
         </div>
       )}
+      <ConfirmDialog {...confirmDialogProps} />
+      <PromptDialog {...promptDialogProps} />
     </Layout>
   );
 }
@@ -1678,6 +1785,7 @@ function BuildingSection({
   onCopyBuilding,
   onDeleteFloor,
   onUpdateFloor,
+  onConfirm,
 }) {
   const isResidential = building.applicationType === 'Residential';
   const isVilla = building.applicationType === 'Villa';
@@ -2083,6 +2191,7 @@ function BuildingSection({
                     onDeleteFloor={onDeleteFloor}
                     onUpdateFloor={onUpdateFloor}
                     onUpdate={onUpdate}
+                    onConfirm={onConfirm}
                     twinFloors={building.floors.filter(f => f.twinOfFloorName === floor.floorName)}
                   />
                 );
@@ -2110,6 +2219,7 @@ function FloorSection({
   onDeleteFloor,
   onUpdateFloor,
   onUpdate,
+  onConfirm,
   twinFloors = [],
 }) {
   const [selectedCopySource, setSelectedCopySource] = useState('');
@@ -2182,12 +2292,15 @@ function FloorSection({
               </label>
               <select
                 value=""
-                onChange={e => {
+                onChange={async (e) => {
                   const nextValue = e.target.value;
                   if (!nextValue) return;
-                  const confirmed = window.confirm(
-                    `Make "${floor.floorName}" a twin of "${nextValue}"? Existing floor data will be cleared.`
-                  );
+                  const confirmed = await onConfirm({
+                    title: 'Convert to Twin Floor',
+                    message: `Make "${floor.floorName}" a twin of "${nextValue}"? Existing floor data will be cleared.`,
+                    variant: 'warning',
+                    confirmLabel: 'Convert'
+                  });
                   if (!confirmed) return;
                   onUpdateFloor(buildingId, floor.id, {
                     twinOfFloorName: nextValue,

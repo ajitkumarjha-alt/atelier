@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { UserPlus, Clock, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useConfirm } from '../hooks/useDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function PendingUsers() {
   const [pendingUsers, setPendingUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activatingUserId, setActivatingUserId] = useState(null);
+  const { confirm, dialogProps } = useConfirm();
 
   const fetchPendingUsers = async () => {
     try {
@@ -37,9 +40,8 @@ export default function PendingUsers() {
   }, []);
 
   const handleActivateUser = async (userId, userEmail) => {
-    if (!confirm(`Are you sure you want to activate ${userEmail}?`)) {
-      return;
-    }
+    const confirmed = await confirm({ title: 'Activate User', message: `Are you sure you want to activate ${userEmail}?`, variant: 'warning', confirmLabel: 'Activate' });
+    if (!confirmed) return;
 
     setActivatingUserId(userId);
     try {
@@ -201,6 +203,7 @@ export default function PendingUsers() {
           Users will be automatically redirected to their dashboard once activated.
         </p>
       </div>
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader, Plus, FileText, Search, Filter, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Plus, FileText, Search, Filter, CheckCircle, XCircle, Clock } from 'lucide-react';
 import Layout from '../components/Layout';
+import Spinner from '../components/Spinner';
+import StatusBadge from '../components/StatusBadge';
 import CreateMAS from '../components/CreateMAS';
 import { auth } from '../lib/firebase';
 import { apiFetchJson } from '../lib/api';
@@ -28,17 +30,9 @@ export default function MASPage() {
   const fetchMAS = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/mas', {
-        headers: {
-          'x-dev-user-email': localStorage.getItem('devUserEmail') || 'l2@lodhagroup.com',
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setItems(data);
-        setFilteredItems(data);
-      }
+      const data = await apiFetchJson('/api/mas');
+      setItems(data);
+      setFilteredItems(data);
     } catch (err) {
       console.error('Error fetching MAS:', err);
       setError('Failed to load Material Approval Sheets');
@@ -82,9 +76,7 @@ export default function MASPage() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-lodha-gold"></div>
-        </div>
+        <Spinner fullPage label="Loading..." />
       </Layout>
     );
   }
@@ -207,6 +199,7 @@ export default function MASPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
+            <p className="text-xs text-lodha-grey/60 mb-2 md:hidden">← Scroll to see all columns →</p>
             <table className="w-full">
               <thead className="bg-lodha-cream border-b-2 border-lodha-gold">
                 <tr>
@@ -225,56 +218,26 @@ export default function MASPage() {
                 {filteredItems.map((item, index) => (
                   <tr 
                     key={item.id} 
-                    className={`border-b border-lodha-steel hover:bg-lodha-sand/50 cursor-pointer transition-colors ${
+                    className={`border-b border-lodha-steel hover:bg-lodha-sand/50 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-lodha-gold/30 ${
                       index % 2 === 0 ? 'bg-white' : 'bg-lodha-sand/20'
                     }`}
                     onClick={() => navigate(`/mas/${item.id}`)}
+                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigate(`/mas/${item.id}`)}
+                    tabIndex={0}
+                    role="link"
                   >
                     <td className="px-6 py-4 text-lodha-gold font-jost font-semibold">{item.mas_ref_no}</td>
                     <td className="px-6 py-4 text-lodha-grey font-jost">{item.material_name}</td>
                     <td className="px-6 py-4 text-lodha-grey font-jost">{item.manufacturer}</td>
                     <td className="px-6 py-4 text-lodha-grey font-jost">{item.quantity} {item.unit}</td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
-                        item.l2_status === 'Approved' 
-                          ? 'bg-green-100 text-green-700'
-                          : item.l2_status === 'Rejected'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        {item.l2_status === 'Approved' && <CheckCircle className="w-3 h-3" />}
-                        {item.l2_status === 'Rejected' && <XCircle className="w-3 h-3" />}
-                        {item.l2_status === 'Pending' && <Clock className="w-3 h-3" />}
-                        {item.l2_status}
-                      </span>
+                      <StatusBadge status={item.l2_status} />
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
-                        item.l1_status === 'Approved' 
-                          ? 'bg-green-100 text-green-700'
-                          : item.l1_status === 'Rejected'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        {item.l1_status === 'Approved' && <CheckCircle className="w-3 h-3" />}
-                        {item.l1_status === 'Rejected' && <XCircle className="w-3 h-3" />}
-                        {item.l1_status === 'Pending' && <Clock className="w-3 h-3" />}
-                        {item.l1_status}
-                      </span>
+                      <StatusBadge status={item.l1_status} />
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${
-                        item.final_status === 'Approved' 
-                          ? 'bg-green-50 text-green-700 border-green-300'
-                          : item.final_status === 'Rejected'
-                          ? 'bg-red-50 text-red-700 border-red-300'
-                          : 'bg-amber-50 text-amber-700 border-amber-300'
-                      }`}>
-                        {item.final_status === 'Approved' && <CheckCircle className="w-3 h-3" />}
-                        {item.final_status === 'Rejected' && <XCircle className="w-3 h-3" />}
-                        {item.final_status === 'Pending' && <Clock className="w-3 h-3" />}
-                        {item.final_status}
-                      </span>
+                      <StatusBadge status={item.final_status} size="lg" />
                     </td>
                     <td className="px-6 py-4 text-lodha-grey font-jost text-sm">
                       {item.assigned_to_name ? (

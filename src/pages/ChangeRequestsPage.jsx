@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, CheckCircle, XCircle, Clock, AlertTriangle, FileText } from 'lucide-react';
 import Layout from '../components/Layout';
+import Spinner from '../components/Spinner';
 import { apiFetch } from '../lib/api';
 import { auth } from '../lib/firebase';
+import { showSuccess, showError, showWarning } from '../utils/toast';
 
 export default function ChangeRequestsPage() {
   const { projectId } = useParams();
@@ -16,6 +18,7 @@ export default function ChangeRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [stats, setStats] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
   
   // Filters
   const [statusFilter, setStatusFilter] = useState('All');
@@ -146,7 +149,8 @@ export default function ChangeRequestsPage() {
     e.preventDefault();
 
     if (!formData.changeDescription) {
-      alert('Change description is required');
+      setFormErrors({ description: 'Change description is required' });
+      showWarning('Change description is required');
       return;
     }
 
@@ -164,18 +168,18 @@ export default function ChangeRequestsPage() {
       });
 
       if (response.ok) {
-        alert('Change request created successfully');
+        showSuccess('Change request created successfully');
         setShowCreateModal(false);
         resetForm();
         fetchChangeRequests();
         fetchStats();
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to create change request'}`);
+        showError(`Error: ${errorData.error || 'Failed to create change request'}`);
       }
     } catch (error) {
       console.error('Error creating change request:', error);
-      alert('Error creating change request');
+      showError('Error creating change request');
     }
   };
 
@@ -220,12 +224,7 @@ export default function ChangeRequestsPage() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lodha-gold mx-auto mb-4"></div>
-            <p className="text-lodha-grey">Loading change requests...</p>
-          </div>
-        </div>
+        <Spinner fullPage label="Loading change requests..." />
       </Layout>
     );
   }
@@ -235,11 +234,11 @@ export default function ChangeRequestsPage() {
       {/* Header */}
       <div className="mb-8">
         <button
-          onClick={() => navigate('/l2-dashboard')}
+          onClick={() => navigate(-1)}
           className="flex items-center text-lodha-grey hover:text-lodha-gold mb-4 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to L2 Dashboard
+          Back
         </button>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex-1 min-w-0">
@@ -322,6 +321,7 @@ export default function ChangeRequestsPage() {
       {/* Change Requests Table */}
       <div className="section-card overflow-hidden">
         <div className="w-full overflow-x-auto">
+          <p className="text-xs text-lodha-grey/60 mb-2 md:hidden">← Scroll to see all columns →</p>
           <table className="w-full min-w-max">
             <thead className="bg-lodha-sand/40 border-b border-lodha-steel/30">
               <tr>
@@ -438,12 +438,15 @@ export default function ChangeRequestsPage() {
                     </label>
                     <textarea
                       value={formData.changeDescription}
-                      onChange={(e) => setFormData({ ...formData, changeDescription: e.target.value })}
+                      onChange={(e) => { setFormData({ ...formData, changeDescription: e.target.value }); setFormErrors({}); }}
                       rows={4}
-                      className="input-field"
+                      className={`input-field ${formErrors.description ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                       placeholder="Describe the proposed change in detail..."
                       required
                     />
+                    {formErrors.description && (
+                      <p className="mt-1 text-xs text-red-600 font-jost">{formErrors.description}</p>
+                    )}
                   </div>
 
                   <div className="md:col-span-2">
@@ -498,6 +501,7 @@ export default function ChangeRequestsPage() {
                     onClick={() => {
                       setShowCreateModal(false);
                       resetForm();
+                      setFormErrors({});
                     }}
                     className="btn-cancel"
                   >

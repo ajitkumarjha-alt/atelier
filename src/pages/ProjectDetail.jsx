@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader, ArrowLeft, ChevronDown, ChevronRight, Building2, Layers } from 'lucide-react';
+import {
+  ArrowLeft, ChevronDown, ChevronRight, Building2, Layers,
+  Calculator, ClipboardList, FileText, RefreshCw, GitPullRequest, MessageSquare, Package
+} from 'lucide-react';
 import Layout from '../components/Layout';
+import Spinner from '../components/Spinner';
 import ProjectTeamManagement from '../components/ProjectTeamManagement';
 import { auth } from '../lib/firebase';
 import { createOrUpdateUser } from '../services/userService';
+import { showError } from '../utils/toast';
 
 export default function ProjectDetail() {
   const { id } = useParams();
@@ -75,7 +80,7 @@ export default function ProjectDetail() {
       setProject(updated);
     } catch (err) {
       console.error('Error updating stage:', err);
-      alert('Failed to update project stage');
+      showError('Failed to update project stage');
     } finally {
       setUpdatingStage(false);
     }
@@ -84,9 +89,7 @@ export default function ProjectDetail() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center py-12">
-          <Loader className="w-8 h-8 text-lodha-gold animate-spin" />
-        </div>
+        <Spinner fullPage label="Loading project..." />
       </Layout>
     );
   }
@@ -147,48 +150,55 @@ export default function ProjectDetail() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
         <button
           onClick={() => navigate(`/design-calculations/${id}`)}
-          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
+          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm flex items-center justify-center gap-2"
         >
+          <Calculator className="w-4 h-4" />
           Design Calculations
         </button>
         <button
           onClick={() => navigate(`/dds/${id}`)}
-          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
+          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm flex items-center justify-center gap-2"
         >
+          <ClipboardList className="w-4 h-4" />
           DDS Management
         </button>
         <button
           onClick={() => navigate(`/drawing-schedule/${id}`)}
-          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
+          className="py-3 px-4 border-2 border-lodha-gold text-lodha-gold hover:bg-lodha-gold hover:text-white rounded-lg transition-colors font-jost font-semibold text-sm flex items-center justify-center gap-2"
         >
+          <FileText className="w-4 h-4" />
           Drawing Schedule
         </button>
         <button
-          onClick={() => navigate(`/change-requests/${id}`)}
-          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
-        >
-          Change Requests
-        </button>
-        <button
-          onClick={() => navigate(`/mas-list?project=${id}`)}
-          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
-        >
-          MAS Management
-        </button>
-        <button
           onClick={() => navigate(`/projects/${id}/rfc`)}
-          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
+          className="py-3 px-4 border-2 border-lodha-gold text-lodha-gold hover:bg-lodha-gold hover:text-white rounded-lg transition-colors font-jost font-semibold text-sm flex items-center justify-center gap-2"
         >
+          <RefreshCw className="w-4 h-4" />
           RFC Management
         </button>
         <button
-          onClick={() => navigate(`/projects/${id}/rfi`)}
-          className="py-3 px-4 bg-lodha-gold hover:bg-lodha-gold/90 text-white rounded-lg transition-colors font-jost font-semibold text-sm"
+          onClick={() => navigate(`/change-requests/${id}`)}
+          className="py-3 px-4 text-lodha-gold hover:bg-lodha-gold/10 rounded-lg transition-colors font-jost font-semibold text-sm flex items-center justify-center gap-2"
         >
-          RFI Management
+          <GitPullRequest className="w-4 h-4" />
+          Change Requests
+        </button>
+        <button
+          onClick={() => navigate(`/projects/${id}/rfi`)}
+          className="py-3 px-4 text-lodha-gold hover:bg-lodha-gold/10 rounded-lg transition-colors font-jost font-semibold text-sm flex items-center justify-center gap-2"
+        >
+          <MessageSquare className="w-4 h-4" />
+          RFI
+        </button>
+        <button
+          onClick={() => navigate(`/mas-list?project=${id}`)}
+          className="py-3 px-4 text-lodha-gold hover:bg-lodha-gold/10 rounded-lg transition-colors font-jost font-semibold text-sm flex items-center justify-center gap-2"
+        >
+          <Package className="w-4 h-4" />
+          MAS
         </button>
       </div>
 
@@ -299,6 +309,7 @@ export default function ProjectDetail() {
                     <button
                       onClick={() => toggleSociety(societyId)}
                       className="w-full flex items-center gap-3 px-5 py-4 bg-lodha-sand/60 hover:bg-lodha-sand transition-colors text-left"
+                      aria-expanded={!!expandedSocieties[societyId]}
                     >
                       {expandedSocieties[societyId] ? (
                         <ChevronDown className="w-5 h-5 text-lodha-gold flex-shrink-0" />
@@ -332,6 +343,7 @@ export default function ProjectDetail() {
                             <button
                               onClick={() => toggleBuilding(building.id)}
                               className="w-full flex items-center gap-3 px-4 py-3 bg-white hover:bg-lodha-sand/30 transition-colors text-left"
+                              aria-expanded={!!expandedBuildings[building.id]}
                             >
                               {expandedBuildings[building.id] ? (
                                 <ChevronDown className="w-4 h-4 text-lodha-grey flex-shrink-0" />
@@ -436,36 +448,6 @@ export default function ProjectDetail() {
           </div>
         </div>
       )}
-
-      {/* Old Project Details Grid - Remove this section */}
-      <div className="hidden grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Timeline */}
-        <div className="card">
-          <h3 className="heading-tertiary mb-4">Timeline</h3>
-          <div className="space-y-3">
-            <div>
-              <p className="text-sm text-lodha-grey font-jost mb-1">Start Date</p>
-              <p className="text-lg font-jost font-semibold text-lodha-black">
-                {new Date(project.start_date).toLocaleDateString()}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-lodha-grey font-jost mb-1">Target Completion</p>
-              <p className="text-lg font-jost font-semibold text-lodha-black">
-                {new Date(project.target_completion_date).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Team */}
-        <div className="card">
-          <h3 className="heading-tertiary mb-4">Assigned Lead</h3>
-          <p className="text-lg font-jost font-semibold text-lodha-black">
-            {project.assigned_lead_name || 'Not Assigned'}
-          </p>
-        </div>
-      </div>
 
       {/* Progress Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

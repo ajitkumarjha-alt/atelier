@@ -9,6 +9,8 @@ import {
   Database, TrendingUp, Settings, AlertCircle, CheckCircle2, File
 } from 'lucide-react';
 import { showSuccess, showError, showLoading, dismissToast } from '../utils/toast';
+import { useConfirm } from '../hooks/useDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function PolicyManagement({ embedded = false, readOnly = false }) {
   const navigate = useNavigate();
@@ -24,6 +26,7 @@ export default function PolicyManagement({ embedded = false, readOnly = false })
   const [uploadFile, setUploadFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const { confirm, dialogProps } = useConfirm();
 
   useEffect(() => {
     fetchPolicies();
@@ -64,9 +67,12 @@ export default function PolicyManagement({ embedded = false, readOnly = false })
       return;
     }
 
-    const confirmed = window.confirm(
-      'Are you sure you want to activate this policy? It will become the default for all new calculations.'
-    );
+    const confirmed = await confirm({
+      title: 'Activate Policy',
+      message: 'Are you sure you want to activate this policy? It will become the default for all new calculations.',
+      variant: 'warning',
+      confirmLabel: 'Activate'
+    });
 
     if (!confirmed) return;
 
@@ -97,9 +103,12 @@ export default function PolicyManagement({ embedded = false, readOnly = false })
       return;
     }
 
-    const confirmed = window.confirm(
-      'Are you sure you want to archive this policy? It will no longer be available for new calculations.'
-    );
+    const confirmed = await confirm({
+      title: 'Archive Policy',
+      message: 'Are you sure you want to archive this policy? It will no longer be available for new calculations.',
+      variant: 'danger',
+      confirmLabel: 'Archive'
+    });
 
     if (!confirmed) return;
 
@@ -585,6 +594,7 @@ export default function PolicyManagement({ embedded = false, readOnly = false })
           }}
         />
       )}
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 

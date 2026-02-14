@@ -8,6 +8,8 @@ import Layout from '../components/Layout';
 import { apiFetchJson } from '../lib/api';
 import { useUser } from '../lib/UserContext';
 import toast from 'react-hot-toast';
+import { useConfirm } from '../hooks/useDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const TABS = [
   { id: 'calc-standards', label: 'Calculation Standards', icon: Calculator },
@@ -84,6 +86,7 @@ export default function StandardsManagement({ embedded = false, readOnly = false
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [formData, setFormData] = useState({});
+  const { confirm, dialogProps } = useConfirm();
 
   const endpoints = {
     'calc-standards': '/api/standards/calculation-standards',
@@ -136,7 +139,8 @@ export default function StandardsManagement({ embedded = false, readOnly = false
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this?')) return;
+    const confirmed = await confirm({ title: 'Delete Item', message: 'Are you sure you want to delete this?', variant: 'danger', confirmLabel: 'Delete' });
+    if (!confirmed) return;
     try {
       await apiFetchJson(`${endpoints[activeTab]}/${id}`, { method: 'DELETE' });
       toast.success('Deleted successfully');
@@ -452,6 +456,7 @@ export default function StandardsManagement({ embedded = false, readOnly = false
           </div>
         </div>
       )}
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 

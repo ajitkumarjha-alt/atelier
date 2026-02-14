@@ -4,6 +4,7 @@ import { ArrowLeft, FileText, Calendar, User, Building, MessageSquare, CheckCirc
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
 import { auth } from '../lib/firebase';
+import { showSuccess, showError, showWarning } from '../utils/toast';
 
 export default function RFIDetail() {
   const { id, projectId: urlProjectId } = useParams();
@@ -109,7 +110,7 @@ export default function RFIDetail() {
 
   const handleAssign = async () => {
     if (!assignUserId) {
-      alert('Please select a user to assign');
+      showWarning('Please select a user to assign');
       return;
     }
     try {
@@ -124,15 +125,15 @@ export default function RFIDetail() {
         }),
       });
       if (response.ok) {
-        alert('RFI assigned successfully');
+        showSuccess('RFI assigned successfully');
         fetchRFIDetail();
       } else {
         const err = await response.json();
-        alert(`Error: ${err.error || 'Failed to assign'}`);
+        showError(`Error: ${err.error || 'Failed to assign'}`);
       }
     } catch (error) {
       console.error('Error assigning RFI:', error);
-      alert('Error assigning RFI');
+      showError('Error assigning RFI');
     } finally {
       setSubmittingAssign(false);
     }
@@ -140,7 +141,7 @@ export default function RFIDetail() {
 
   const handleStatusUpdate = async () => {
     if (!newStatus) {
-      alert('Please select a status');
+      showWarning('Please select a status');
       return;
     }
 
@@ -159,16 +160,16 @@ export default function RFIDetail() {
       });
 
       if (response.ok) {
-        alert('Status updated successfully');
+        showSuccess('Status updated successfully');
         setShowStatusUpdate(false);
         fetchRFIDetail(); // Refresh data
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to update status'}`);
+        showError(`Error: ${errorData.error || 'Failed to update status'}`);
       }
     } catch (error) {
       console.error('Error updating status:', error);
-      alert('Error updating status');
+      showError('Error updating status');
     } finally {
       setSubmittingUpdate(false);
     }
@@ -176,7 +177,7 @@ export default function RFIDetail() {
 
   const handleReferToConsultant = async () => {
     if (!selectedConsultantId) {
-      alert('Please select a consultant');
+      showWarning('Please select a consultant');
       return;
     }
 
@@ -194,17 +195,17 @@ export default function RFIDetail() {
       });
 
       if (response.ok) {
-        alert('Successfully referred to consultant');
+        showSuccess('Successfully referred to consultant');
         setShowConsultantReferral(false);
         setSelectedConsultantId('');
         fetchRFIDetail(); // Refresh data
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to refer to consultant'}`);
+        showError(`Error: ${errorData.error || 'Failed to refer to consultant'}`);
       }
     } catch (error) {
       console.error('Error referring to consultant:', error);
-      alert('Error referring to consultant');
+      showError('Error referring to consultant');
     } finally {
       setSubmittingReferral(false);
     }

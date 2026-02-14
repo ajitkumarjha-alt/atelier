@@ -4,6 +4,9 @@ import { ArrowLeft, Plus, Calendar, FileText, AlertCircle, Filter, Download, Upl
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
 import { auth } from '../lib/firebase';
+import { useConfirm } from '../hooks/useDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { showSuccess, showError, showWarning } from '../utils/toast';
 
 export default function DrawingSchedule() {
   const { projectId } = useParams();
@@ -36,6 +39,8 @@ export default function DrawingSchedule() {
     assignedTo: '',
     remarks: '',
   });
+
+  const { confirm, dialogProps } = useConfirm();
 
   const disciplines = ['Electrical', 'Mechanical', 'Plumbing', 'Fire Fighting', 'BMS', 'HVAC', 'ELV', 'Other'];
   const drawingTypes = ['Layout Plan', 'Schematic Diagram', 'Detail Drawing', 'Shop Drawing', 'As-Built', 'GAD', 'SLD', 'Riser Diagram', 'Other'];
@@ -119,7 +124,7 @@ export default function DrawingSchedule() {
     e.preventDefault();
 
     if (!formData.drawingRefNo || !formData.drawingTitle) {
-      alert('Drawing Ref No and Title are required');
+      showWarning('Drawing Ref No and Title are required');
       return;
     }
 
@@ -137,18 +142,18 @@ export default function DrawingSchedule() {
       });
 
       if (response.ok) {
-        alert('Drawing schedule created successfully');
+        showSuccess('Drawing schedule created successfully');
         setShowCreateModal(false);
         resetForm();
         fetchDrawings();
         fetchStats();
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to create drawing schedule'}`);
+        showError(`Error: ${errorData.error || 'Failed to create drawing schedule'}`);
       }
     } catch (error) {
       console.error('Error creating drawing:', error);
-      alert('Error creating drawing schedule');
+      showError('Error creating drawing schedule');
     }
   };
 
@@ -168,23 +173,24 @@ export default function DrawingSchedule() {
       });
 
       if (response.ok) {
-        alert('Drawing schedule updated successfully');
+        showSuccess('Drawing schedule updated successfully');
         setEditingDrawing(null);
         resetForm();
         fetchDrawings();
         fetchStats();
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to update drawing schedule'}`);
+        showError(`Error: ${errorData.error || 'Failed to update drawing schedule'}`);
       }
     } catch (error) {
       console.error('Error updating drawing:', error);
-      alert('Error updating drawing schedule');
+      showError('Error updating drawing schedule');
     }
   };
 
   const handleDeleteDrawing = async (id) => {
-    if (!confirm('Are you sure you want to delete this drawing schedule?')) return;
+    const confirmed = await confirm({ title: 'Delete Drawing', message: 'Are you sure you want to delete this drawing schedule?', variant: 'danger', confirmLabel: 'Delete' });
+    if (!confirmed) return;
 
     try {
       const response = await apiFetch(`/api/drawing-schedules/${id}`, {
@@ -195,15 +201,15 @@ export default function DrawingSchedule() {
       });
 
       if (response.ok) {
-        alert('Drawing schedule deleted successfully');
+        showSuccess('Drawing schedule deleted successfully');
         fetchDrawings();
         fetchStats();
       } else {
-        alert('Failed to delete drawing schedule');
+        showError('Failed to delete drawing schedule');
       }
     } catch (error) {
       console.error('Error deleting drawing:', error);
-      alert('Error deleting drawing schedule');
+      showError('Error deleting drawing schedule');
     }
   };
 
@@ -640,6 +646,7 @@ export default function DrawingSchedule() {
           </div>
         </div>
       )}
+      <ConfirmDialog {...dialogProps} />
     </Layout>
   );
 }

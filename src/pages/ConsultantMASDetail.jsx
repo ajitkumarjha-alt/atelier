@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader, ArrowLeft, FileText, Send, CheckCircle } from 'lucide-react';
+import { showSuccess } from '../utils/toast';
 
 export default function ConsultantMASDetail() {
   const { masId } = useParams();
@@ -80,7 +81,7 @@ export default function ConsultantMASDetail() {
       }
 
       await fetchMASDetails(); // Refresh data
-      alert('Reply submitted successfully!');
+      showSuccess('Reply submitted successfully!');
     } catch (err) {
       console.error('Error submitting reply:', err);
       setError(err.message || 'Failed to submit reply');

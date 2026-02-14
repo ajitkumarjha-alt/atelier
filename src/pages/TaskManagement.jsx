@@ -2,12 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle2, Clock, AlertTriangle, Calendar, Filter, Search,
-  ChevronDown, ChevronUp, ListChecks, Flag, User, Building2,
+  ChevronDown, ChevronUp, ListChecks, ClipboardList, Flag, User, Building2,
   ArrowRight, BarChart3, Download
 } from 'lucide-react';
 import Layout from '../components/Layout';
+import Spinner from '../components/Spinner';
 import { apiFetchJson } from '../lib/api';
 import { useUser } from '../lib/UserContext';
+import EmptyState from '../components/EmptyState';
 import toast from 'react-hot-toast';
 
 const PRIORITY_CONFIG = {
@@ -245,9 +247,7 @@ export default function TaskManagement() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin w-8 h-8 border-2 border-lodha-gold border-t-transparent rounded-full" />
-        </div>
+        <Spinner fullPage label="Loading..." />
       ) : (
         <>
           {/* Overdue Alert */}
@@ -271,10 +271,13 @@ export default function TaskManagement() {
           {/* Task List */}
           <div className="space-y-3">
             {filteredTasks.length === 0 ? (
-              <div className="bg-white border border-lodha-steel rounded-xl p-12 text-center">
-                <ListChecks className="w-12 h-12 text-lodha-steel mx-auto mb-3" />
-                <p className="text-lodha-grey/60 font-jost">No tasks found</p>
-              </div>
+              <EmptyState
+                icon={ClipboardList}
+                title="No tasks found"
+                description="Create a new task to get started with task management."
+                actionLabel="Create Task"
+                onAction={() => setShowCreateModal(true)}
+              />
             ) : (
               filteredTasks.map(task => {
                 const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed';
@@ -286,7 +289,8 @@ export default function TaskManagement() {
                   <div key={task.id} className={`bg-white border rounded-xl p-5 hover:shadow-md transition-all ${isOverdue ? 'border-red-300' : 'border-lodha-steel'}`}>
                     <div className="flex items-start gap-4">
                       {/* Priority Dot */}
-                      <div className={`w-3 h-3 rounded-full mt-1.5 flex-shrink-0 ${priority.dot}`} title={priority.label} />
+                      <div className={`w-3 h-3 rounded-full mt-1.5 flex-shrink-0 ${priority.dot}`} title={priority.label} aria-label={priority.label} />
+                      <span className="sr-only">{priority.label} priority</span>
                       
                       {/* Content */}
                       <div className="flex-1 min-w-0">
@@ -326,11 +330,11 @@ export default function TaskManagement() {
                         {task.status !== 'completed' && (
                           <>
                             {task.status === 'pending' && (
-                              <button onClick={() => handleStatusChange(task.id, 'in_progress')} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Start Task">
+                              <button onClick={() => handleStatusChange(task.id, 'in_progress')} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Start Task" aria-label="Start Task">
                                 <ArrowRight className="w-4 h-4" />
                               </button>
                             )}
-                            <button onClick={() => setShowCompleteModal(task)} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Complete Task">
+                            <button onClick={() => setShowCompleteModal(task)} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Complete Task" aria-label="Complete Task">
                               <CheckCircle2 className="w-4 h-4" />
                             </button>
                           </>

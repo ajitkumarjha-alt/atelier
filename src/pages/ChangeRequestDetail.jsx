@@ -4,6 +4,9 @@ import { ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, User, Calendar, 
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
 import { auth } from '../lib/firebase';
+import { useConfirm } from '../hooks/useDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { showSuccess, showError, showWarning } from '../utils/toast';
 
 export default function ChangeRequestDetail() {
   const { id } = useParams();
@@ -27,6 +30,7 @@ export default function ChangeRequestDetail() {
 
   // Implementation State
   const [implementing, setImplementing] = useState(false);
+  const { confirm, dialogProps } = useConfirm();
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -72,7 +76,7 @@ export default function ChangeRequestDetail() {
 
   const handleL2Review = async () => {
     if (!l2Status) {
-      alert('Please select a review status');
+      showWarning('Please select a review status');
       return;
     }
 
@@ -91,16 +95,16 @@ export default function ChangeRequestDetail() {
       });
 
       if (response.ok) {
-        alert('L2 Review submitted successfully');
+        showSuccess('L2 Review submitted successfully');
         setShowL2Review(false);
         fetchChangeRequestDetail();
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to submit L2 review'}`);
+        showError(`Error: ${errorData.error || 'Failed to submit L2 review'}`);
       }
     } catch (error) {
       console.error('Error submitting L2 review:', error);
-      alert('Error submitting L2 review');
+      showError('Error submitting L2 review');
     } finally {
       setSubmittingL2(false);
     }
@@ -108,7 +112,7 @@ export default function ChangeRequestDetail() {
 
   const handleL1Review = async () => {
     if (!l1Status) {
-      alert('Please select a review status');
+      showWarning('Please select a review status');
       return;
     }
 
@@ -127,23 +131,24 @@ export default function ChangeRequestDetail() {
       });
 
       if (response.ok) {
-        alert('L1 Review submitted successfully');
+        showSuccess('L1 Review submitted successfully');
         setShowL1Review(false);
         fetchChangeRequestDetail();
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to submit L1 review'}`);
+        showError(`Error: ${errorData.error || 'Failed to submit L1 review'}`);
       }
     } catch (error) {
       console.error('Error submitting L1 review:', error);
-      alert('Error submitting L1 review');
+      showError('Error submitting L1 review');
     } finally {
       setSubmittingL1(false);
     }
   };
 
   const handleMarkImplemented = async () => {
-    if (!confirm('Mark this change request as implemented?')) return;
+    const confirmed = await confirm({ title: 'Confirm Implementation', message: 'Mark this change request as implemented?', variant: 'warning', confirmLabel: 'Mark Implemented' });
+    if (!confirmed) return;
 
     try {
       setImplementing(true);
@@ -156,15 +161,15 @@ export default function ChangeRequestDetail() {
       });
 
       if (response.ok) {
-        alert('Change request marked as implemented');
+        showSuccess('Change request marked as implemented');
         fetchChangeRequestDetail();
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to mark as implemented'}`);
+        showError(`Error: ${errorData.error || 'Failed to mark as implemented'}`);
       }
     } catch (error) {
       console.error('Error marking as implemented:', error);
-      alert('Error marking as implemented');
+      showError('Error marking as implemented');
     } finally {
       setImplementing(false);
     }
@@ -623,6 +628,7 @@ export default function ChangeRequestDetail() {
           </div>
         </div>
       </div>
+      <ConfirmDialog {...dialogProps} />
     </Layout>
   );
 }

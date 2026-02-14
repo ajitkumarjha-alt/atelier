@@ -14,6 +14,8 @@ import DDSProgressChart from '../components/DDSProgressChart';
 import { apiFetchJson } from '../lib/api';
 import { useUser } from '../lib/UserContext';
 import toast from 'react-hot-toast';
+import { useConfirm } from '../hooks/useDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 // ──── Trade/Discipline icons & colors ────
 const TRADE_ICONS = {
@@ -142,6 +144,7 @@ export default function DDSManagement() {
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterBuilding, setFilterBuilding] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [expandedSections, setExpandedSections] = useState(new Set());
   const [completeModal, setCompleteModal] = useState(null);
@@ -149,6 +152,7 @@ export default function DDSManagement() {
   const [remarks, setRemarks] = useState('');
   const [showPolicyInfo, setShowPolicyInfo] = useState(false);
   const [activeMainTab, setActiveMainTab] = useState('schedule');
+  const { confirm, dialogProps } = useConfirm();
 
   // ──── Data fetching ────
   const fetchDDS = useCallback(async () => {
@@ -253,7 +257,8 @@ export default function DDSManagement() {
 
   const handleRegenerate = async () => {
     if (!dds) return;
-    if (!confirm('Regenerate DDS? Non-completed items will be replaced with updated policy dates.')) return;
+    const confirmed = await confirm({ title: 'Regenerate DDS', message: 'Regenerate DDS? Non-completed items will be replaced with updated policy dates.', variant: 'warning', confirmLabel: 'Regenerate' });
+    if (!confirmed) return;
     try {
       setGenerating(true);
       await apiFetchJson(`/api/dds/${dds.id}/regenerate`, { method: 'POST' });
@@ -365,12 +370,12 @@ export default function DDSManagement() {
         <StatusBadge status={item.status} dueDate={item.expected_completion_date} />
         <div className="flex items-center gap-1 flex-shrink-0">
           {item.status !== 'completed' && ['L0', 'L1', 'L2', 'SUPER_ADMIN'].includes(userLevel) && (
-            <button onClick={() => setCompleteModal(item)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Mark Complete">
+            <button onClick={() => setCompleteModal(item)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Mark Complete" aria-label="Mark Complete">
               <CheckCircle2 className="w-4 h-4" />
             </button>
           )}
           {item.status === 'completed' && ['L0', 'L1', 'L2', 'SUPER_ADMIN'].includes(userLevel) && (
-            <button onClick={() => setReviseModal(item)} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Request Revision">
+            <button onClick={() => setReviseModal(item)} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Request Revision" aria-label="Request Revision">
               <RefreshCw className="w-4 h-4" />
             </button>
           )}
@@ -720,35 +725,45 @@ export default function DDSManagement() {
 
           {/* Filters */}
           <div className="bg-white border border-lodha-steel rounded-xl p-4 mb-6">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative flex-1 min-w-[200px]">
+            {/* Search + mobile filter toggle */}
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-lodha-grey" />
                 <input type="text" placeholder="Search items, trades, sections..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-sm font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30" />
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Filter className="w-4 h-4 text-lodha-grey/60 hidden sm:block" />
-                <select value={filterBuilding} onChange={(e) => setFilterBuilding(e.target.value)} className="px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-xs font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30">
-                  <option value="All">All Buildings</option>
-                  {buildingNames.map(b => <option key={b} value={b}>{b}</option>)}
-                </select>
-                <select value={filterTrade} onChange={(e) => setFilterTrade(e.target.value)} className="px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-xs font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30">
-                  <option value="All">All Trades</option>
-                  {nonMepTrades.map(t => <option key={t} value={t}>{t}</option>)}
-                  <optgroup label="MEP">
-                    <option value="MEP">All MEP Trades</option>
-                    {mepTrades.map(t => <option key={t} value={t}>  {t}</option>)}
-                  </optgroup>
-                </select>
-                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-xs font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30">
-                  <option value="All">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="completed">Completed</option>
-                  <option value="revised">Revised</option>
-                  <option value="overdue">Overdue</option>
-                </select>
-              </div>
+              <button
+                onClick={() => setShowMobileFilters(v => !v)}
+                className="md:hidden flex items-center gap-1.5 px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-xs font-jost font-semibold text-lodha-grey"
+              >
+                <Filter className="w-4 h-4" />
+                Filters
+                {showMobileFilters ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+            </div>
+            {/* Filter dropdowns — always visible on md+, collapsible on mobile */}
+            <div className={`${showMobileFilters ? 'flex' : 'hidden'} md:flex items-center gap-2 flex-wrap mt-3`}>
+              <Filter className="w-4 h-4 text-lodha-grey/60 hidden sm:block" />
+              <select value={filterBuilding} onChange={(e) => setFilterBuilding(e.target.value)} className="px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-xs font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30">
+                <option value="All">All Buildings</option>
+                {buildingNames.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+              <select value={filterTrade} onChange={(e) => setFilterTrade(e.target.value)} className="px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-xs font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30">
+                <option value="All">All Trades</option>
+                {nonMepTrades.map(t => <option key={t} value={t}>{t}</option>)}
+                <optgroup label="MEP">
+                  <option value="MEP">All MEP Trades</option>
+                  {mepTrades.map(t => <option key={t} value={t}>  {t}</option>)}
+                </optgroup>
+              </select>
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-xs font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30">
+                <option value="All">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="revised">Revised</option>
+                <option value="overdue">Overdue</option>
+              </select>
             </div>
           </div>
 
@@ -883,6 +898,7 @@ export default function DDSManagement() {
           </div>
         </div>
       )}
+      <ConfirmDialog {...dialogProps} />
     </Layout>
   );
 }

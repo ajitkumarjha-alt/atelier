@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader, Search, AlertCircle, CheckCircle, Clock, Filter, ArrowLeft } from 'lucide-react';
+import { Search, AlertCircle, Clock, Filter, ArrowLeft, Plus } from 'lucide-react';
 import Layout from '../components/Layout';
+import Spinner from '../components/Spinner';
+import StatusBadge from '../components/StatusBadge';
 import { auth } from '../lib/firebase';
 import { apiFetchJson } from '../lib/api';
+import { useUser } from '../lib/UserContext';
 
 export default function RFIPage() {
   const { projectId: urlProjectId } = useParams();
@@ -15,6 +18,7 @@ export default function RFIPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+  const { userLevel } = useUser();
   const [filter, setFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [projectName, setProjectName] = useState('');
@@ -105,35 +109,12 @@ export default function RFIPage() {
     return 'bg-white border border-lodha-steel';
   };
 
-  const getStatusBadge = (status) => {
-    const normalizedStatus = status?.toLowerCase();
-    if (normalizedStatus === 'pending') {
-      return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 flex items-center gap-1">
-        <AlertCircle className="w-3 h-3" />
-        Pending
-      </span>;
-    } else if (normalizedStatus === 'in_progress' || normalizedStatus === 'in progress') {
-      return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 flex items-center gap-1">
-        <Clock className="w-3 h-3" />
-        In Progress
-      </span>;
-    } else if (normalizedStatus === 'resolved') {
-      return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 flex items-center gap-1">
-        <CheckCircle className="w-3 h-3" />
-        Resolved
-      </span>;
-    }
-    return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-lodha-sand text-lodha-grey">{status}</span>;
-  };
-
   const counts = getStatusCounts();
 
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center py-12">
-          <Loader className="w-8 h-8 text-lodha-gold animate-spin" />
-        </div>
+        <Spinner fullPage label="Loading..." />
       </Layout>
     );
   }
@@ -150,12 +131,25 @@ export default function RFIPage() {
             <ArrowLeft className="w-4 h-4" /> Back to project
           </button>
         )}
-        <h1 className="heading-primary mb-2">Requests for Information (RFI)</h1>
-        <p className="text-body">
-          {isProjectScoped && projectName
-            ? `RFIs for ${projectName}`
-            : 'Track and manage information requests across all projects'}
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="heading-primary mb-2">Requests for Information (RFI)</h1>
+            <p className="text-body">
+              {isProjectScoped && projectName
+                ? `RFIs for ${projectName}`
+                : 'Track and manage information requests across all projects'}
+            </p>
+          </div>
+          {['L1', 'L2', 'SUPER_ADMIN'].includes(userLevel) && (
+            <button
+              onClick={() => navigate('/rfi/create')}
+              className="flex items-center gap-2 px-5 py-2.5 bg-lodha-gold text-white rounded-lg text-sm font-jost font-semibold hover:bg-lodha-grey transition-colors whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4" />
+              Create RFI
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -247,14 +241,17 @@ export default function RFIPage() {
             <div 
               key={item.id}
               onClick={() => navigate(isProjectScoped ? `/projects/${urlProjectId}/rfi/${item.id}` : `/rfi/${item.id}`)}
-              className={`group relative rounded-lg p-6 hover:shadow-lg transition-all cursor-pointer ${getStatusStyle(item.status)}`}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigate(isProjectScoped ? `/projects/${urlProjectId}/rfi/${item.id}` : `/rfi/${item.id}`)}
+              tabIndex={0}
+              role="link"
+              className={`group relative rounded-lg p-6 hover:shadow-lg transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-lodha-gold/30 ${getStatusStyle(item.status)}`}
             >
               {/* Header */}
               <div className="flex justify-between items-start gap-4 mb-4">
                 <h3 className="text-lg font-garamond font-bold text-lodha-grey flex-1">
                   {item.title || 'Untitled RFI'}
                 </h3>
-                {getStatusBadge(item.status)}
+                <StatusBadge status={item.status} />
               </div>
 
               {/* Description */}

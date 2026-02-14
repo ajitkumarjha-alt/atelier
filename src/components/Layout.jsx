@@ -117,6 +117,7 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen flex max-w-full overflow-x-hidden">
+      <a href="#main-content" className="skip-to-main">Skip to main content</a>
       {/* Sidebar */}
       <div 
         className={`fixed lg:static inset-y-0 left-0 z-50 w-60 bg-gradient-to-b from-[#3a3a3c] to-[#2d2d2f] transform 
@@ -203,7 +204,7 @@ export default function Layout({ children }) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 bg-lodha-sand/50 p-4 md:p-6 lg:p-8 overflow-auto w-full max-w-full" role="main">
+        <main id="main-content" className="flex-1 bg-lodha-sand/50 p-4 md:p-6 lg:p-8 overflow-auto w-full max-w-full" role="main">
           <div className="max-w-7xl mx-auto w-full">
             <Breadcrumbs />
             {children}

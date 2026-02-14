@@ -3,6 +3,7 @@ import { Building2, UserCheck, Users, Mail, Chrome, Sparkles, Shield, Clock } fr
 import { useEffect, useState } from 'react';
 import { auth } from '../lib/firebase';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { showError, showWarning } from '../utils/toast';
 
 export default function WelcomePage() {
   const navigate = useNavigate();
@@ -38,13 +39,13 @@ export default function WelcomePage() {
         localStorage.setItem('devUserEmail', user.email);
         navigate('/dashboard');
       } else {
-        alert('Please use your Lodha Group email (@lodhagroup.com) to sign in.');
+        showWarning('Please use your Lodha Group email (@lodhagroup.com) to sign in.');
         await auth.signOut();
       }
     } catch (error) {
       console.error('Login error:', error);
       if (error.code !== 'auth/popup-closed-by-user') {
-        alert('Login failed. Please try again.');
+        showError('Login failed. Please try again.');
       }
     }
   };
