@@ -41,6 +41,21 @@ export default function MASPage() {
     }
   };
 
+  const handleSaveMAS = async (formData) => {
+    try {
+      await apiFetchJson('/api/mas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      setShowCreateModal(false);
+      fetchMAS();
+    } catch (err) {
+      console.error('Error saving MAS:', err);
+      setError('Failed to save Material Approval Sheet');
+    }
+  };
+
   // Apply filters and search
   useEffect(() => {
     let result = [...items];
