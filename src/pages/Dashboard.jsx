@@ -7,6 +7,7 @@ import ProjectCard from '../components/ProjectCard';
 import MyAssignmentsWidget from '../components/MyAssignmentsWidget';
 import { CardGridSkeleton } from '../components/SkeletonLoader';
 import { apiFetchJson } from '../lib/api';
+import MeetingPointWidget from '../components/MeetingPointWidget';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -72,7 +73,10 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* My Assignments Widget */}
+      {/* Meeting Point */}
+      <MeetingPointWidget />
+
+      {/* My Assignments Widget */
       <MyAssignmentsWidget />
 
       {/* Projects Grid */}

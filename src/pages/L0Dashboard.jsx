@@ -5,6 +5,7 @@ import Layout from '../components/Layout';
 import ProjectCard from '../components/ProjectCard';
 import AIReports from '../components/AIReports';
 import MyAssignmentsWidget from '../components/MyAssignmentsWidget';
+import MeetingPointWidget from '../components/MeetingPointWidget';
 import { apiFetchJson } from '../lib/api';
 import { showError } from '../utils/toast';
 import { useConfirm } from '../hooks/useDialog';
@@ -128,6 +129,9 @@ export default function L0Dashboard() {
           </button>
         </div>
       </div>
+
+      {/* Meeting Point */}
+      <MeetingPointWidget />
 
       {/* My Assignments Widget */}
       <MyAssignmentsWidget />

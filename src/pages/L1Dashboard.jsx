@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import L1ProjectTable from '../components/L1ProjectTable';
 import AIChat from '../components/AIChat';
 import MyAssignmentsWidget from '../components/MyAssignmentsWidget';
+import MeetingPointWidget from '../components/MeetingPointWidget';
 import { auth } from '../lib/firebase';
 import { Plus, MessageCircle, Calendar, Send, ListChecks, AlertTriangle, FileText, Database } from 'lucide-react';
 import { apiFetchJson } from '../lib/api';
@@ -57,6 +58,9 @@ export default function L1Dashboard() {
           Create New Project
         </button>
       </div>
+
+      {/* Meeting Point */}
+      <MeetingPointWidget />
 
       {/* My Assignments Widget */}
       <MyAssignmentsWidget />

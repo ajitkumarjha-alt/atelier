@@ -48,6 +48,10 @@ const DesignCalculations = lazy(() => import('./pages/DesignCalculations'));
 const ChangeRequestsPage = lazy(() => import('./pages/ChangeRequestsPage'));
 const ChangeRequestDetail = lazy(() => import('./pages/ChangeRequestDetail'));
 
+// Meeting Point
+const MeetingPoint = lazy(() => import('./pages/MeetingPoint'));
+const MeetingPointThread = lazy(() => import('./pages/MeetingPointThread'));
+
 // Calculation pages
 const ElectricalLoadCalculation = lazy(() => import('./pages/calculations/ElectricalLoadCalculation'));
 const WaterDemandCalculation = lazy(() => import('./pages/calculations/WaterDemandCalculation'));
@@ -297,6 +301,10 @@ function AppRoutes() {
               )
             }
           />
+
+          {/* ── Meeting Point (Forum) ──────────────────────────────── */}
+          <Route path="/meeting-point" element={<P><MeetingPoint /></P>} />
+          <Route path="/meeting-point/:threadId" element={<P><MeetingPointThread /></P>} />
 
           {/* ── Legacy / Placeholder ───────────────────────────────── */}
           <Route path="/project-plans" element={<P><ComingSoon title="Project Plans" /></P>} />

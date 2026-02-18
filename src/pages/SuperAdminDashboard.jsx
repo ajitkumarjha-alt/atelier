@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import SuperAdminLayout from '../components/SuperAdminLayout';
+import MeetingPointWidget from '../components/MeetingPointWidget';
 import { Users, Shield, TrendingUp, Settings, Database, Truck, HelpCircle, Briefcase, UserCog } from 'lucide-react';
 
 export default function SuperAdminDashboard() {
@@ -147,6 +148,9 @@ export default function SuperAdminDashboard() {
           Access and manage all user level dashboards. Test and verify functionality across all access levels.
         </p>
       </div>
+
+      {/* Meeting Point */}
+      <MeetingPointWidget />
 
       {/* Dashboard Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">

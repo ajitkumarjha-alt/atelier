@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Plus, Clock, CheckCircle, Building2, AlertTriangle, Layers } from 'lucide-react';
 import Layout from '../components/Layout';
+import MeetingPointWidget from '../components/MeetingPointWidget';
 import { apiFetchJson } from '../lib/api';
 
 export default function CMDashboard() {
@@ -59,6 +60,9 @@ export default function CMDashboard() {
         <h1 className="heading-primary mb-2">Construction Manager Dashboard</h1>
         <p className="text-body">Manage and track Requests for Information (RFI)</p>
       </div>
+
+      {/* Meeting Point */}
+      <MeetingPointWidget />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

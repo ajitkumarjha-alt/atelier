@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import AIChat from '../components/AIChat';
+import MeetingPointWidget from '../components/MeetingPointWidget';
 import { Eye, MapPin, Clock, MessageCircle, ListChecks, AlertTriangle, CheckCircle2, Calendar } from 'lucide-react';
 import { apiFetchJson } from '../lib/api';
 import { auth } from '../lib/firebase';
@@ -68,6 +69,9 @@ export default function L3Dashboard() {
           View project progress with limited edit capabilities. Monitor KPIs and project status.
         </p>
       </div>
+
+      {/* Meeting Point */}
+      <MeetingPointWidget />
 
       {/* My Tasks Section */}
       <div className="mb-8">

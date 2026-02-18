@@ -49,6 +49,7 @@ import createRfiRouter from './routes/rfi.js';
 import createDrawingSchedulesRouter from './routes/drawing-schedules.js';
 import createSiteAreasRouter from './routes/site-areas.js';
 import createChangeRequestsRouter from './routes/change-requests.js';
+import createMeetingPointRouter from './routes/meeting-point.js';
 import { validate as handleValidationErrors, validationRules } from './middleware/validation.js';
 
 const app = express();
@@ -234,6 +235,7 @@ app.use('/api', createSiteAreasRouter({
   handleValidationErrors,
 }));
 app.use('/api', createChangeRequestsRouter({ query, verifyToken }));
+app.use('/api', createMeetingPointRouter(routeDeps));
 
 // ============================================================================
 // File Upload Endpoints

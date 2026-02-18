@@ -5,6 +5,7 @@ import L2TopStats from '../components/L2TopStats';
 import ProjectStatusBoard from '../components/ProjectStatusBoard';
 import AIChat from '../components/AIChat';
 import MyAssignmentsWidget from '../components/MyAssignmentsWidget';
+import MeetingPointWidget from '../components/MeetingPointWidget';
 import { auth } from '../lib/firebase';
 
 export default function L2Dashboard() {
@@ -51,6 +52,9 @@ export default function L2Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Meeting Point */}
+      <MeetingPointWidget />
 
       {/* My Assignments Widget */}
       <MyAssignmentsWidget />

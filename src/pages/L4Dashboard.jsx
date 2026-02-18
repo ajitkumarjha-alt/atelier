@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import AIChat from '../components/AIChat';
+import MeetingPointWidget from '../components/MeetingPointWidget';
 import { Eye, MapPin, Clock, MessageCircle } from 'lucide-react';
 import { apiFetchJson } from '../lib/api';
 import { auth } from '../lib/firebase';
@@ -61,6 +62,9 @@ export default function L4Dashboard() {
           View assigned projects and basic information. No editing capabilities.
         </p>
       </div>
+
+      {/* Meeting Point */}
+      <MeetingPointWidget />
 
       {/* Projects Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
