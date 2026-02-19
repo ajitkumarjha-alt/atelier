@@ -1292,7 +1292,14 @@ async function initializeDatabase() {
     await query(`ALTER TABLE dds_items ADD COLUMN IF NOT EXISTS level_type VARCHAR(100)`);
     await query(`ALTER TABLE dds_items ADD COLUMN IF NOT EXISTS doc_type VARCHAR(50)`);
     await query(`ALTER TABLE dds_items ADD COLUMN IF NOT EXISTS policy_week_offset INTEGER`);
-    console.log('✓ dds_items policy columns migrated');
+
+    // 9-phase DDS model columns (v2)
+    await query(`ALTER TABLE dds_items ADD COLUMN IF NOT EXISTS dependency_text TEXT`);
+    await query(`ALTER TABLE dds_items ADD COLUMN IF NOT EXISTS dependent_stakeholders VARCHAR(255)`);
+    await query(`ALTER TABLE dds_items ADD COLUMN IF NOT EXISTS scope VARCHAR(20) DEFAULT 'Plant'`);
+    await query(`ALTER TABLE dds_items ADD COLUMN IF NOT EXISTS remarks TEXT`);
+    await query(`ALTER TABLE dds_items ADD COLUMN IF NOT EXISTS policy_day_offset INTEGER`);
+    console.log('✓ dds_items policy columns migrated (incl. 9-phase v2)');
 
     // DDS — add policy reference and metadata
     await query(`ALTER TABLE dds ADD COLUMN IF NOT EXISTS policy_id INTEGER`);

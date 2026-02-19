@@ -127,14 +127,17 @@ const createDDSRouter = ({ query, verifyToken, logger, transaction }) => {
             dds_id, building_id, item_category, item_name, discipline,
             expected_start_date, expected_completion_date,
             architect_input_date, structure_input_date,
-            sort_order, phase, section, trade, level_type, doc_type, policy_week_offset
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+            sort_order, phase, section, trade, level_type, doc_type, policy_week_offset,
+            dependency_text, dependent_stakeholders, scope, remarks, policy_day_offset
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
           [
             dds.id, item.buildingId, item.discipline, item.itemName, item.discipline,
             item.expectedStartDate, item.expectedCompletionDate,
             item.architectInputDate, item.structureInputDate,
             item.sortOrder, item.phase, item.section, item.trade,
             item.levelType, item.docType, item.policyWeekOffset,
+            item.dependencyText, item.dependentStakeholders, item.scope,
+            item.remarks, item.policyDayOffset,
           ]
         );
       }
@@ -654,23 +657,27 @@ const createDDSRouter = ({ query, verifyToken, logger, transaction }) => {
 
           // Batch insert DDS items (chunks of 50)
           const BATCH = 50;
+          const COLS_PER_ITEM = 21;
           for (let i = 0; i < policyResult.items.length; i += BATCH) {
             const batch = policyResult.items.slice(i, i + BATCH);
             const values = [];
             const params = [];
             batch.forEach((item, j) => {
-              const off = j * 16;
-              values.push(`($${off+1},$${off+2},$${off+3},$${off+4},$${off+5},$${off+6},$${off+7},$${off+8},$${off+9},$${off+10},$${off+11},$${off+12},$${off+13},$${off+14},$${off+15},$${off+16})`);
+              const off = j * COLS_PER_ITEM;
+              values.push(`($${off+1},$${off+2},$${off+3},$${off+4},$${off+5},$${off+6},$${off+7},$${off+8},$${off+9},$${off+10},$${off+11},$${off+12},$${off+13},$${off+14},$${off+15},$${off+16},$${off+17},$${off+18},$${off+19},$${off+20},$${off+21})`);
               params.push(dds.id, item.buildingId, item.discipline, item.itemName, item.discipline,
                 item.expectedStartDate, item.expectedCompletionDate,
                 item.architectInputDate, item.structureInputDate,
                 item.sortOrder, item.phase, item.section, item.trade,
-                item.levelType, item.docType, item.policyWeekOffset);
+                item.levelType, item.docType, item.policyWeekOffset,
+                item.dependencyText, item.dependentStakeholders, item.scope,
+                item.remarks, item.policyDayOffset);
             });
             await client.query(
               `INSERT INTO dds_items (dds_id, building_id, item_category, item_name, discipline,
                expected_start_date, expected_completion_date, architect_input_date, structure_input_date,
-               sort_order, phase, section, trade, level_type, doc_type, policy_week_offset)
+               sort_order, phase, section, trade, level_type, doc_type, policy_week_offset,
+               dependency_text, dependent_stakeholders, scope, remarks, policy_day_offset)
                VALUES ${values.join(',')}`, params);
           }
 

@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Calendar, CheckCircle2, Clock, AlertTriangle, Download,
-  RefreshCw, ChevronDown, ChevronUp, Filter, Search,
+  RefreshCw, ChevronDown, ChevronRight, Filter, Search,
   FileText, ArrowLeft, BarChart3, Edit3,
   Layers, Building2, Zap, Droplets, Flame, Wind, Shield,
   Lightbulb, Radio, Clipboard, PenTool, Info
@@ -17,54 +17,16 @@ import toast from 'react-hot-toast';
 import { useConfirm } from '../hooks/useDialog';
 import ConfirmDialog from '../components/ConfirmDialog';
 
-// ──── Trade/Discipline icons & colors ────
+/* ═══════════ Config ═══════════ */
 const TRADE_ICONS = {
-  'Electrical': Zap,
-  'PHE': Droplets,
-  'Fire Fighting': Flame,
-  'HVAC': Wind,
-  'Security': Shield,
-  'Lighting': Lightbulb,
-  'Small Power': Zap,
-  'Lightning Protection': Zap,
-  'Containment': Layers,
-  'FA & PA': Radio,
-  'FAVA': Radio,
-  'ELV': Radio,
-  'Lifts': Layers,
-  'Co-ordinate': Clipboard,
-  'Builders Work': PenTool,
-  'MEP': Layers,
-  'Architecture': Building2,
-  'Structure': Building2,
-  'Workshop': Clipboard,
-  'Interior Design': PenTool,
+  'Electrical': Zap, 'PHE': Droplets, 'Fire Fighting': Flame, 'HVAC': Wind,
+  'Security': Shield, 'Lighting': Lightbulb, 'Small Power': Zap,
+  'Lightning Protection': Zap, 'Containment': Layers, 'FA & PA': Radio,
+  'FAVA': Radio, 'ELV': Radio, 'Lifts': Layers, 'Co-ordinate': Clipboard,
+  'Builders Work': PenTool, 'MEP': Layers, 'Architecture': Building2,
+  'Structure': Building2, 'Workshop': Clipboard, 'Interior Design': PenTool,
 };
 
-const TRADE_COLORS = {
-  'Electrical': 'text-amber-600 bg-amber-50 border-amber-200',
-  'PHE': 'text-blue-600 bg-blue-50 border-blue-200',
-  'Fire Fighting': 'text-red-600 bg-red-50 border-red-200',
-  'HVAC': 'text-teal-600 bg-teal-50 border-teal-200',
-  'Security': 'text-purple-600 bg-purple-50 border-purple-200',
-  'Lighting': 'text-yellow-600 bg-yellow-50 border-yellow-200',
-  'Small Power': 'text-orange-600 bg-orange-50 border-orange-200',
-  'Lightning Protection': 'text-indigo-600 bg-indigo-50 border-indigo-200',
-  'Containment': 'text-gray-600 bg-gray-50 border-gray-200',
-  'FA & PA': 'text-pink-600 bg-pink-50 border-pink-200',
-  'FAVA': 'text-pink-600 bg-pink-50 border-pink-200',
-  'ELV': 'text-cyan-600 bg-cyan-50 border-cyan-200',
-  'Lifts': 'text-violet-600 bg-violet-50 border-violet-200',
-  'MEP': 'text-lodha-gold bg-lodha-sand border-lodha-muted-gold',
-  'Architecture': 'text-emerald-600 bg-emerald-50 border-emerald-200',
-  'Structure': 'text-stone-600 bg-stone-50 border-stone-200',
-  'Workshop': 'text-rose-600 bg-rose-50 border-rose-200',
-  'Co-ordinate': 'text-sky-600 bg-sky-50 border-sky-200',
-  'Builders Work': 'text-amber-700 bg-amber-50 border-amber-200',
-  'Interior Design': 'text-fuchsia-600 bg-fuchsia-50 border-fuchsia-200',
-};
-
-// ──── MEP hierarchy ────
 const MEP_SUB_TRADES = new Set([
   'Electrical', 'PHE', 'Fire Fighting', 'HVAC', 'Security', 'FAVA', 'FA & PA',
   'ELV', 'Lifts', 'Lighting', 'Small Power', 'Lightning Protection',
@@ -76,56 +38,63 @@ function getSegment(trade) {
   return trade;
 }
 
-const SEGMENT_CONFIG = {
-  'Architecture': { icon: Building2, color: 'text-emerald-700 bg-emerald-50 border-emerald-200', order: 1 },
-  'Structure': { icon: Building2, color: 'text-stone-700 bg-stone-50 border-stone-200', order: 2 },
-  'MEP': { icon: Layers, color: 'text-lodha-gold bg-lodha-sand border-lodha-muted-gold', order: 3 },
-  'Workshop': { icon: Clipboard, color: 'text-rose-700 bg-rose-50 border-rose-200', order: 4 },
-  'Interior Design': { icon: PenTool, color: 'text-fuchsia-700 bg-fuchsia-50 border-fuchsia-200', order: 5 },
-};
+const SEGMENT_ORDER = { 'Architecture': 1, 'Structure': 2, 'MEP': 3, 'Workshop': 4, 'Interior Design': 5 };
 
-// ──── Phase config ────
 const PHASE_CONFIG = {
-  'A - Design Stage': { icon: PenTool, color: 'text-emerald-700 bg-emerald-50 border-emerald-300', label: 'Design Stage' },
-  'B - Tender': { icon: FileText, color: 'text-blue-700 bg-blue-50 border-blue-300', label: 'Tender' },
-  'C - VFC (Vendor Final Confirmation)': { icon: CheckCircle2, color: 'text-amber-700 bg-amber-50 border-amber-300', label: 'VFC' },
-  'D - DD (Design Development)': { icon: Clipboard, color: 'text-purple-700 bg-purple-50 border-purple-300', label: 'DD' },
-  'E - Schematic': { icon: Layers, color: 'text-teal-700 bg-teal-50 border-teal-300', label: 'Schematic' },
+  'A - Concept':                { icon: PenTool,      label: 'Concept',        bar: 'bg-emerald-500', iconCls: 'text-emerald-600' },
+  'B - Liaison':                { icon: FileText,     label: 'Liaison',        bar: 'bg-cyan-500',    iconCls: 'text-cyan-600' },
+  'C - SLDs':                   { icon: Layers,       label: 'SLDs',           bar: 'bg-teal-500',    iconCls: 'text-teal-600' },
+  'D - SD (Schematic Design)':  { icon: Clipboard,    label: 'SD',             bar: 'bg-indigo-500',  iconCls: 'text-indigo-600' },
+  'E - DD (Design Development)':{ icon: Clipboard,    label: 'DD',             bar: 'bg-purple-500',  iconCls: 'text-purple-600' },
+  'F - Detailed Calculations':  { icon: BarChart3,    label: 'Calcs',          bar: 'bg-orange-500',  iconCls: 'text-orange-600' },
+  "G - Builder's Work":         { icon: Building2,    label: "Builder's Work", bar: 'bg-stone-500',   iconCls: 'text-stone-600' },
+  'H - Tender':                 { icon: FileText,     label: 'Tender',         bar: 'bg-blue-500',    iconCls: 'text-blue-600' },
+  'I - VFCs':                   { icon: CheckCircle2, label: 'VFCs',           bar: 'bg-amber-500',   iconCls: 'text-amber-600' },
+  // Legacy phase names
+  'A - Design Stage':           { icon: PenTool,      label: 'Design',         bar: 'bg-emerald-500', iconCls: 'text-emerald-600' },
+  'B - Tender':                 { icon: FileText,     label: 'Tender',         bar: 'bg-blue-500',    iconCls: 'text-blue-600' },
+  'C - VFC (Vendor Final Confirmation)': { icon: CheckCircle2, label: 'VFC',   bar: 'bg-amber-500',   iconCls: 'text-amber-600' },
+  'D - DD (Design Development)':{ icon: Clipboard,    label: 'DD',             bar: 'bg-purple-500',  iconCls: 'text-purple-600' },
+  'E - Schematic':              { icon: Clipboard,    label: 'Schematic',      bar: 'bg-indigo-500',  iconCls: 'text-indigo-600' },
 };
 
-const STATUS_CONFIG = {
-  'pending': { label: 'Pending', color: 'bg-lodha-steel/20 text-lodha-grey', icon: Clock },
-  'in_progress': { label: 'In Progress', color: 'bg-blue-100 text-blue-700', icon: Edit3 },
-  'completed': { label: 'Completed', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2 },
-  'revised': { label: 'Revised', color: 'bg-amber-100 text-amber-700', icon: RefreshCw },
-  'overdue': { label: 'Overdue', color: 'bg-red-100 text-red-700', icon: AlertTriangle },
+/* ═══════════ Tiny UI bits ═══════════ */
+const STATUS_MAP = {
+  pending:     { dot: 'bg-slate-300',   ring: 'ring-slate-200',   label: 'Pending' },
+  in_progress: { dot: 'bg-blue-500',    ring: 'ring-blue-200',    label: 'In Progress' },
+  completed:   { dot: 'bg-emerald-500', ring: 'ring-emerald-200', label: 'Done' },
+  revised:     { dot: 'bg-amber-500',   ring: 'ring-amber-200',   label: 'Revised' },
+  overdue:     { dot: 'bg-red-500',     ring: 'ring-red-200',     label: 'Overdue' },
 };
 
-function StatusBadge({ status, dueDate }) {
-  const isOverdue = dueDate && new Date(dueDate) < new Date() && status !== 'completed';
-  const effectiveStatus = isOverdue ? 'overdue' : status;
-  const config = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG['pending'];
-  const Icon = config.icon;
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-jost font-semibold ${config.color}`}>
-      <Icon className="w-3.5 h-3.5" />
-      {config.label}
-    </span>
-  );
+function effectiveStatus(item) {
+  if (item.expected_completion_date && new Date(item.expected_completion_date) < new Date() && item.status !== 'completed')
+    return 'overdue';
+  return item.status || 'pending';
 }
 
-function ProgressBar({ completed, total }) {
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+function MiniBar({ value, max }) {
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1 h-2.5 bg-lodha-steel/20 rounded-full overflow-hidden">
-        <div className="h-full bg-gradient-to-r from-lodha-gold to-lodha-muted-gold rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+    <div className="flex items-center gap-2">
+      <div className="w-16 md:w-20 h-1.5 bg-lodha-steel/15 rounded-full overflow-hidden">
+        <div className="h-full bg-lodha-gold rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-sm font-jost font-semibold text-lodha-grey whitespace-nowrap">{pct}%</span>
+      <span className="text-[11px] font-jost font-semibold text-lodha-grey/40 w-7 text-right">{pct}%</span>
     </div>
   );
 }
 
+const dateFmt = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : null;
+
+/** Strip tower prefix to get base deliverable name: "T1 - Concept - Architecture" → "Concept - Architecture" */
+function baseName(itemName, buildingName) {
+  if (!buildingName || !itemName) return itemName || '';
+  const prefix = new RegExp('^' + buildingName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[-–]\\s*');
+  return itemName.replace(prefix, '');
+}
+
+/* ═══════════ Component ═══════════ */
 export default function DDSManagement() {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -142,10 +111,9 @@ export default function DDSManagement() {
   const [activePhase, setActivePhase] = useState('all');
   const [filterTrade, setFilterTrade] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
-  const [filterBuilding, setFilterBuilding] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [expandedItems, setExpandedItems] = useState(new Set());
+  const [expandedRows, setExpandedRows] = useState(new Set());
   const [expandedSections, setExpandedSections] = useState(new Set());
   const [completeModal, setCompleteModal] = useState(null);
   const [reviseModal, setReviseModal] = useState(null);
@@ -154,7 +122,7 @@ export default function DDSManagement() {
   const [activeMainTab, setActiveMainTab] = useState('schedule');
   const { confirm, dialogProps } = useConfirm();
 
-  // ──── Data fetching ────
+  /* ─── Fetching ─── */
   const fetchDDS = useCallback(async () => {
     try {
       setLoading(true);
@@ -176,141 +144,92 @@ export default function DDSManagement() {
 
   const fetchProgress = useCallback(async () => {
     if (!dds) return;
-    try {
-      const data = await apiFetchJson(`/api/dds/${dds.id}/progress`);
-      setProgress(data);
-    } catch { /* ignore */ }
+    try { setProgress(await apiFetchJson(`/api/dds/${dds.id}/progress`)); } catch {}
   }, [dds]);
 
   const fetchPendingInputs = useCallback(async () => {
     if (!dds) return;
-    try {
-      const data = await apiFetchJson(`/api/dds/${dds.id}/pending-inputs`);
-      setPendingInputs(data);
-    } catch { /* ignore */ }
+    try { setPendingInputs(await apiFetchJson(`/api/dds/${dds.id}/pending-inputs`)); } catch {}
   }, [dds]);
 
   useEffect(() => { fetchDDS(); }, [fetchDDS]);
   useEffect(() => { fetchProgress(); fetchPendingInputs(); }, [fetchProgress, fetchPendingInputs]);
 
-  // Expand all phase sections by default when data loads
+  // Expand only the first phase on load
   useEffect(() => {
     if (Object.keys(phases).length > 0 && expandedSections.size === 0) {
-      setExpandedSections(new Set(Object.keys(phases)));
+      const first = Object.keys(phases).sort()[0];
+      if (first) setExpandedSections(new Set([first]));
     }
   }, [phases]);
 
-  // ──── Actions ────
+  /* ─── Actions ─── */
   const handleGenerate = async () => {
     try {
       setGenerating(true);
       await apiFetchJson(`/api/dds/generate/${projectId}`, {
-        method: 'POST',
-        body: JSON.stringify({ dds_type: 'internal', tower_stagger_weeks: 4 }),
+        method: 'POST', body: JSON.stringify({ dds_type: 'internal', tower_stagger_weeks: 4 }),
       });
-      toast.success('DDS generated using Policy 130');
-      fetchDDS();
-    } catch (err) {
-      toast.error(err.message || 'Failed to generate DDS');
-    } finally {
-      setGenerating(false);
-    }
+      toast.success('DDS generated'); fetchDDS();
+    } catch (err) { toast.error(err.message || 'Failed'); } finally { setGenerating(false); }
   };
 
   const handleComplete = async (itemId) => {
     try {
-      await apiFetchJson(`/api/dds/items/${itemId}/complete`, {
-        method: 'PUT', body: JSON.stringify({ remarks }),
-      });
-      toast.success('Item marked as completed');
-      setCompleteModal(null); setRemarks('');
-      fetchDDS();
-    } catch (err) {
-      toast.error(err.message || 'Failed to complete item');
-    }
+      await apiFetchJson(`/api/dds/items/${itemId}/complete`, { method: 'PUT', body: JSON.stringify({ remarks }) });
+      toast.success('Completed'); setCompleteModal(null); setRemarks(''); fetchDDS();
+    } catch (err) { toast.error(err.message || 'Failed'); }
   };
 
   const handleRevise = async (itemId) => {
     try {
-      await apiFetchJson(`/api/dds/items/${itemId}/revise`, {
-        method: 'PUT', body: JSON.stringify({ remarks }),
-      });
-      toast.success('Revision submitted');
-      setReviseModal(null); setRemarks('');
-      fetchDDS();
-    } catch (err) {
-      toast.error(err.message || 'Failed to submit revision');
-    }
+      await apiFetchJson(`/api/dds/items/${itemId}/revise`, { method: 'PUT', body: JSON.stringify({ remarks }) });
+      toast.success('Revision submitted'); setReviseModal(null); setRemarks(''); fetchDDS();
+    } catch (err) { toast.error(err.message || 'Failed'); }
   };
 
   const handleMarkInput = async (itemId, inputType) => {
     try {
-      await apiFetchJson(`/api/dds/items/${itemId}/mark-input`, {
-        method: 'PUT', body: JSON.stringify({ input_type: inputType }),
-      });
-      toast.success(`${inputType} input marked as received`);
-      fetchDDS(); fetchPendingInputs();
-    } catch (err) {
-      toast.error(err.message || 'Failed to mark input');
-    }
+      await apiFetchJson(`/api/dds/items/${itemId}/mark-input`, { method: 'PUT', body: JSON.stringify({ input_type: inputType }) });
+      toast.success(`${inputType} input received`); fetchDDS(); fetchPendingInputs();
+    } catch (err) { toast.error(err.message || 'Failed'); }
   };
 
   const handleRegenerate = async () => {
     if (!dds) return;
-    const confirmed = await confirm({ title: 'Regenerate DDS', message: 'Regenerate DDS? Non-completed items will be replaced with updated policy dates.', variant: 'warning', confirmLabel: 'Regenerate' });
-    if (!confirmed) return;
-    try {
-      setGenerating(true);
-      await apiFetchJson(`/api/dds/${dds.id}/regenerate`, { method: 'POST' });
-      toast.success('DDS regenerated');
-      fetchDDS();
-    } catch (err) {
-      toast.error(err.message || 'Failed to regenerate');
-    } finally {
-      setGenerating(false);
-    }
+    const ok = await confirm({ title: 'Regenerate DDS', message: 'Non-completed items will be replaced.', variant: 'warning', confirmLabel: 'Regenerate' });
+    if (!ok) return;
+    try { setGenerating(true); await apiFetchJson(`/api/dds/${dds.id}/regenerate`, { method: 'POST' }); toast.success('Regenerated'); fetchDDS(); }
+    catch (err) { toast.error(err.message || 'Failed'); } finally { setGenerating(false); }
   };
 
   const handleExport = async () => {
     try {
       const data = await apiFetchJson(`/api/dds/${dds.id}/export`);
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `DDS_${projectId}_v${dds.version}_${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('DDS exported');
-    } catch {
-      toast.error('Export failed');
-    }
+      const url = URL.createObjectURL(blob); const a = document.createElement('a');
+      a.href = url; a.download = `DDS_${projectId}_v${dds.version}_${new Date().toISOString().split('T')[0]}.json`;
+      a.click(); URL.revokeObjectURL(url); toast.success('Exported');
+    } catch { toast.error('Export failed'); }
   };
 
-  const toggleExpand = (id) => {
-    setExpandedItems(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  };
-  const toggleSection = (key) => {
-    setExpandedSections(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
-  };
+  const toggleRow = (key) => setExpandedRows(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  const toggleSection = (key) => setExpandedSections(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
-  // ──── Derived data ────
-  const buildingNames = [...new Set(items.map(i => i.building_name).filter(Boolean))].sort();
+  /* ─── Derived data ─── */
+  const towers = useMemo(() => [...new Set(items.map(i => i.building_name).filter(Boolean))].sort(), [items]);
+  const isMultiTower = towers.length > 1;
   const phaseKeys = Object.keys(phases).sort();
 
-  const filteredItems = items.filter(item => {
+  const filteredItems = useMemo(() => items.filter(item => {
     if (activePhase !== 'all' && item.phase !== activePhase) return false;
     if (filterTrade !== 'All') {
       const t = item.trade || item.discipline;
-      if (filterTrade === 'MEP') {
-        if (getSegment(t) !== 'MEP') return false;
-      } else if (t !== filterTrade) return false;
+      if (filterTrade === 'MEP') { if (getSegment(t) !== 'MEP') return false; }
+      else if (t !== filterTrade) return false;
     }
-    if (filterBuilding !== 'All' && item.building_name !== filterBuilding) return false;
     if (filterStatus !== 'All') {
-      const isOverdue = item.expected_completion_date && new Date(item.expected_completion_date) < new Date() && item.status !== 'completed';
-      const eff = isOverdue ? 'overdue' : item.status;
-      if (eff !== filterStatus) return false;
+      if (effectiveStatus(item) !== filterStatus) return false;
     }
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
@@ -319,184 +238,201 @@ export default function DDSManagement() {
           !(item.section || '').toLowerCase().includes(q)) return false;
     }
     return true;
-  });
+  }), [items, activePhase, filterTrade, filterStatus, searchTerm]);
 
-  // Group by phase → segment → trade
-  const groupedByPhase = {};
-  for (const item of filteredItems) {
-    const phase = item.phase || 'General';
-    const trade = item.trade || item.discipline || 'General';
-    const segment = getSegment(trade);
-    const subTrade = segment === 'MEP' ? (trade === 'MEP' ? 'MEP Coordination' : trade) : '_all';
-    if (!groupedByPhase[phase]) groupedByPhase[phase] = {};
-    if (!groupedByPhase[phase][segment]) groupedByPhase[phase][segment] = {};
-    if (!groupedByPhase[phase][segment][subTrade]) groupedByPhase[phase][segment][subTrade] = [];
-    groupedByPhase[phase][segment][subTrade].push(item);
-  }
+  /**
+   * MATRIX DATA: Group items into rows.
+   * Each row = { base, trade, section, phase, items: { [tower]: item } }
+   * For single-tower projects, items map has just one entry.
+   */
+  const matrixByPhase = useMemo(() => {
+    const phaseMap = {};
+    for (const item of filteredItems) {
+      const phase = item.phase || 'General';
+      const trade = item.trade || item.discipline || 'General';
+      const segment = getSegment(trade);
+      const base = baseName(item.item_name, item.building_name);
+      const tower = item.building_name || '_proj';
 
-  // Derived: unique MEP sub-trades and non-MEP trades in data
-  const mepTrades = [...new Set(items.map(i => i.trade || i.discipline).filter(t => MEP_SUB_TRADES.has(t)))].sort();
-  const nonMepTrades = [...new Set(items.map(i => i.trade || i.discipline).filter(t => t && !MEP_SUB_TRADES.has(t) && t !== 'MEP'))].sort();
+      if (!phaseMap[phase]) phaseMap[phase] = {};
+      if (!phaseMap[phase][segment]) phaseMap[phase][segment] = {};
+
+      // Group by trade within segment
+      const tradeKey = segment === 'MEP' ? (trade === 'MEP' ? 'MEP Coordination' : trade) : '_all';
+      if (!phaseMap[phase][segment][tradeKey]) phaseMap[phase][segment][tradeKey] = {};
+
+      // Key for the row: base + trade to keep uniqueness
+      const rowKey = `${base}||${trade}`;
+      if (!phaseMap[phase][segment][tradeKey][rowKey]) {
+        phaseMap[phase][segment][tradeKey][rowKey] = { base, trade, section: item.section, phase, items: {} };
+      }
+      phaseMap[phase][segment][tradeKey][rowKey].items[tower] = item;
+    }
+    return phaseMap;
+  }, [filteredItems]);
+
+  const mepTrades = useMemo(() => [...new Set(items.map(i => i.trade || i.discipline).filter(t => MEP_SUB_TRADES.has(t)))].sort(), [items]);
+  const nonMepTrades = useMemo(() => [...new Set(items.map(i => i.trade || i.discipline).filter(t => t && !MEP_SUB_TRADES.has(t) && t !== 'MEP'))].sort(), [items]);
 
   const totalItems = items.length;
   const completedItems = items.filter(i => i.status === 'completed').length;
-  const overdueItems = items.filter(i => i.expected_completion_date && new Date(i.expected_completion_date) < new Date() && i.status !== 'completed').length;
-  const revisedItems = items.filter(i => i.revision && i.revision !== 'R0').length;
+  const overdueItems = items.filter(i => effectiveStatus(i) === 'overdue').length;
+  const overallPct = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+  const canEdit = ['L0', 'L1', 'L2', 'SUPER_ADMIN'].includes(userLevel);
+  const canAdmin = ['L1', 'L2', 'SUPER_ADMIN'].includes(userLevel);
 
-  // ──── Render helper for a single DDS item ────
-  const renderItem = (item, TIcon, isExpanded) => (
-    <div key={item.id} className="px-6 py-3 hover:bg-lodha-sand/30 transition-colors">
-      <div className="flex items-center gap-3">
-        <TIcon className="w-4 h-4 text-lodha-grey/50 flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <span className="font-jost font-semibold text-sm text-lodha-grey truncate">{item.item_name}</span>
-            {item.revision && item.revision !== 'R0' && (
-              <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-jost font-semibold">{item.revision}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 text-xs text-lodha-grey/50 font-jost flex-wrap">
-            {item.building_name && <span>{item.building_name}</span>}
-            {item.building_name && <span>&middot;</span>}
-            <span>{item.trade || item.discipline}</span>
-            {item.section && <><span>&middot;</span><span className="opacity-60">{item.section}</span></>}
-            {item.level_type && <><span>&middot;</span><span>{item.level_type}</span></>}
-            {item.doc_type && <><span>&middot;</span><span className="opacity-60">{item.doc_type}</span></>}
-            {item.expected_completion_date && (
-              <><span>&middot;</span><span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(item.expected_completion_date).toLocaleDateString()}</span></>
-            )}
-          </div>
-        </div>
-        <StatusBadge status={item.status} dueDate={item.expected_completion_date} />
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {item.status !== 'completed' && ['L0', 'L1', 'L2', 'SUPER_ADMIN'].includes(userLevel) && (
-            <button onClick={() => setCompleteModal(item)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Mark Complete" aria-label="Mark Complete">
-              <CheckCircle2 className="w-4 h-4" />
-            </button>
-          )}
-          {item.status === 'completed' && ['L0', 'L1', 'L2', 'SUPER_ADMIN'].includes(userLevel) && (
-            <button onClick={() => setReviseModal(item)} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Request Revision" aria-label="Request Revision">
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          )}
-          <button onClick={() => toggleExpand(item.id)} className="p-1.5 text-lodha-grey/40 hover:text-lodha-grey hover:bg-lodha-sand rounded-lg transition-colors">
-            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-        </div>
+  /* ─── Status cell for matrix ─── */
+  const StatusCell = ({ item }) => {
+    if (!item) return <span className="text-lodha-grey/10">—</span>;
+    const st = effectiveStatus(item);
+    const cfg = STATUS_MAP[st] || STATUS_MAP.pending;
+    return (
+      <div className="flex items-center justify-center gap-1 group/cell">
+        <button
+          onClick={(e) => { e.stopPropagation(); if (item.status !== 'completed' && canEdit) setCompleteModal(item); else if (item.status === 'completed' && canEdit) setReviseModal(item); }}
+          className={`w-5 h-5 rounded-full ${cfg.dot} ring-2 ${cfg.ring} hover:ring-4 transition-all cursor-pointer flex items-center justify-center`}
+          title={`${cfg.label}${item.expected_completion_date ? ' · Due ' + dateFmt(item.expected_completion_date) : ''}`}
+        >
+          {st === 'completed' && <CheckCircle2 className="w-3 h-3 text-white" />}
+          {st === 'overdue' && <AlertTriangle className="w-2.5 h-2.5 text-white" />}
+        </button>
+        {item.expected_completion_date && (
+          <span className="text-[9px] font-jost text-lodha-grey/30 hidden lg:block">{dateFmt(item.expected_completion_date)}</span>
+        )}
       </div>
-      {isExpanded && (
-        <div className="mt-3 ml-7 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-          <div className="bg-lodha-sand/50 rounded-lg p-3">
-            <h4 className="font-jost font-semibold text-lodha-grey text-xs mb-2">Schedule</h4>
-            <div className="space-y-1 text-xs text-lodha-grey/70">
-              <p>Start: {item.expected_start_date ? new Date(item.expected_start_date).toLocaleDateString() : '—'}</p>
-              <p>Due: {item.expected_completion_date ? new Date(item.expected_completion_date).toLocaleDateString() : '—'}</p>
-              {item.actual_completion_date && <p>Completed: {new Date(item.actual_completion_date).toLocaleDateString()}</p>}
-              {item.policy_week_offset != null && <p>Policy Week: W{item.policy_week_offset}</p>}
-              {item.assigned_to_name && <p>Assigned: {item.assigned_to_name}</p>}
+    );
+  };
+
+  /* ─── Expanded row detail (shows per-tower schedule info) ─── */
+  const RowDetail = ({ row }) => {
+    const allItems = Object.values(row.items);
+    const sampleItem = allItems[0];
+    return (
+      <div className="bg-white border border-lodha-steel/15 rounded-lg p-3 mx-3 md:mx-4 mb-2 text-xs font-jost text-lodha-grey/70">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {/* Per-tower details */}
+          <div>
+            <p className="font-bold text-lodha-grey/40 uppercase text-[10px] tracking-wider mb-1.5">Tower Status</p>
+            <div className="space-y-1">
+              {towers.map(tower => {
+                const item = row.items[tower];
+                if (!item) return null;
+                const st = effectiveStatus(item);
+                const cfg = STATUS_MAP[st];
+                return (
+                  <div key={tower} className="flex items-center gap-2">
+                    <span className="font-semibold text-lodha-grey/50 w-8">{tower}</span>
+                    <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                    <span className="text-lodha-grey/40">{cfg.label}</span>
+                    <span className="ml-auto text-lodha-grey/30">{dateFmt(item.expected_start_date)} → {dateFmt(item.expected_completion_date)}</span>
+                    {item.actual_completion_date && <span className="text-emerald-600 ml-1">✓ {dateFmt(item.actual_completion_date)}</span>}
+                    {canEdit && item.status !== 'completed' && (
+                      <button onClick={() => setCompleteModal(item)} className="ml-1 p-0.5 text-emerald-500 hover:bg-emerald-50 rounded" title="Complete"><CheckCircle2 className="w-3 h-3" /></button>
+                    )}
+                    {canEdit && item.status === 'completed' && (
+                      <button onClick={() => setReviseModal(item)} className="ml-1 p-0.5 text-amber-500 hover:bg-amber-50 rounded" title="Revise"><RefreshCw className="w-3 h-3" /></button>
+                    )}
+                  </div>
+                );
+              })}
+              {/* Single-tower / project-level items */}
+              {(!isMultiTower || !!row.items['_proj']) && allItems.map((item, i) => {
+                const st = effectiveStatus(item);
+                const cfg = STATUS_MAP[st];
+                return (
+                  <div key={i} className="flex items-center gap-2">
+                    {item.building_name && <span className="font-semibold text-lodha-grey/50 w-8">{item.building_name}</span>}
+                    <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                    <span className="text-lodha-grey/40">{cfg.label}</span>
+                    <span className="ml-auto text-lodha-grey/30">{dateFmt(item.expected_start_date)} → {dateFmt(item.expected_completion_date)}</span>
+                    {item.actual_completion_date && <span className="text-emerald-600 ml-1">✓ {dateFmt(item.actual_completion_date)}</span>}
+                  </div>
+                );
+              })}
             </div>
           </div>
-          <div className="bg-lodha-sand/50 rounded-lg p-3">
-            <h4 className="font-jost font-semibold text-lodha-grey text-xs mb-2">Input Status</h4>
-            <div className="space-y-1 text-xs text-lodha-grey/70">
-              <p>Architect: {item.architect_input_date
-                ? (item.architect_input_received ? '✓ Received' : `✗ Due ${new Date(item.architect_input_date).toLocaleDateString()}`)
-                : '—'}</p>
-              <p>Structure: {item.structure_input_date
-                ? (item.structure_input_received ? '✓ Received' : `✗ Due ${new Date(item.structure_input_date).toLocaleDateString()}`)
-                : '—'}</p>
-              {item.description && <p className="mt-1 italic">{item.description}</p>}
-            </div>
-            {['L0', 'L1', 'L2', 'SUPER_ADMIN'].includes(userLevel) && (
-              <div className="flex gap-2 mt-2">
-                {item.architect_input_date && !item.architect_input_received && (
-                  <button onClick={() => handleMarkInput(item.id, 'architect')} className="px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded font-jost font-semibold hover:bg-emerald-200">✓ Architect</button>
-                )}
-                {item.structure_input_date && !item.structure_input_received && (
-                  <button onClick={() => handleMarkInput(item.id, 'structure')} className="px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded font-jost font-semibold hover:bg-emerald-200">✓ Structure</button>
-                )}
+          {/* Metadata from sample item */}
+          <div className="space-y-1">
+            <p className="font-bold text-lodha-grey/40 uppercase text-[10px] tracking-wider mb-1.5">Details</p>
+            {sampleItem.section && <p>Section: {sampleItem.section}</p>}
+            {sampleItem.doc_type && sampleItem.doc_type !== 'Deliverable' && <p>Type: {sampleItem.doc_type}</p>}
+            {sampleItem.scope && <p>Scope: <span className={sampleItem.scope === 'Project' ? 'text-blue-600 font-semibold' : 'text-emerald-600 font-semibold'}>{sampleItem.scope}</span></p>}
+            {sampleItem.dependency_text && <p>Dependency: {sampleItem.dependency_text}</p>}
+            {sampleItem.dependent_stakeholders && <p>Stakeholders: {sampleItem.dependent_stakeholders}</p>}
+            {sampleItem.description && <p className="italic">{sampleItem.description}</p>}
+            {sampleItem.remarks && <p className="italic text-lodha-grey/50">{sampleItem.remarks}</p>}
+            {/* Input status */}
+            {(sampleItem.architect_input_date || sampleItem.structure_input_date) && (
+              <div className="mt-1.5 pt-1.5 border-t border-lodha-steel/10">
+                <p className="font-bold text-lodha-grey/40 uppercase text-[10px] tracking-wider mb-1">Inputs</p>
+                {sampleItem.architect_input_date && <p>Architect: {sampleItem.architect_input_received ? '✓ Received' : `✗ Due ${dateFmt(sampleItem.architect_input_date)}`}</p>}
+                {sampleItem.structure_input_date && <p>Structure: {sampleItem.structure_input_received ? '✓ Received' : `✗ Due ${dateFmt(sampleItem.structure_input_date)}`}</p>}
               </div>
             )}
+            {!sampleItem.dependency_text && !sampleItem.description && !sampleItem.remarks && !sampleItem.section && <p className="text-lodha-grey/20">No additional details</p>}
           </div>
         </div>
-      )}
-    </div>
-  );
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin w-8 h-8 border-2 border-lodha-gold border-t-transparent rounded-full" />
-        </div>
-      </Layout>
+      </div>
     );
+  };
+
+  /* ═══════════ LOADING ═══════════ */
+  if (loading) {
+    return <Layout><div className="flex items-center justify-center py-20"><div className="animate-spin w-8 h-8 border-2 border-lodha-gold border-t-transparent rounded-full" /></div></Layout>;
   }
 
+  /* ═══════════ MAIN RENDER ═══════════ */
   return (
     <Layout>
       {/* Header */}
-      <div className="mb-6">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-lodha-gold hover:text-lodha-grey text-sm font-jost mb-3 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to Project
+      <div className="mb-5">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-lodha-gold hover:text-lodha-grey text-xs font-jost mb-2 transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5" /> Back
         </button>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
             <h1 className="heading-primary">Design Delivery Schedule</h1>
             <p className="page-subtitle">
               {dds?.policy_name
-                ? `${dds.policy_name} • v${dds.version} • ${totalItems} items`
+                ? `${dds.policy_name} · v${dds.version} · ${totalItems} items${isMultiTower ? ` · ${towers.length} towers` : ''}`
                 : 'Policy 130 — Track design deliverables across all trades'}
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {dds && (
               <>
-                <button onClick={() => setShowPolicyInfo(!showPolicyInfo)} className="flex items-center gap-1.5 px-3 py-2 bg-white border border-lodha-steel rounded-lg text-xs font-jost font-semibold text-lodha-grey hover:bg-lodha-sand transition-colors">
-                  <Info className="w-3.5 h-3.5" /> Policy Info
+                <button onClick={() => setShowPolicyInfo(!showPolicyInfo)} className="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-lodha-steel rounded-lg text-[11px] font-jost font-semibold text-lodha-grey hover:bg-lodha-sand transition-colors">
+                  <Info className="w-3 h-3" /> Policy
                 </button>
-                {['L1', 'L2', 'SUPER_ADMIN'].includes(userLevel) && (
-                  <button onClick={handleRegenerate} disabled={generating} className="flex items-center gap-1.5 px-3 py-2 bg-white border border-lodha-steel rounded-lg text-xs font-jost font-semibold text-lodha-grey hover:bg-lodha-sand transition-colors disabled:opacity-50">
-                    <RefreshCw className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} /> Regenerate
-                  </button>
-                )}
-                {['L1', 'L2', 'SUPER_ADMIN'].includes(userLevel) && (
-                  <button onClick={handleExport} className="flex items-center gap-1.5 px-3 py-2 bg-white border border-lodha-steel rounded-lg text-xs font-jost font-semibold text-lodha-grey hover:bg-lodha-sand transition-colors">
-                    <Download className="w-3.5 h-3.5" /> Export
-                  </button>
-                )}
+                {canAdmin && <button onClick={handleRegenerate} disabled={generating} className="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-lodha-steel rounded-lg text-[11px] font-jost font-semibold text-lodha-grey hover:bg-lodha-sand transition-colors disabled:opacity-50"><RefreshCw className={`w-3 h-3 ${generating ? 'animate-spin' : ''}`} /> Regen</button>}
+                {canAdmin && <button onClick={handleExport} className="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-lodha-steel rounded-lg text-[11px] font-jost font-semibold text-lodha-grey hover:bg-lodha-sand transition-colors"><Download className="w-3 h-3" /> Export</button>}
               </>
             )}
-            {!dds && ['L1', 'L2', 'SUPER_ADMIN'].includes(userLevel) && (
-              <button onClick={handleGenerate} disabled={generating} className="flex items-center gap-2 px-5 py-2.5 bg-lodha-gold text-white rounded-lg text-sm font-jost font-semibold hover:bg-lodha-grey transition-colors disabled:opacity-50">
+            {!dds && canAdmin && (
+              <button onClick={handleGenerate} disabled={generating} className="flex items-center gap-2 px-5 py-2 bg-lodha-gold text-white rounded-lg text-sm font-jost font-semibold hover:bg-lodha-grey transition-colors disabled:opacity-50">
                 {generating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Layers className="w-4 h-4" />}
-                {generating ? 'Generating...' : 'Generate DDS (Policy 130)'}
+                {generating ? 'Generating...' : 'Generate DDS'}
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Main Tab Navigation */}
+      {/* Main Tabs */}
       {dds && (
-        <div className="bg-white border border-lodha-steel rounded-xl p-1.5 mb-6 overflow-x-auto">
-          <div className="flex items-center gap-1 min-w-max">
+        <div className="bg-white border border-lodha-steel rounded-lg p-1 mb-4 overflow-x-auto">
+          <div className="flex items-center gap-0.5 min-w-max">
             {[
-              { key: 'schedule', label: 'DDS Schedule', icon: Calendar },
-              { key: 'drawings', label: 'VFC / DD Drawings', icon: FileText },
+              { key: 'schedule', label: 'Schedule', icon: Calendar },
+              { key: 'drawings', label: 'Drawings', icon: FileText },
               { key: 'boq', label: 'BOQ', icon: Clipboard },
-              { key: 'progress', label: 'Progress Chart', icon: BarChart3 },
+              { key: 'progress', label: 'Progress', icon: BarChart3 },
             ].map(tab => {
               const TIcon = tab.icon;
               return (
                 <button key={tab.key} onClick={() => setActiveMainTab(tab.key)}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-jost font-semibold transition-colors ${
-                    activeMainTab === tab.key
-                      ? 'bg-lodha-gold text-white shadow-sm'
-                      : 'text-lodha-grey hover:bg-lodha-sand'
-                  }`}>
-                  <TIcon className="w-4 h-4" />
-                  {tab.label}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-jost font-semibold transition-colors ${activeMainTab === tab.key ? 'bg-lodha-gold text-white shadow-sm' : 'text-lodha-grey/60 hover:bg-lodha-sand hover:text-lodha-grey'}`}>
+                  <TIcon className="w-3.5 h-3.5" />{tab.label}
                 </button>
               );
             })}
@@ -504,349 +440,275 @@ export default function DDSManagement() {
         </div>
       )}
 
-      {/* Policy Info Panel */}
+      {/* Policy Info */}
       {showPolicyInfo && metadata && (
-        <div className="mb-6 bg-white border border-lodha-gold/30 rounded-xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-garamond text-lg font-bold text-lodha-grey flex items-center gap-2">
-              <Info className="w-5 h-5 text-lodha-gold" /> Generation Details — Policy 130
-            </h3>
-            <button onClick={() => setShowPolicyInfo(false)} className="text-lodha-grey/40 hover:text-lodha-grey">
-              <ChevronUp className="w-5 h-5" />
-            </button>
+        <div className="mb-4 bg-white border border-lodha-gold/20 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-garamond text-base font-bold text-lodha-grey flex items-center gap-2"><Info className="w-4 h-4 text-lodha-gold" /> Generation Details</h3>
+            <button onClick={() => setShowPolicyInfo(false)} className="text-lodha-grey/30 hover:text-lodha-grey p-1"><ChevronDown className="w-4 h-4" /></button>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm font-jost">
-            <div><p className="text-lodha-grey/60 text-xs">Height Tier</p><p className="font-semibold text-lodha-grey">{metadata.tier?.label || '—'}</p></div>
-            <div><p className="text-lodha-grey/60 text-xs">Max Height</p><p className="font-semibold text-lodha-grey">{metadata.maxHeight || 0}m</p></div>
-            <div><p className="text-lodha-grey/60 text-xs">Tower Count</p><p className="font-semibold text-lodha-grey">{metadata.towerCount || 0}</p></div>
-            <div><p className="text-lodha-grey/60 text-xs">Tower Stagger</p><p className="font-semibold text-lodha-grey">{metadata.towerStaggerWeeks || 4} weeks</p></div>
-            <div><p className="text-lodha-grey/60 text-xs">Height Modifier</p><p className="font-semibold text-lodha-grey">+{metadata.heightModifierDays || 0} days</p></div>
-            <div><p className="text-lodha-grey/60 text-xs">Basement Modifier</p><p className="font-semibold text-lodha-grey">+{metadata.basementModifierDays || 0} days</p></div>
-            <div><p className="text-lodha-grey/60 text-xs">Total Items</p><p className="font-semibold text-lodha-grey">{metadata.totalItems || totalItems}</p></div>
-            <div><p className="text-lodha-grey/60 text-xs">Design Duration</p><p className="font-semibold text-lodha-grey">{metadata.tier?.designMonths || '—'} months</p></div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-jost">
+            <div><p className="text-lodha-grey/40">Height Tier</p><p className="font-semibold text-lodha-grey">{metadata.tier?.label || '—'}</p></div>
+            <div><p className="text-lodha-grey/40">Max Height</p><p className="font-semibold text-lodha-grey">{metadata.maxHeight || 0}m</p></div>
+            <div><p className="text-lodha-grey/40">Towers</p><p className="font-semibold text-lodha-grey">{metadata.towerCount || 0}</p></div>
+            <div><p className="text-lodha-grey/40">Stagger</p><p className="font-semibold text-lodha-grey">{metadata.towerStaggerWeeks || 4}w</p></div>
+            <div><p className="text-lodha-grey/40">Height Mod</p><p className="font-semibold text-lodha-grey">+{metadata.heightModifierDays || 0}d</p></div>
+            <div><p className="text-lodha-grey/40">Basement Mod</p><p className="font-semibold text-lodha-grey">+{metadata.basementModifierDays || 0}d</p></div>
+            <div><p className="text-lodha-grey/40">Total Items</p><p className="font-semibold text-lodha-grey">{metadata.totalItems || totalItems}</p></div>
+            <div><p className="text-lodha-grey/40">Duration</p><p className="font-semibold text-lodha-grey">{metadata.tier?.designMonths || '—'}mo</p></div>
           </div>
-          {metadata.phases && (
-            <div className="mt-4 pt-3 border-t border-lodha-steel/30">
-              <p className="text-xs text-lodha-grey/60 mb-2">Items by Phase</p>
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(metadata.phases).map(([phase, count]) => (
-                  <span key={phase} className="px-3 py-1 bg-lodha-sand rounded-full text-xs font-jost font-semibold text-lodha-grey capitalize">{phase}: {count}</span>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Pending Inputs Banner */}
-      {pendingInputs.length > 0 && (
-        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+      {/* Pending Inputs */}
+      {pendingInputs.length > 0 && activeMainTab === 'schedule' && (
+        <div className="mb-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <h3 className="font-jost font-semibold text-amber-800 text-sm">Pending Inputs Required</h3>
-              <div className="mt-2 space-y-1">
-                {pendingInputs.slice(0, 5).map((input, i) => (
-                  <div key={i} className="flex items-center justify-between gap-2 text-xs text-amber-700">
-                    <span className="truncate">{input.item_name} — awaiting {!input.architect_input_received && 'Architect'}{!input.architect_input_received && !input.structure_input_received && ' & '}{!input.structure_input_received && 'Structure'} input</span>
-                    {['L1', 'L2', 'SUPER_ADMIN'].includes(userLevel) && (
-                      <div className="flex gap-2 flex-shrink-0">
-                        {!input.architect_input_received && (
-                          <button onClick={() => handleMarkInput(input.id, 'architect')} className="text-amber-600 hover:text-amber-800 font-semibold underline whitespace-nowrap">Mark Architect</button>
-                        )}
-                        {!input.structure_input_received && (
-                          <button onClick={() => handleMarkInput(input.id, 'structure')} className="text-amber-600 hover:text-amber-800 font-semibold underline whitespace-nowrap">Mark Structure</button>
-                        )}
-                      </div>
-                    )}
+              <span className="font-jost font-semibold text-amber-800 text-[11px]">Pending Inputs ({pendingInputs.length})</span>
+              <div className="mt-0.5 space-y-0.5">
+                {pendingInputs.slice(0, 3).map((inp, i) => (
+                  <div key={i} className="flex items-center gap-2 text-[11px] text-amber-700">
+                    <span className="truncate">{inp.item_name}</span>
+                    {canEdit && <div className="flex gap-1 flex-shrink-0">
+                      {!inp.architect_input_received && <button onClick={() => handleMarkInput(inp.id, 'architect')} className="underline font-semibold hover:text-amber-900">Arch</button>}
+                      {!inp.structure_input_received && <button onClick={() => handleMarkInput(inp.id, 'structure')} className="underline font-semibold hover:text-amber-900">Struct</button>}
+                    </div>}
                   </div>
                 ))}
-                {pendingInputs.length > 5 && <p className="text-xs text-amber-600 mt-1">+ {pendingInputs.length - 5} more</p>}
+                {pendingInputs.length > 3 && <p className="text-[10px] text-amber-400">+ {pendingInputs.length - 3} more</p>}
               </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* ═══ Content ═══ */}
       {!dds ? (
         <div className="bg-white border border-lodha-steel rounded-xl p-12 text-center">
-          <div className="w-16 h-16 bg-lodha-gold/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Calendar className="w-8 h-8 text-lodha-gold" />
-          </div>
-          <h2 className="text-xl font-garamond font-bold text-lodha-grey mb-2">No DDS Found</h2>
-          <p className="text-lodha-grey/60 font-jost mb-2 max-w-lg mx-auto">
-            Generate a Design Delivery Schedule based on <strong>Policy 130</strong> (3 Yr 10 M Project Completion Guideline).
-          </p>
-          <p className="text-lodha-grey/50 font-jost text-xs mb-6 max-w-lg mx-auto">
-            Auto-generates items across 5 phases: Design Stage, Tender, VFC, DD, Schematic — with dates calculated from project start, building height, and tower stagger.
-          </p>
-          {['L1', 'L2', 'SUPER_ADMIN'].includes(userLevel) && (
-            <button onClick={handleGenerate} disabled={generating} className="px-6 py-3 bg-lodha-gold text-white rounded-lg font-jost font-semibold hover:bg-lodha-grey transition-colors disabled:opacity-50">
-              {generating ? 'Generating...' : 'Generate DDS Now'}
-            </button>
-          )}
+          <div className="w-14 h-14 bg-lodha-gold/10 rounded-full flex items-center justify-center mx-auto mb-3"><Calendar className="w-7 h-7 text-lodha-gold" /></div>
+          <h2 className="text-lg font-garamond font-bold text-lodha-grey mb-1">No DDS Found</h2>
+          <p className="text-lodha-grey/50 font-jost text-sm mb-1 max-w-md mx-auto">Generate a schedule based on <strong>Policy 130</strong>.</p>
+          <p className="text-lodha-grey/35 font-jost text-xs mb-5 max-w-md mx-auto">Concept → Liaison → SLDs → SD → DD → Calcs → Builder&apos;s Work → Tender → VFCs</p>
+          {canAdmin && <button onClick={handleGenerate} disabled={generating} className="px-5 py-2.5 bg-lodha-gold text-white rounded-lg font-jost font-semibold text-sm hover:bg-lodha-grey transition-colors disabled:opacity-50">{generating ? 'Generating...' : 'Generate DDS'}</button>}
         </div>
-      ) : activeMainTab === 'drawings' ? (
-        <DDSDrawingList ddsId={dds.id} />
-      ) : activeMainTab === 'boq' ? (
-        <DDSBoqList ddsId={dds.id} />
-      ) : activeMainTab === 'progress' ? (
-        <DDSProgressChart ddsId={dds.id} />
-      ) : (
+      ) : activeMainTab === 'drawings' ? <DDSDrawingList ddsId={dds.id} />
+        : activeMainTab === 'boq' ? <DDSBoqList ddsId={dds.id} />
+        : activeMainTab === 'progress' ? <DDSProgressChart ddsId={dds.id} />
+        : (
+        /* ═══ SCHEDULE TAB ═══ */
         <>
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            {[
-              { label: 'Total Items', value: totalItems, icon: FileText, bg: 'bg-lodha-gold/10', iconColor: 'text-lodha-gold' },
-              { label: 'Completed', value: completedItems, icon: CheckCircle2, bg: 'bg-emerald-50', iconColor: 'text-emerald-600', showProgress: true },
-              { label: 'Overdue', value: overdueItems, icon: AlertTriangle, bg: 'bg-red-50', iconColor: 'text-red-600' },
-              { label: 'Revised', value: revisedItems, icon: RefreshCw, bg: 'bg-amber-50', iconColor: 'text-amber-600' },
-            ].map(s => (
-              <div key={s.label} className="bg-white border border-lodha-steel rounded-xl p-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className={`w-10 h-10 ${s.bg} rounded-lg flex items-center justify-center`}>
-                    <s.icon className={`w-5 h-5 ${s.iconColor}`} />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-garamond font-bold text-lodha-grey">{s.value}</p>
-                    <p className="text-xs text-lodha-grey/60 font-jost">{s.label}</p>
-                  </div>
+          {/* Stats bar */}
+          <div className="bg-white border border-lodha-steel rounded-lg px-4 py-3 mb-3">
+            <div className="flex items-center gap-4 md:gap-6 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xl font-garamond font-bold text-lodha-grey">{totalItems}</span>
+                <span className="text-[11px] font-jost text-lodha-grey/40">Total</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xl font-garamond font-bold text-emerald-600">{completedItems}</span>
+                <span className="text-[11px] font-jost text-emerald-600/60">Done</span>
+              </div>
+              {overdueItems > 0 && <div className="flex items-center gap-1.5">
+                <span className="text-xl font-garamond font-bold text-red-600">{overdueItems}</span>
+                <span className="text-[11px] font-jost text-red-600/60">Overdue</span>
+              </div>}
+              <div className="flex-1 flex items-center gap-2 min-w-[100px]">
+                <div className="flex-1 h-2 bg-lodha-steel/15 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-lodha-gold to-lodha-muted-gold rounded-full transition-all duration-500" style={{ width: `${overallPct}%` }} />
                 </div>
-                {s.showProgress && <ProgressBar completed={completedItems} total={totalItems} />}
+                <span className="text-xs font-jost font-bold text-lodha-grey/50">{overallPct}%</span>
               </div>
-            ))}
-          </div>
-
-          {/* Phase Progress */}
-          {progress && progress.length > 0 && (
-            <div className="bg-white border border-lodha-steel rounded-xl p-6 mb-6">
-              <h3 className="font-garamond text-lg font-bold text-lodha-grey mb-4 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-lodha-gold" /> Progress by Phase & Segment
-              </h3>
-              {(() => {
-                // Group progress by phase → segment
-                const phaseGroups = {};
-                for (const p of progress) {
-                  const phase = p.phase || 'General';
-                  const segment = getSegment(p.discipline);
-                  if (!phaseGroups[phase]) phaseGroups[phase] = {};
-                  if (!phaseGroups[phase][segment]) phaseGroups[phase][segment] = { items: [], total: 0, completed: 0, overdue: 0 };
-                  phaseGroups[phase][segment].items.push(p);
-                  phaseGroups[phase][segment].total += parseInt(p.total_count || 0);
-                  phaseGroups[phase][segment].completed += parseInt(p.completed_count || 0);
-                  phaseGroups[phase][segment].overdue += parseInt(p.overdue_count || 0);
-                }
-
-                return Object.entries(phaseGroups).sort().map(([phase, segments]) => {
-                  const phaseCfg = PHASE_CONFIG[phase] || {};
-                  return (
-                    <div key={phase} className="mb-4 last:mb-0">
-                      <p className="text-xs font-jost font-semibold text-lodha-grey/50 uppercase tracking-wider mb-2">{phaseCfg.label || phase}</p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {Object.entries(segments)
-                          .sort(([a], [b]) => (SEGMENT_CONFIG[a]?.order || 99) - (SEGMENT_CONFIG[b]?.order || 99))
-                          .map(([segment, data]) => {
-                            const segCfg = SEGMENT_CONFIG[segment] || {};
-                            const SegIcon = segCfg.icon || FileText;
-                            const segColors = segment === 'MEP'
-                              ? 'text-lodha-gold bg-lodha-sand border-lodha-muted-gold'
-                              : TRADE_COLORS[segment] || 'text-lodha-grey bg-lodha-sand border-lodha-steel';
-                            const pct = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
-                            const isMEP = segment === 'MEP';
-
-                            return (
-                              <div key={segment} className={`border rounded-lg overflow-hidden ${segColors}`}>
-                                {/* Segment header */}
-                                <div className="p-3">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <SegIcon className="w-4 h-4" />
-                                    <span className="font-jost font-semibold text-sm">{segment}</span>
-                                    <span className="ml-auto text-xs font-jost opacity-60">{phaseCfg.label || phase}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between text-xs mb-1">
-                                    <span>{data.completed}/{data.total}</span>
-                                    {data.overdue > 0 && <span className="text-red-600 font-semibold">{data.overdue} overdue</span>}
-                                    <span>{pct}%</span>
-                                  </div>
-                                  <div className="h-1.5 bg-white/50 rounded-full overflow-hidden">
-                                    <div className="h-full bg-current rounded-full opacity-60" style={{ width: `${pct}%` }} />
-                                  </div>
-                                </div>
-
-                                {/* MEP sub-trades breakdown */}
-                                {isMEP && data.items.length > 1 && (
-                                  <div className="border-t border-current/10 bg-white/30 px-3 py-2 space-y-1.5">
-                                    {data.items.map((sub, si) => {
-                                      const SubIcon = TRADE_ICONS[sub.discipline] || FileText;
-                                      const subPct = sub.total_count > 0 ? Math.round(((sub.completed_count || 0) / sub.total_count) * 100) : 0;
-                                      return (
-                                        <div key={si} className="flex items-center gap-2 text-xs">
-                                          <SubIcon className="w-3 h-3 opacity-60" />
-                                          <span className="font-jost truncate flex-1">{sub.discipline}</span>
-                                          <span className="text-xs opacity-60">{sub.completed_count || 0}/{sub.total_count}</span>
-                                          <div className="w-12 h-1 bg-white/50 rounded-full overflow-hidden">
-                                            <div className="h-full bg-current rounded-full opacity-50" style={{ width: `${subPct}%` }} />
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
-            </div>
-          )}
-
-          {/* Phase Tabs */}
-          <div className="bg-white border border-lodha-steel rounded-xl p-3 mb-4 overflow-x-auto">
-            <div className="flex items-center gap-2 min-w-max">
-              <button onClick={() => setActivePhase('all')} className={`px-4 py-2 rounded-lg text-xs font-jost font-semibold transition-colors ${activePhase === 'all' ? 'bg-lodha-gold text-white' : 'bg-lodha-sand text-lodha-grey hover:bg-lodha-steel/30'}`}>
-                All Phases ({totalItems})
-              </button>
-              {phaseKeys.map(phase => {
-                const cfg = PHASE_CONFIG[phase] || {};
-                const PhIcon = cfg.icon || FileText;
-                const count = phases[phase]?.total || 0;
-                return (
-                  <button key={phase} onClick={() => setActivePhase(phase)} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-jost font-semibold transition-colors ${activePhase === phase ? 'bg-lodha-gold text-white' : 'bg-lodha-sand text-lodha-grey hover:bg-lodha-steel/30'}`}>
-                    <PhIcon className="w-3.5 h-3.5" />
-                    {cfg.label || phase} ({count})
-                  </button>
-                );
-              })}
             </div>
           </div>
 
-          {/* Filters */}
-          <div className="bg-white border border-lodha-steel rounded-xl p-4 mb-6">
-            {/* Search + mobile filter toggle */}
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 min-w-0">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-lodha-grey" />
-                <input type="text" placeholder="Search items, trades, sections..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-sm font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30" />
-              </div>
-              <button
-                onClick={() => setShowMobileFilters(v => !v)}
-                className="md:hidden flex items-center gap-1.5 px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-xs font-jost font-semibold text-lodha-grey"
-              >
-                <Filter className="w-4 h-4" />
-                Filters
-                {showMobileFilters ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              </button>
-            </div>
-            {/* Filter dropdowns — always visible on md+, collapsible on mobile */}
-            <div className={`${showMobileFilters ? 'flex' : 'hidden'} md:flex items-center gap-2 flex-wrap mt-3`}>
-              <Filter className="w-4 h-4 text-lodha-grey/60 hidden sm:block" />
-              <select value={filterBuilding} onChange={(e) => setFilterBuilding(e.target.value)} className="px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-xs font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30">
-                <option value="All">All Buildings</option>
-                {buildingNames.map(b => <option key={b} value={b}>{b}</option>)}
+          {/* Toolbar */}
+          <div className="bg-white border border-lodha-steel rounded-lg px-3 py-2 mb-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <select value={activePhase} onChange={(e) => setActivePhase(e.target.value)}
+                className="px-2.5 py-1.5 bg-lodha-sand border border-lodha-steel rounded-md text-xs font-jost font-semibold focus:outline-none focus:ring-2 focus:ring-lodha-gold/30 text-lodha-grey">
+                <option value="all">All Phases ({totalItems})</option>
+                {phaseKeys.map(p => <option key={p} value={p}>{(PHASE_CONFIG[p]?.label || p)} ({phases[p]?.total || 0})</option>)}
               </select>
-              <select value={filterTrade} onChange={(e) => setFilterTrade(e.target.value)} className="px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-xs font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30">
+              <div className="relative flex-1 min-w-[120px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-lodha-grey/30" />
+                <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 bg-lodha-sand border border-lodha-steel rounded-md text-xs font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30" />
+              </div>
+              <select value={filterTrade} onChange={(e) => setFilterTrade(e.target.value)}
+                className="hidden md:block px-2.5 py-1.5 bg-lodha-sand border border-lodha-steel rounded-md text-xs font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30">
                 <option value="All">All Trades</option>
                 {nonMepTrades.map(t => <option key={t} value={t}>{t}</option>)}
-                <optgroup label="MEP">
-                  <option value="MEP">All MEP Trades</option>
-                  {mepTrades.map(t => <option key={t} value={t}>  {t}</option>)}
-                </optgroup>
+                <optgroup label="MEP"><option value="MEP">All MEP</option>{mepTrades.map(t => <option key={t} value={t}>  {t}</option>)}</optgroup>
               </select>
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-xs font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30">
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
+                className="hidden md:block px-2.5 py-1.5 bg-lodha-sand border border-lodha-steel rounded-md text-xs font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30">
                 <option value="All">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="revised">Revised</option>
-                <option value="overdue">Overdue</option>
+                <option value="pending">Pending</option><option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option><option value="overdue">Overdue</option>
               </select>
+              <button onClick={() => setShowMobileFilters(v => !v)} className="md:hidden flex items-center gap-1 px-2 py-1.5 bg-lodha-sand border border-lodha-steel rounded-md text-[11px] font-jost font-semibold text-lodha-grey">
+                <Filter className="w-3.5 h-3.5" />{showMobileFilters ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              </button>
             </div>
+            {showMobileFilters && (
+              <div className="flex flex-wrap gap-2 mt-2 md:hidden">
+                <select value={filterTrade} onChange={(e) => setFilterTrade(e.target.value)} className="px-2.5 py-1.5 bg-lodha-sand border border-lodha-steel rounded-md text-xs font-jost focus:outline-none">
+                  <option value="All">All Trades</option>{nonMepTrades.map(t => <option key={t} value={t}>{t}</option>)}
+                  <optgroup label="MEP"><option value="MEP">All MEP</option>{mepTrades.map(t => <option key={t} value={t}>  {t}</option>)}</optgroup>
+                </select>
+                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-2.5 py-1.5 bg-lodha-sand border border-lodha-steel rounded-md text-xs font-jost focus:outline-none">
+                  <option value="All">All Status</option><option value="pending">Pending</option><option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option><option value="overdue">Overdue</option>
+                </select>
+              </div>
+            )}
           </div>
 
-          {/* Items grouped by Phase → Segment → Trade */}
-          <div className="space-y-6">
-            {Object.entries(groupedByPhase).sort().map(([phase, segments]) => {
+          {/* Status Legend */}
+          {isMultiTower && (
+            <div className="flex items-center gap-3 mb-2 px-1">
+              {Object.entries(STATUS_MAP).map(([key, cfg]) => (
+                <span key={key} className="flex items-center gap-1 text-[10px] font-jost text-lodha-grey/40">
+                  <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />{cfg.label}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* ═══ Phase Accordion with Matrix ═══ */}
+          <div className="space-y-1.5">
+            {Object.entries(matrixByPhase).sort().map(([phase, segments]) => {
               const phaseCfg = PHASE_CONFIG[phase] || {};
               const PhIcon = phaseCfg.icon || FileText;
-              const phaseAllItems = Object.values(segments).flatMap(seg => Object.values(seg).flat());
-              const phaseItemCount = phaseAllItems.length;
-              const phaseCompletedCount = phaseAllItems.filter(i => i.status === 'completed').length;
-              const isPhaseExpanded = expandedSections.has(phase);
+              const barCls = phaseCfg.bar || 'bg-gray-400';
+              const iconCls = phaseCfg.iconCls || 'text-gray-500';
+
+              // Count items across all segments
+              const allRows = Object.values(segments).flatMap(seg => Object.values(seg).flatMap(trade => Object.values(trade)));
+              const allItems = allRows.flatMap(r => Object.values(r.items));
+              const phaseTotal = allItems.length;
+              const phaseDone = allItems.filter(i => i.status === 'completed').length;
+              const phaseOverdue = allItems.filter(i => effectiveStatus(i) === 'overdue').length;
+              const isOpen = expandedSections.has(phase);
 
               return (
-                <div key={phase} className="bg-white border border-lodha-steel rounded-xl overflow-hidden">
-                  {/* Phase Header */}
-                  <button onClick={() => toggleSection(phase)} className={`w-full border-b px-6 py-4 flex items-center justify-between ${phaseCfg.color || 'bg-lodha-cream border-lodha-muted-gold/30 text-lodha-grey'}`}>
-                    <h3 className="font-garamond text-lg font-bold flex items-center gap-2">
-                      <PhIcon className="w-5 h-5" /> {phase}
-                    </h3>
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-jost">{phaseCompletedCount}/{phaseItemCount} completed</span>
-                      <div className="w-20"><ProgressBar completed={phaseCompletedCount} total={phaseItemCount} /></div>
-                      {isPhaseExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                <div key={phase} className="bg-white border border-lodha-steel/60 rounded-lg overflow-hidden">
+                  {/* Phase header */}
+                  <button onClick={() => toggleSection(phase)}
+                    className="w-full px-3 md:px-4 py-2.5 flex items-center gap-2.5 hover:bg-lodha-sand/30 transition-colors group">
+                    {isOpen ? <ChevronDown className="w-4 h-4 text-lodha-grey/30 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-lodha-grey/30 flex-shrink-0" />}
+                    <span className={`w-1.5 h-6 rounded-full ${barCls} flex-shrink-0`} />
+                    <PhIcon className={`w-4 h-4 ${iconCls} flex-shrink-0`} />
+                    <span className="font-jost font-semibold text-sm text-lodha-grey truncate">{phaseCfg.label || phase}</span>
+                    <div className="ml-auto flex items-center gap-2 md:gap-3 flex-shrink-0">
+                      {phaseOverdue > 0 && <span className="text-[10px] font-jost font-bold text-red-500 hidden sm:inline">{phaseOverdue} late</span>}
+                      <span className="text-[11px] font-jost text-lodha-grey/40">{phaseDone}/{phaseTotal}</span>
+                      <MiniBar value={phaseDone} max={phaseTotal} />
                     </div>
                   </button>
 
-                  {isPhaseExpanded && (
-                    <div>
+                  {/* Phase content — Matrix table */}
+                  {isOpen && (
+                    <div className="border-t border-lodha-steel/30 overflow-x-auto">
+                      {/* Tower column headers (multi-tower only) */}
+                      {isMultiTower && (
+                        <div className="sticky top-0 z-10 bg-lodha-sand/60 border-b border-lodha-steel/20 backdrop-blur-sm">
+                          <div className="flex items-center">
+                            <div className="flex-1 min-w-[200px] px-3 md:px-4 py-1.5">
+                              <span className="text-[10px] font-jost font-bold text-lodha-grey/30 uppercase tracking-widest">Deliverable</span>
+                            </div>
+                            {towers.map(t => (
+                              <div key={t} className="w-20 md:w-24 flex-shrink-0 text-center py-1.5">
+                                <span className="text-[10px] font-jost font-bold text-lodha-grey/40 uppercase">{t}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Segments */}
                       {Object.entries(segments)
-                        .sort(([a], [b]) => (SEGMENT_CONFIG[a]?.order || 99) - (SEGMENT_CONFIG[b]?.order || 99))
-                        .map(([segment, trades]) => {
-                          const segCfg = SEGMENT_CONFIG[segment] || {};
-                          const SegIcon = segCfg.icon || FileText;
-                          const segAllItems = Object.values(trades).flat();
-                          const segCompleted = segAllItems.filter(i => i.status === 'completed').length;
-                          const tradeEntries = Object.entries(trades).sort(([a], [b]) => a.localeCompare(b));
+                        .sort(([a], [b]) => (SEGMENT_ORDER[a] || 99) - (SEGMENT_ORDER[b] || 99))
+                        .map(([segment, tradeGroups]) => {
                           const isMEP = segment === 'MEP';
+                          const multiSegment = Object.keys(segments).length > 1;
 
                           return (
                             <div key={segment}>
-                              {/* Segment Header */}
-                              <div className={`border-b border-lodha-steel/20 px-6 py-2.5 flex items-center justify-between ${segCfg.color || 'bg-lodha-sand/50'}`}>
-                                <span className="flex items-center gap-2 font-garamond font-bold text-sm">
-                                  <SegIcon className="w-4 h-4" /> {segment}
-                                </span>
-                                <span className="text-xs font-jost opacity-70">{segCompleted}/{segAllItems.length}</span>
-                              </div>
-
-                              {isMEP ? (
-                                /* MEP: Show sub-trade groups */
-                                tradeEntries.map(([trade, tradeItems]) => {
-                                  const TIcon = TRADE_ICONS[trade === 'MEP Coordination' ? 'MEP' : trade] || FileText;
-                                  const tradeColor = TRADE_COLORS[trade === 'MEP Coordination' ? 'MEP' : trade] || '';
-                                  const tradeCompleted = tradeItems.filter(i => i.status === 'completed').length;
-                                  return (
-                                    <div key={trade}>
-                                      <div className="bg-lodha-sand/30 border-b border-lodha-steel/10 px-8 py-1.5 flex items-center justify-between">
-                                        <span className="flex items-center gap-2 font-jost font-semibold text-xs text-lodha-grey/70">
-                                          <TIcon className="w-3.5 h-3.5" /> {trade}
-                                        </span>
-                                        <span className="text-xs font-jost text-lodha-grey/40">{tradeCompleted}/{tradeItems.length}</span>
-                                      </div>
-                                      <div className="divide-y divide-lodha-steel/20">
-                                        {tradeItems.map(item => {
-                                          const ItemIcon = TRADE_ICONS[item.trade || item.discipline] || FileText;
-                                          const isExpanded = expandedItems.has(item.id);
-                                          return renderItem(item, ItemIcon, isExpanded);
-                                        })}
-                                      </div>
-                                    </div>
-                                  );
-                                })
-                              ) : (
-                                /* Non-MEP: Show items directly */
-                                <div className="divide-y divide-lodha-steel/20">
-                                  {tradeEntries.flatMap(([, tradeItems]) => tradeItems).map(item => {
-                                    const TIcon = TRADE_ICONS[item.trade || item.discipline] || FileText;
-                                    const isExpanded = expandedItems.has(item.id);
-                                    return renderItem(item, TIcon, isExpanded);
-                                  })}
+                              {multiSegment && (
+                                <div className="px-3 md:px-4 py-1 bg-lodha-sand/30 border-b border-lodha-steel/15">
+                                  <span className="text-[10px] font-jost font-bold text-lodha-grey/30 uppercase tracking-widest">{segment}</span>
                                 </div>
                               )}
+
+                              {Object.entries(tradeGroups).sort(([a], [b]) => a.localeCompare(b)).map(([tradeKey, rows]) => {
+                                const showTradeLabel = isMEP && tradeKey !== '_all';
+                                return (
+                                  <div key={tradeKey}>
+                                    {showTradeLabel && (
+                                      <div className="px-4 md:px-5 py-0.5 bg-lodha-sand/15 border-b border-lodha-steel/10">
+                                        <span className="text-[10px] font-jost font-semibold text-lodha-grey/35 uppercase tracking-wide">{tradeKey}</span>
+                                      </div>
+                                    )}
+
+                                    <div className="divide-y divide-lodha-steel/8">
+                                      {Object.entries(rows).map(([rowKey, row]) => {
+                                        const isExpanded = expandedRows.has(rowKey);
+                                        const allRowItems = Object.values(row.items);
+                                        const rowDone = allRowItems.filter(i => i.status === 'completed').length;
+                                        const rowTotal = allRowItems.length;
+                                        const TIcon = TRADE_ICONS[row.trade] || FileText;
+                                        const isProjectLevel = !!row.items['_proj'] && !towers.some(t => row.items[t]);
+
+                                        return (
+                                          <div key={rowKey} className={isExpanded ? 'bg-lodha-sand/20' : ''}>
+                                            <div className="flex items-center cursor-pointer hover:bg-lodha-sand/20 transition-colors" onClick={() => toggleRow(rowKey)}>
+                                              {/* Deliverable name */}
+                                              <div className="flex-1 min-w-[200px] flex items-center gap-2 px-3 md:px-4 py-2">
+                                                <TIcon className="w-3.5 h-3.5 text-lodha-grey/25 flex-shrink-0 hidden sm:block" />
+                                                <span className="font-jost text-[13px] text-lodha-grey truncate">{row.base}</span>
+                                                {isProjectLevel && <span className="text-[9px] font-jost text-lodha-grey/25 bg-lodha-sand/50 px-1.5 py-0.5 rounded uppercase tracking-wider flex-shrink-0">Project</span>}
+                                                {isMultiTower && !isProjectLevel && <span className="text-[10px] font-jost text-lodha-grey/20 flex-shrink-0">{rowDone}/{rowTotal}</span>}
+                                                {(!isMultiTower || isProjectLevel) && (
+                                                  <>
+                                                    {allRowItems[0]?.expected_completion_date && (
+                                                      <span className="text-[11px] text-lodha-grey/30 font-jost flex-shrink-0 hidden md:flex items-center gap-1">
+                                                        <Calendar className="w-3 h-3" />{dateFmt(allRowItems[0].expected_completion_date)}
+                                                      </span>
+                                                    )}
+                                                    {/* Single-tower or project-level: show status dot inline */}
+                                                    <span className="ml-auto flex-shrink-0">
+                                                      <StatusCell item={allRowItems[0]} />
+                                                    </span>
+                                                  </>
+                                                )}
+                                                {isExpanded ? <ChevronDown className="w-3 h-3 text-lodha-grey/20 flex-shrink-0 ml-auto" /> : <ChevronRight className="w-3 h-3 text-lodha-grey/20 flex-shrink-0 ml-auto" />}
+                                              </div>
+
+                                              {/* Tower status cells (multi-tower, per-tower items only) */}
+                                              {isMultiTower && !isProjectLevel && towers.map(tower => (
+                                                <div key={tower} className="w-20 md:w-24 flex-shrink-0 flex items-center justify-center py-2"
+                                                  onClick={e => e.stopPropagation()}>
+                                                  <StatusCell item={row.items[tower]} />
+                                                </div>
+                                              ))}
+                                              {/* Project-level: span the tower columns area */}
+                                              {isMultiTower && isProjectLevel && (
+                                                <div style={{ width: `${towers.length * 96}px` }} className="flex-shrink-0" />
+                                              )}
+                                            </div>
+
+                                            {/* Expanded detail */}
+                                            {isExpanded && <RowDetail row={row} />}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           );
                         })}
@@ -857,8 +719,8 @@ export default function DDSManagement() {
             })}
 
             {filteredItems.length === 0 && (
-              <div className="bg-white border border-lodha-steel rounded-xl p-12 text-center">
-                <p className="text-lodha-grey/60 font-jost">No items match your filters</p>
+              <div className="bg-white border border-lodha-steel rounded-lg p-8 text-center">
+                <p className="text-lodha-grey/40 font-jost text-sm">No items match your filters</p>
               </div>
             )}
           </div>
@@ -866,17 +728,16 @@ export default function DDSManagement() {
       )}
 
       {/* Complete Modal */}
-      {/* Complete Modal */}
       {completeModal && (
         <div className="fixed inset-0 bg-lodha-grey/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl border border-lodha-steel max-w-md w-full p-6">
-            <h3 className="font-garamond text-xl font-bold text-lodha-grey mb-2">Mark as Completed</h3>
-            <p className="text-sm text-lodha-grey/60 font-jost mb-4">{completeModal.item_name}</p>
-            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Completion remarks (optional)..." rows={3}
-              className="w-full px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-sm font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30 mb-4" />
-            <div className="flex justify-end gap-3">
-              <button onClick={() => { setCompleteModal(null); setRemarks(''); }} className="px-4 py-2 text-sm font-jost font-semibold text-lodha-grey hover:bg-lodha-sand rounded-lg transition-colors">Cancel</button>
-              <button onClick={() => handleComplete(completeModal.id)} className="px-4 py-2 bg-emerald-600 text-white text-sm font-jost font-semibold rounded-lg hover:bg-emerald-700 transition-colors">Complete</button>
+          <div className="bg-white rounded-xl shadow-2xl border border-lodha-steel max-w-sm w-full p-5">
+            <h3 className="font-garamond text-lg font-bold text-lodha-grey mb-1">Mark Complete</h3>
+            <p className="text-xs text-lodha-grey/50 font-jost mb-3">{completeModal.item_name}</p>
+            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Remarks (optional)..." rows={2}
+              className="w-full px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-sm font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30 mb-3" />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { setCompleteModal(null); setRemarks(''); }} className="px-3 py-1.5 text-xs font-jost font-semibold text-lodha-grey hover:bg-lodha-sand rounded-lg transition-colors">Cancel</button>
+              <button onClick={() => handleComplete(completeModal.id)} className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-jost font-semibold rounded-lg hover:bg-emerald-700 transition-colors">Complete</button>
             </div>
           </div>
         </div>
@@ -885,15 +746,15 @@ export default function DDSManagement() {
       {/* Revise Modal */}
       {reviseModal && (
         <div className="fixed inset-0 bg-lodha-grey/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl border border-lodha-steel max-w-md w-full p-6">
-            <h3 className="font-garamond text-xl font-bold text-lodha-grey mb-2">Request Revision</h3>
-            <p className="text-sm text-lodha-grey/60 font-jost mb-1">{reviseModal.item_name}</p>
-            <p className="text-xs text-amber-600 font-jost mb-4">Current: {reviseModal.revision || 'R0'} → Next: R{(reviseModal.revision_count || 0) + 1}</p>
-            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Reason for revision (required)..." rows={3}
-              className="w-full px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-sm font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30 mb-4" />
-            <div className="flex justify-end gap-3">
-              <button onClick={() => { setReviseModal(null); setRemarks(''); }} className="px-4 py-2 text-sm font-jost font-semibold text-lodha-grey hover:bg-lodha-sand rounded-lg transition-colors">Cancel</button>
-              <button onClick={() => handleRevise(reviseModal.id)} disabled={!remarks.trim()} className="px-4 py-2 bg-amber-600 text-white text-sm font-jost font-semibold rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50">Submit Revision</button>
+          <div className="bg-white rounded-xl shadow-2xl border border-lodha-steel max-w-sm w-full p-5">
+            <h3 className="font-garamond text-lg font-bold text-lodha-grey mb-1">Request Revision</h3>
+            <p className="text-xs text-lodha-grey/50 font-jost mb-0.5">{reviseModal.item_name}</p>
+            <p className="text-[10px] text-amber-600 font-jost mb-3">{reviseModal.revision || 'R0'} → R{(reviseModal.revision_count || 0) + 1}</p>
+            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Reason for revision (required)..." rows={2}
+              className="w-full px-3 py-2 bg-lodha-sand border border-lodha-steel rounded-lg text-sm font-jost focus:outline-none focus:ring-2 focus:ring-lodha-gold/30 mb-3" />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { setReviseModal(null); setRemarks(''); }} className="px-3 py-1.5 text-xs font-jost font-semibold text-lodha-grey hover:bg-lodha-sand rounded-lg transition-colors">Cancel</button>
+              <button onClick={() => handleRevise(reviseModal.id)} disabled={!remarks.trim()} className="px-3 py-1.5 bg-amber-600 text-white text-xs font-jost font-semibold rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50">Submit</button>
             </div>
           </div>
         </div>

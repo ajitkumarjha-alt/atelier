@@ -172,7 +172,7 @@ export default function Layout({ children }) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0">
         {/* Top Navigation */}
         <header className="h-14 bg-white flex items-center justify-between px-4 md:px-6 border-b border-lodha-steel/30">
           <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
@@ -204,7 +204,7 @@ export default function Layout({ children }) {
         </header>
 
         {/* Page Content */}
-        <main id="main-content" className="flex-1 bg-lodha-sand/50 p-4 md:p-6 lg:p-8 overflow-auto w-full max-w-full" role="main">
+        <main id="main-content" className="flex-1 bg-lodha-sand/50 p-4 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden w-full max-w-full" role="main">
           <div className="max-w-7xl mx-auto w-full">
             <Breadcrumbs />
             {children}
