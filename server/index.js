@@ -50,6 +50,7 @@ import createDrawingSchedulesRouter from './routes/drawing-schedules.js';
 import createSiteAreasRouter from './routes/site-areas.js';
 import createChangeRequestsRouter from './routes/change-requests.js';
 import createMeetingPointRouter from './routes/meeting-point.js';
+import createMepCalculationsRouter from './routes/mep-calculations.js';
 import { validate as handleValidationErrors, validationRules } from './middleware/validation.js';
 
 const app = express();
@@ -236,6 +237,7 @@ app.use('/api', createSiteAreasRouter({
 }));
 app.use('/api', createChangeRequestsRouter({ query, verifyToken }));
 app.use('/api', createMeetingPointRouter(routeDeps));
+app.use('/api/mep-calculations', createMepCalculationsRouter(query, verifyToken));
 
 // ============================================================================
 // File Upload Endpoints

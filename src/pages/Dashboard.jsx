@@ -76,7 +76,7 @@ export default function Dashboard() {
       {/* Meeting Point */}
       <MeetingPointWidget />
 
-      {/* My Assignments Widget */
+      {/* My Assignments Widget */}
       <MyAssignmentsWidget />
 
       {/* Projects Grid */}

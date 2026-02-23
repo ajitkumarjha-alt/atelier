@@ -235,9 +235,9 @@ function AppRoutes() {
           <Route path="/projects/:projectId/calculations/plumbing-fixture/:calculationId?" element={<P><PlumbingFixtureCalculation /></P>} />
           <Route path="/projects/:projectId/calculations/earthing-lightning/:calculationId?" element={<P><EarthingLightningCalculation /></P>} />
           <Route path="/projects/:projectId/calculations/panel-schedule/:calculationId?" element={<P><PanelSchedule /></P>} />
-          <Route path="/projects/:projectId/calculations/fire-fighting-system-design" element={<P><FireFightingSystemDesign /></P>} />
-          <Route path="/projects/:projectId/calculations/ventilation-pressurisation" element={<P><VentilationPressurisation /></P>} />
-          <Route path="/projects/:projectId/calculations/phe-pump-selection" element={<P><PHEPumpSelection /></P>} />
+          <Route path="/projects/:projectId/calculations/fire-fighting-system-design/:calculationId?" element={<P><FireFightingSystemDesign /></P>} />
+          <Route path="/projects/:projectId/calculations/ventilation-pressurisation/:calculationId?" element={<P><VentilationPressurisation /></P>} />
+          <Route path="/projects/:projectId/calculations/phe-pump-selection/:calculationId?" element={<P><PHEPumpSelection /></P>} />
 
           {/* ── Change Requests ─────────────────────────────────────── */}
           <Route path="/change-requests/:projectId" element={<P roles={DESIGN_TEAM}><ChangeRequestsPage /></P>} />
