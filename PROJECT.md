@@ -30,7 +30,7 @@
 **Atelier MEP Portal** is a full-stack web application for managing MEP (Mechanical, Electrical, Plumbing) projects in real estate construction. It provides:
 
 - **Project lifecycle management** — Concept → Detailed Design → Tender → VFC (Value for Comment)
-- **Design calculations** — 15 engineering calculators (electrical load, water demand, HVAC, fire fighting, etc.)
+- **Design calculations** — 16 engineering calculators (electrical load, water demand, HVAC, fire fighting, cable selection, duct sizing, etc.)
 - **Document workflows** — Material Approval Sheets (MAS), Requests for Information (RFI), Change Requests (CR/RFC)
 - **Drawing Delivery Schedule (DDS)** — Policy-driven generation, tracking, and analytics
 - **Multi-role access** — Hierarchical user levels from Leadership (L0) to Viewer (L4), plus Vendors, Consultants, and Construction Managers
@@ -122,8 +122,23 @@ atelier/
 │   │   ├── my-assignments.js        # Unified assignment view
 │   │   ├── meeting-point.js         # Meeting Point forum (AI-augmented)
 │   │   └── policy.js                # Policy version management
+│   ├── routes/
+│   │   ├── mep-calculations.js      # Unified CRUD router for all MEP calculators
+│   │   └── ...                      # (see routes/ listing above)
 │   ├── services/
-│   │   ├── electricalLoadService.js # Electrical load calculation engine
+│   │   ├── electricalLoadService.js # Electrical load calculation engine (legacy, standalone)
+│   │   ├── hvacLoadService.js       # HVAC cooling load (ECBC 2017, IS 3103)
+│   │   ├── firePumpService.js       # Fire pump sizing (NBC 2016 Part 4)
+│   │   ├── cableSelectionService.js # Cable selection (IS 732, IEC 60502)
+│   │   ├── lightingDesignService.js # Lighting design (IS 3646, ECBC 2017)
+│   │   ├── earthingLightningService.js # Earthing & lightning (IS 3043, IEC 62305)
+│   │   ├── plumbingFixtureService.js # Plumbing fixture units (IS 2065)
+│   │   ├── phePumpService.js        # PHE pump selection (IS 2065, NPSH/VFD)
+│   │   ├── ventilationPressurizationService.js # Ventilation (IS 3103, NBC 2016)
+│   │   ├── ductSizingService.js     # Duct sizing (ASHRAE equal friction)
+│   │   ├── panelScheduleService.js  # Panel schedule (IS 732, IS 8828)
+│   │   ├── risingMainService.js     # Rising main / down take / bus riser (IS 732)
+│   │   ├── fireFightingService.js   # Fire fighting system (NBC 2016, NFPA 13/14/20)
 │   │   └── meetingPointAI.js        # RAG pipeline, AtelierBot, embeddings
 │   ├── lib/
 │   │   └── ddsPolicy.js             # DDS Policy 130 generation engine
@@ -168,7 +183,7 @@ atelier/
 │   │   ├── VendorRegistration.jsx   # Vendor registration form
 │   │   ├── StatusBadge.jsx          # Color-coded status badges
 │   │   ├── AIReports.jsx            # NL-to-SQL report generator (L0 dashboard)
-│   │   ├── CalculationComingSoon.jsx # Placeholder for unimplemented calculators
+│   │   ├── MepCalculatorShell.jsx   # Reusable calculator page shell (CRUD, routing, layout)
 │   │   ├── MeetingPointWidget.jsx   # Meeting Point dashboard widget
 │   │   ├── meeting-point/
 │   │   │   ├── NewThreadModal.jsx    # Thread creation with AI duplicate detection
@@ -225,23 +240,23 @@ atelier/
 │   │   ├── MeetingPointThread.jsx   # Thread detail + replies
 │   │   ├── project/
 │   │   │   └── ProjectInputEnhanced.jsx  # Enhanced tabbed project input
-│   │   └── calculations/            # 15 MEP calculation pages
-│   │       ├── index.js             # Barrel exports
-│   │       ├── ElectricalLoadCalculation.jsx
-│   │       ├── CableSelectionSheet.jsx
-│   │       ├── RisingMainDesign.jsx
-│   │       ├── DownTakeDesign.jsx
-│   │       ├── BusRiserDesign.jsx
-│   │       ├── LightingLoadCalculation.jsx
-│   │       ├── PanelSchedule.jsx
-│   │       ├── EarthingLightningCalculation.jsx
-│   │       ├── WaterDemandCalculation.jsx
-│   │       ├── PlumbingFixtureCalculation.jsx
-│   │       ├── PHEPumpSelection.jsx
-│   │       ├── HVACLoadCalculation.jsx
-│   │       ├── VentilationPressurisation.jsx
-│   │       ├── FirePumpCalculation.jsx
-│   │       └── FireFightingSystemDesign.jsx
+│   │   └── calculations/            # 16 MEP calculation pages
+│   │       ├── ElectricalLoadCalculation.jsx  # Legacy standalone (1760 lines)
+│   │       ├── WaterDemandCalculation.jsx      # Legacy standalone (927 lines)
+│   │       ├── HVACLoadCalculation.jsx         # MepCalculatorShell-based
+│   │       ├── FirePumpCalculation.jsx         # MepCalculatorShell-based
+│   │       ├── CableSelectionSheet.jsx         # MepCalculatorShell-based
+│   │       ├── LightingLoadCalculation.jsx     # MepCalculatorShell-based
+│   │       ├── EarthingLightningCalculation.jsx # MepCalculatorShell-based
+│   │       ├── PlumbingFixtureCalculation.jsx  # MepCalculatorShell-based
+│   │       ├── PHEPumpSelection.jsx            # MepCalculatorShell-based
+│   │       ├── VentilationPressurisation.jsx   # MepCalculatorShell-based
+│   │       ├── DuctSizingCalculation.jsx       # MepCalculatorShell-based
+│   │       ├── PanelSchedule.jsx               # MepCalculatorShell-based
+│   │       ├── RisingMainDesign.jsx            # MepCalculatorShell-based
+│   │       ├── DownTakeDesign.jsx              # MepCalculatorShell-based
+│   │       ├── BusRiserDesign.jsx              # MepCalculatorShell-based
+│   │       └── FireFightingSystemDesign.jsx    # MepCalculatorShell-based
 │   ├── services/
 │   │   ├── policyService.js         # Cached policy data fetcher (5-min TTL)
 │   │   └── userService.js           # User sync (POST /api/auth/sync)
@@ -698,7 +713,7 @@ Request → securityHeaders (Helmet) → CORS → compression → JSON parser
 - **Breadcrumbs** — context-aware navigation trail
 - **ConfirmDialog / PromptDialog** — reusable modal dialogs via `useDialog` hook
 - **AIReports** — Natural-language-to-SQL report generator embedded in L0Dashboard; users type queries and get tabular results with CSV/JSON export
-- **CalculationComingSoon** — Reusable placeholder for unimplemented calculation pages (~10 of 15 calculators use this)
+- **MepCalculatorShell** — Reusable calculator page shell handling CRUD, step management, JSON export, and URL routing. All new calculators use this with `renderInputs`/`renderResults` render-props. Exports `CalcFieldGroup`, `CalcField`, `ResultCard`, `ResultTable` helper components.
 - **MeetingPointWidget** — Dashboard card integrated into all role dashboards (L0–L4, SuperAdmin, CM)
 
 ### Route Map
@@ -780,6 +795,7 @@ Request → securityHeaders (Helmet) → CORS → compression → JSON parser
 | `ventilation-pressurisation` | VentilationPressurisation | HVAC — ventilation |
 | `fire-pump` | FirePumpCalculation | Fire — pump sizing |
 | `fire-fighting-system-design` | FireFightingSystemDesign | Fire — system design |
+| `duct-sizing` | DuctSizingCalculation | HVAC — duct sizing |
 
 ---
 
@@ -1278,6 +1294,122 @@ Trade-level applicability rules determine which trades apply to which floor type
 
 Floor names are classified via string matching into standardized level types:
 `BASEMENT`, `PLINTH LEVEL`, `PODIUM LEVEL`, `STILT FLOOR`, `GROUND FLOOR`, `MEZZANINE FLOOR`, `GARDEN LEVEL`, `TYPICAL FLOOR`, `REFUGE FLOOR`, `PENTHOUSE LEVEL`, `TERRACE FLOOR`, `ROOF LEVEL`, `LIFT MACHINE ROOM`, `OHT LEVEL`, `PARKING LEVEL`
+
+### 11.3 Unified MEP Calculator Architecture
+
+All new calculators (12 engines) share a unified architecture different from the legacy Electrical Load calculator.
+
+#### Database — `mep_calculations` Table
+
+**Migration**: `migrations/0026_mep_calculations.sql`
+
+Single table for all calculator types using JSONB columns:
+| Column | Type | Purpose |
+|--------|------|---------|
+| `id` | SERIAL PK | Auto-increment ID |
+| `project_id` | INT FK | References `projects(id)` |
+| `calculation_type` | VARCHAR(50) | Engine identifier (see CALCULATOR_MAP below) |
+| `calculation_name` | VARCHAR(200) | User-given name |
+| `input_parameters` | JSONB | Full input payload (engine-specific) |
+| `results` | JSONB | Full calculation output |
+| `selected_buildings` | JSONB | Building IDs if building-specific |
+| `building_id` | INT | Optional single building reference |
+| `summary` | JSONB | Dashboard-friendly summary (extracted per type) |
+| `status` | VARCHAR(20) | `draft` / `calculated` / `approved` / `rejected` |
+| `calculated_by` / `verified_by` / `approved_by` | VARCHAR(100) | Audit trail |
+| `remarks` | TEXT | Notes |
+| `version` | INT DEFAULT 1 | Versioning |
+
+Indexes: `project_id`, `calculation_type`, compound `(project_id, calculation_type)`, `status`, `created_at DESC`.
+
+#### API Router — Unified CRUD
+
+**File**: `server/routes/mep-calculations.js`
+**Prefix**: `/api/mep-calculations`
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/` | Create + calculate (instantiates engine, runs `calculate()`, saves) |
+| GET | `/` | List by `projectId` query param, optional `calculationType` filter |
+| GET | `/:id` | Get single calculation with full results |
+| PUT | `/:id` | Update — recalculates if `input_parameters` changed |
+| DELETE | `/:id` | Soft delete |
+
+**CALCULATOR_MAP** — maps `calculation_type` strings to service classes:
+
+| Key | Service File | Indian Standard Codes |
+|-----|-------------|----------------------|
+| `hvac_load` | `hvacLoadService.js` | ECBC 2017, IS 3103, ASHRAE |
+| `fire_pump` | `firePumpService.js` | NBC 2016 Part 4, IS 15105 |
+| `cable_selection` | `cableSelectionService.js` | IS 732, IS 3961, IEC 60502 |
+| `lighting_design` | `lightingDesignService.js` | IS 3646, NBC 2016, ECBC 2017 |
+| `earthing_lightning` | `earthingLightningService.js` | IS 3043, IEC 62305 |
+| `plumbing_fixture` | `plumbingFixtureService.js` | IS 2065 (fixture unit method) |
+| `phe_pump` | `phePumpService.js` | IS 2065 (NPSH, VFD analysis) |
+| `ventilation` | `ventilationPressurizationService.js` | IS 3103, NBC 2016, BS EN 12101-6 |
+| `duct_sizing` | `ductSizingService.js` | ASHRAE Fundamentals, ISHRAE |
+| `panel_schedule` | `panelScheduleService.js` | IS 732, IS 8828, IS 13947 |
+| `rising_main` | `risingMainService.js` | IS 732, IS 694, IS 8623 |
+| `fire_fighting` | `fireFightingService.js` | NBC 2016, IS 15105, NFPA 13/14/20 |
+
+Each service is an ES module class:
+```js
+export default class CalculatorName {
+  constructor(db) { this.db = db; }
+  async calculate(params, items, projectId) { /* returns results object */ }
+}
+```
+
+#### Frontend — MepCalculatorShell Component
+
+**File**: `src/components/MepCalculatorShell.jsx`
+
+Reusable calculator page shell that handles:
+- Project loading, calculation CRUD via `/api/mep-calculations`
+- Step management: `input` → `calculating` → `results` → `loading`
+- URL updating with calculation ID after save
+- JSON export of results
+
+**Props**:
+| Prop | Type | Description |
+|------|------|-------------|
+| `calculationType` | string | Key from CALCULATOR_MAP |
+| `title` | string | Page title |
+| `icon` | Component | Lucide icon component |
+| `defaultParams` | object | Initial form values |
+| `renderInputs(params, onChange)` | function | Renders input form |
+| `renderResults(results)` | function | Renders results display |
+| `validateInputs(params)` | function? | Optional validation |
+
+**Exported helper components**: `CalcFieldGroup`, `CalcField`, `ResultCard`, `ResultTable`
+
+Each calculator page is thin (~100-170 lines) — just defines `defaultParams`, `renderInputs()`, `renderResults()` and wraps in `<MepCalculatorShell>`.
+
+#### Engine Summaries
+
+**HVAC Load** (`hvacLoadService.js`): Room-by-room cooling load — wall/glass/roof transmission, solar heat gain (9 orientations × 3 seasons), occupancy sensible+latent, lighting (LPD), equipment, ventilation. Sizes chiller, AHUs, cooling tower. Reference data: 15 wall U-values, 8 Indian city design conditions, ECBC lighting power densities.
+
+**Fire Pump** (`firePumpService.js`): NBC 2016 fire water demand by building type/height, hydrant system hydraulic calc with Hazen-Williams, sprinkler system per IS 15105/NFPA 13 hazard classes, jockey pump, diesel pump, pump room sizing, tank capacity.
+
+**Cable Selection** (`cableSelectionService.js`): Three-criteria selection (current carrying, voltage drop, short circuit). 21 standard sizes, CCC tables for XLPE/PVC Cu/Al, derating for ambient temp, grouping, installation method, soil resistivity. Governing criteria identified.
+
+**Lighting Design** (`lightingDesignService.js`): Lumen method with Room Index, utilization factor, maintenance factor. 30+ space types with IS 3646 lux requirements, 13 LED luminaire types, ECBC 2017 LPD compliance check, LENI calculation.
+
+**Earthing & Lightning** (`earthingLightningService.js`): IS 3043 earth resistance formulas for 9 electrode types in 12 soil types, parallel rod calculation to meet target resistance. IEC 62305-2 risk assessment, LPS design (mesh size, rolling sphere, down conductors), SPD requirements.
+
+**Plumbing Fixture** (`plumbingFixtureService.js`): IS 2065 fixture unit method with Hunter's curve (30 data points), cold water pipe sizing, riser sizing, hot water system with solar collector option.
+
+**PHE Pump** (`phePumpService.js`): Duty point selection from 21 standard kW ratings, system curve with 15 fitting types, NPSH verification, VFD energy savings analysis with affinity laws.
+
+**Ventilation & Pressurization** (`ventilationPressurizationService.js`): ACH-based ventilation for 17 space types, staircase/lift lobby/shaft pressurization per IS 5765/BS EN 12101-6, smoke extraction, jet fan selection for basements, CO sensor layout.
+
+**Duct Sizing** (`ductSizingService.js`): Equal friction method with rectangular/circular sizing, 5 duct materials with roughness factors, 14 fitting loss coefficients, critical path analysis, fan static pressure, material schedule/BoQ.
+
+**Panel Schedule** (`panelScheduleService.js`): Circuit-level calculation with MCB/MCCB/ACB selection per IS 13947, 3-phase balancing, incoming device sizing, diversity factors, busbar sizing from 12 standard sizes, panel dimension estimation.
+
+**Rising Main** (`risingMainService.js`): Supports RISING_MAIN, DOWN_TAKE, BUS_RISER design types. Floor-by-floor voltage drop with diversity factors, 12 busbar ratings with impedance data, 13 cable sizes, section-by-section conductor selection.
+
+**Fire Fighting System** (`fireFightingService.js`): Comprehensive NBC 2016 Part 4 compliance — wet/dry riser, sprinkler (4 hazard classes), hose reel, internal/yard hydrant, water storage, portable extinguisher schedule, zone valve design.
 
 ---
 

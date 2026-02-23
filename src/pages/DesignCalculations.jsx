@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, Calculator, Download, Upload, FileText, AlertCircle, Filter, Droplet, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Calculator, Download, Upload, FileText, AlertCircle, Filter, Droplet, Trash2, Flame, Cable, Lightbulb, Zap, Wrench, TrendingUp, TrendingDown, Layers, Grid3X3, Shield, Wind, Activity } from 'lucide-react';
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
 import { useUser } from '../lib/UserContext';
@@ -321,6 +321,10 @@ export default function DesignCalculations() {
       'Plumbing Fixture Calculation': 'plumbing-fixture',
       'Earthing & Lightning Calculation': 'earthing-lightning',
       'Panel Schedule': 'panel-schedule',
+      'Fire Fighting System Design': 'fire-fighting-system-design',
+      'Ventilation & Pressurisation': 'ventilation-pressurisation',
+      'PHE Pump Selection': 'phe-pump-selection',
+      'Duct Sizing Calculation': 'duct-sizing',
     };
     return slugMap[calculationType] || 'other';
   };
@@ -490,48 +494,135 @@ export default function DesignCalculations() {
               </button>
 
               <button
-                onClick={() => showInfo('HVAC Load Calculator - Coming Soon!')}
-                className="flex items-center gap-3 p-3 sm:p-4 bg-white border border-lodha-steel/30 rounded-xl hover:bg-lodha-sand/40 hover:border-lodha-gold/30 transition-all group cursor-not-allowed opacity-60"
-                disabled
+                onClick={() => navigate(`/projects/${projectId}/calculations/hvac-load/new`)}
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-lodha-gold rounded-lg hover:bg-lodha-sand transition group"
               >
                 <Calculator className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 group-hover:scale-110 transition flex-shrink-0" />
                 <div className="text-left">
                   <div className="font-semibold text-lodha-black text-sm sm:text-base">HVAC Load</div>
-                  <div className="text-xs text-lodha-grey">Coming soon</div>
+                  <div className="text-xs text-lodha-grey">Cooling load per ECBC 2017</div>
                 </div>
               </button>
 
               {/* New Design Links */}
               <button
-                onClick={() => navigate(`/projects/${projectId}/calculations/fire-fighting-system-design`)}
+                onClick={() => navigate(`/projects/${projectId}/calculations/fire-fighting-system-design/new`)}
                 className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-red-500 rounded-lg hover:bg-red-100 transition group"
               >
-                <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-red-600 group-hover:scale-110 transition flex-shrink-0" />
+                <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-red-600 group-hover:scale-110 transition flex-shrink-0" />
                 <div className="text-left">
-                  <div className="font-semibold text-lodha-black text-sm sm:text-base">Fire Fighting System Design</div>
-                  <div className="text-xs text-lodha-grey">View design page</div>
+                  <div className="font-semibold text-lodha-black text-sm sm:text-base">Fire Fighting System</div>
+                  <div className="text-xs text-lodha-grey">NBC 2016 / IS 15105</div>
                 </div>
               </button>
 
               <button
-                onClick={() => navigate(`/projects/${projectId}/calculations/ventilation-pressurisation`)}
+                onClick={() => navigate(`/projects/${projectId}/calculations/ventilation-pressurisation/new`)}
                 className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-blue-400 rounded-lg hover:bg-blue-100 transition group"
               >
-                <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-blue-400 group-hover:scale-110 transition flex-shrink-0" />
+                <Wind className="w-6 h-6 sm:w-8 sm:h-8 text-blue-400 group-hover:scale-110 transition flex-shrink-0" />
                 <div className="text-left">
                   <div className="font-semibold text-lodha-black text-sm sm:text-base">Ventilation & Pressurisation</div>
-                  <div className="text-xs text-lodha-grey">View design page</div>
+                  <div className="text-xs text-lodha-grey">IS 3103 / NBC 2016</div>
                 </div>
               </button>
 
               <button
-                onClick={() => navigate(`/projects/${projectId}/calculations/phe-pump-selection`)}
+                onClick={() => navigate(`/projects/${projectId}/calculations/phe-pump-selection/new`)}
                 className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-green-500 rounded-lg hover:bg-green-100 transition group"
               >
-                <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 group-hover:scale-110 transition flex-shrink-0" />
+                <Activity className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 group-hover:scale-110 transition flex-shrink-0" />
                 <div className="text-left">
                   <div className="font-semibold text-lodha-black text-sm sm:text-base">PHE Pump Selection</div>
-                  <div className="text-xs text-lodha-grey">View design page</div>
+                  <div className="text-xs text-lodha-grey">Pump sizing per IS 2065</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => navigate(`/projects/${projectId}/calculations/fire-pump/new`)}
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-lodha-gold rounded-lg hover:bg-lodha-sand transition group"
+              >
+                <Flame className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600 group-hover:scale-110 transition flex-shrink-0" />
+                <div className="text-left">
+                  <div className="font-semibold text-lodha-black text-sm sm:text-base">Fire Pump</div>
+                  <div className="text-xs text-lodha-grey">NBC 2016 Part 4</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => navigate(`/projects/${projectId}/calculations/cable-selection/new`)}
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-lodha-gold rounded-lg hover:bg-lodha-sand transition group"
+              >
+                <Cable className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-600 group-hover:scale-110 transition flex-shrink-0" />
+                <div className="text-left">
+                  <div className="font-semibold text-lodha-black text-sm sm:text-base">Cable Selection</div>
+                  <div className="text-xs text-lodha-grey">IS 732 / IEC 60502</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => navigate(`/projects/${projectId}/calculations/lighting-load/new`)}
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-lodha-gold rounded-lg hover:bg-lodha-sand transition group"
+              >
+                <Lightbulb className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 group-hover:scale-110 transition flex-shrink-0" />
+                <div className="text-left">
+                  <div className="font-semibold text-lodha-black text-sm sm:text-base">Lighting Design</div>
+                  <div className="text-xs text-lodha-grey">IS 3646 / ECBC 2017</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => navigate(`/projects/${projectId}/calculations/earthing-lightning/new`)}
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-lodha-gold rounded-lg hover:bg-lodha-sand transition group"
+              >
+                <Zap className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-500 group-hover:scale-110 transition flex-shrink-0" />
+                <div className="text-left">
+                  <div className="font-semibold text-lodha-black text-sm sm:text-base">Earthing & Lightning</div>
+                  <div className="text-xs text-lodha-grey">IS 3043 / IEC 62305</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => navigate(`/projects/${projectId}/calculations/plumbing-fixture/new`)}
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-lodha-gold rounded-lg hover:bg-lodha-sand transition group"
+              >
+                <Wrench className="w-6 h-6 sm:w-8 sm:h-8 text-teal-600 group-hover:scale-110 transition flex-shrink-0" />
+                <div className="text-left">
+                  <div className="font-semibold text-lodha-black text-sm sm:text-base">Plumbing Fixture</div>
+                  <div className="text-xs text-lodha-grey">IS 2065 fixture units</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => navigate(`/projects/${projectId}/calculations/rising-main/new`)}
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-lodha-gold rounded-lg hover:bg-lodha-sand transition group"
+              >
+                <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600 group-hover:scale-110 transition flex-shrink-0" />
+                <div className="text-left">
+                  <div className="font-semibold text-lodha-black text-sm sm:text-base">Rising Main</div>
+                  <div className="text-xs text-lodha-grey">IS 732 busbar/cable</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => navigate(`/projects/${projectId}/calculations/panel-schedule/new`)}
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-lodha-gold rounded-lg hover:bg-lodha-sand transition group"
+              >
+                <Grid3X3 className="w-6 h-6 sm:w-8 sm:h-8 text-gray-600 group-hover:scale-110 transition flex-shrink-0" />
+                <div className="text-left">
+                  <div className="font-semibold text-lodha-black text-sm sm:text-base">Panel Schedule</div>
+                  <div className="text-xs text-lodha-grey">IS 732 / IS 8828</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => navigate(`/projects/${projectId}/calculations/duct-sizing/new`)}
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white border-2 border-lodha-gold rounded-lg hover:bg-lodha-sand transition group"
+              >
+                <Wind className="w-6 h-6 sm:w-8 sm:h-8 text-sky-600 group-hover:scale-110 transition flex-shrink-0" />
+                <div className="text-left">
+                  <div className="font-semibold text-lodha-black text-sm sm:text-base">Duct Sizing</div>
+                  <div className="text-xs text-lodha-grey">ASHRAE equal friction</div>
                 </div>
               </button>
             </div>

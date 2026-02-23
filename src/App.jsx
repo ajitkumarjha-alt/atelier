@@ -68,6 +68,7 @@ const PanelSchedule = lazy(() => import('./pages/calculations/PanelSchedule'));
 const FireFightingSystemDesign = lazy(() => import('./pages/calculations/FireFightingSystemDesign'));
 const VentilationPressurisation = lazy(() => import('./pages/calculations/VentilationPressurisation'));
 const PHEPumpSelection = lazy(() => import('./pages/calculations/PHEPumpSelection'));
+const DuctSizingCalculation = lazy(() => import('./pages/calculations/DuctSizingCalculation'));
 
 // ── Shared loading spinner ───────────────────────────────────────────────────
 function PageLoader() {
@@ -238,6 +239,7 @@ function AppRoutes() {
           <Route path="/projects/:projectId/calculations/fire-fighting-system-design/:calculationId?" element={<P><FireFightingSystemDesign /></P>} />
           <Route path="/projects/:projectId/calculations/ventilation-pressurisation/:calculationId?" element={<P><VentilationPressurisation /></P>} />
           <Route path="/projects/:projectId/calculations/phe-pump-selection/:calculationId?" element={<P><PHEPumpSelection /></P>} />
+          <Route path="/projects/:projectId/calculations/duct-sizing/:calculationId?" element={<P><DuctSizingCalculation /></P>} />
 
           {/* ── Change Requests ─────────────────────────────────────── */}
           <Route path="/change-requests/:projectId" element={<P roles={DESIGN_TEAM}><ChangeRequestsPage /></P>} />

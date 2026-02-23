@@ -408,7 +408,7 @@ function routeSegment(calcType) {
     duct_sizing: 'duct-sizing',
     panel_schedule: 'panel-schedule',
     rising_main: 'rising-main',
-    fire_fighting: 'fire-fighting-system',
+    fire_fighting: 'fire-fighting-system-design',
   };
   return map[calcType] || calcType;
 }
