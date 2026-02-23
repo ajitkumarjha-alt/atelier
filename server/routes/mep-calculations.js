@@ -38,8 +38,40 @@ export default function createMepCalculationsRouter(queryFn, verifyToken) {
   const router = express.Router();
 
   /**
+   * POST /api/mep-calculations/preview
+   * Run calculation engine without saving — returns results for user review
+   */
+  router.post('/preview', verifyToken, async (req, res) => {
+    try {
+      const { calculationType, inputParameters } = req.body;
+
+      if (!calculationType || !inputParameters) {
+        return res.status(400).json({
+          error: 'Missing required fields: calculationType, inputParameters'
+        });
+      }
+
+      const CalculatorClass = CALCULATOR_MAP[calculationType];
+      if (!CalculatorClass) {
+        return res.status(400).json({
+          error: `Unknown calculation type: ${calculationType}. Valid types: ${Object.keys(CALCULATOR_MAP).join(', ')}`
+        });
+      }
+
+      const calculator = new CalculatorClass({ query: queryFn });
+      const results = await calculator.calculate(inputParameters);
+      const summary = extractSummary(calculationType, results);
+
+      res.json({ results, summary });
+    } catch (error) {
+      console.error('Error previewing MEP calculation:', error);
+      res.status(500).json({ error: error.message || 'Calculation failed' });
+    }
+  });
+
+  /**
    * POST /api/mep-calculations
-   * Create a new MEP calculation
+   * Save a calculation (after user has previewed results)
    */
   router.post('/', verifyToken, async (req, res) => {
     try {

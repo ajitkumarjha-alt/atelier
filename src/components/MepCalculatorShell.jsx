@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calculator, Save, RotateCcw, Download, CheckCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Calculator, Save, RotateCcw, Download, CheckCircle, Loader2, Eye } from 'lucide-react';
 import Layout from './Layout';
 import { apiFetch } from '../lib/api';
 import { showSuccess, showError } from '../utils/toast';
 
 /**
  * MepCalculatorShell — reusable wrapper for all MEP calculator pages.
+ *
+ * Flow: Input → Preview (calculate without saving) → Review results → Save (optional)
  *
  * Props:
  *   calculationType   – string key matching CALCULATOR_MAP (e.g. 'hvac_load')
@@ -30,7 +32,8 @@ export default function MepCalculatorShell({
   const navigate = useNavigate();
   const isNew = !calculationId || calculationId === 'new';
 
-  const [step, setStep] = useState(isNew ? 'input' : 'loading'); // input | calculating | results | loading
+  // steps: input → calculating → preview → saving → saved → loading
+  const [step, setStep] = useState(isNew ? 'input' : 'loading');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [project, setProject] = useState(null);
@@ -82,16 +85,47 @@ export default function MepCalculatorShell({
     setParams(prev => ({ ...prev, [key]: value }));
   }, []);
 
+  // ─── Preview: run calculation WITHOUT saving ───
   const handleCalculate = async () => {
     if (validateInputs) {
       const err = validateInputs(params);
       if (err) return showError(err);
     }
-    if (!calcName.trim()) return showError('Please enter a calculation name');
 
     try {
       setStep('calculating');
       setLoading(true);
+
+      const res = await apiFetch('/api/mep-calculations/preview', {
+        method: 'POST',
+        body: JSON.stringify({ calculationType, inputParameters: params }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Calculation failed');
+      }
+
+      const data = await res.json();
+      const calcResults = typeof data.results === 'string' ? JSON.parse(data.results) : data.results;
+      setResults(calcResults);
+      // Don't set savedId — this is a preview
+      setStep('results');
+      showSuccess('Calculation complete — review results below');
+    } catch (e) {
+      showError(e.message || 'Calculation failed');
+      setStep('input');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Save: persist previewed results to DB ───
+  const handleSave = async () => {
+    if (!calcName.trim()) return showError('Please enter a calculation name before saving');
+
+    try {
+      setSaving(true);
 
       const body = {
         projectId: parseInt(projectId),
@@ -103,13 +137,11 @@ export default function MepCalculatorShell({
 
       let res;
       if (savedId) {
-        // Update existing
         res = await apiFetch(`/api/mep-calculations/${savedId}`, {
           method: 'PUT',
           body: JSON.stringify(body),
         });
       } else {
-        // Create new
         res = await apiFetch('/api/mep-calculations', {
           method: 'POST',
           body: JSON.stringify(body),
@@ -118,25 +150,21 @@ export default function MepCalculatorShell({
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Calculation failed');
+        throw new Error(err.error || 'Save failed');
       }
 
       const data = await res.json();
-      const calcResults = typeof data.results === 'string' ? JSON.parse(data.results) : data.results;
-      setResults(calcResults);
       setSavedId(data.id);
-      setStep('results');
-      showSuccess('Calculation completed successfully');
+      showSuccess(`Calculation saved as #${data.id}`);
 
-      // Update URL if new
+      // Update URL if newly created
       if (!savedId && data.id) {
         navigate(`/projects/${projectId}/calculations/${routeSegment(calculationType)}/${data.id}`, { replace: true });
       }
     } catch (e) {
-      showError(e.message || 'Calculation failed');
-      setStep('input');
+      showError(e.message || 'Save failed');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -199,12 +227,14 @@ export default function MepCalculatorShell({
           </div>
         </div>
 
-        {/* Calculation Name & Remarks */}
-        {step === 'input' && (
+        {/* Calculation Name & Remarks — shown on input step and on results (for save) */}
+        {(step === 'input' || (step === 'results' && !savedId)) && (
           <div className="bg-white rounded-xl shadow-sm border border-lodha-sand p-6 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-lodha-grey mb-1">Calculation Name *</label>
+                <label className="block text-sm font-medium text-lodha-grey mb-1">
+                  Calculation Name {step === 'results' && <span className="text-red-500">*</span>}
+                </label>
                 <input
                   type="text"
                   value={calcName}
@@ -241,7 +271,7 @@ export default function MepCalculatorShell({
                 className="btn-primary flex items-center space-x-2 px-6 py-3 text-base"
               >
                 <Calculator className="w-5 h-5" />
-                <span>{savedId ? 'Recalculate & Save' : 'Calculate & Save'}</span>
+                <span>{savedId ? 'Recalculate' : 'Calculate'}</span>
               </button>
             </div>
           </>
@@ -266,17 +296,46 @@ export default function MepCalculatorShell({
         {/* Results */}
         {step === 'results' && results && (
           <div className="space-y-6">
-            <div className="bg-green-50 rounded-xl border border-green-200 p-4 flex items-center space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-green-800">
-                  Calculation completed — {calcName}
-                </p>
-                <p className="text-xs text-green-600 mt-0.5">
-                  Saved as #{savedId} &middot; {calculationType.replace(/_/g, ' ').toUpperCase()}
-                </p>
+            {/* Preview banner (unsaved) */}
+            {!savedId && (
+              <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Eye className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800">
+                      Preview — not yet saved
+                    </p>
+                    <p className="text-xs text-amber-600 mt-0.5">
+                      Review the results below. Click <strong>Save</strong> to persist this calculation.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="btn-primary flex items-center space-x-2 px-5 py-2 text-sm"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  <span>{saving ? 'Saving...' : 'Save'}</span>
+                </button>
               </div>
-            </div>
+            )}
+
+            {/* Saved banner */}
+            {savedId && (
+              <div className="bg-green-50 rounded-xl border border-green-200 p-4 flex items-center space-x-3">
+                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-green-800">
+                    Saved — {calcName}
+                  </p>
+                  <p className="text-xs text-green-600 mt-0.5">
+                    #{savedId} &middot; {calculationType.replace(/_/g, ' ').toUpperCase()}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {renderResults(results, params)}
           </div>
         )}
