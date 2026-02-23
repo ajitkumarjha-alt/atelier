@@ -16,10 +16,12 @@
 8. [Authentication & Authorization](#8-authentication--authorization)
 9. [API Reference](#9-api-reference)
 10. [Business Logic & Workflows](#10-business-logic--workflows)
-11. [Design System](#11-design-system)
-12. [Deployment](#12-deployment)
-13. [Development Setup](#13-development-setup)
-14. [Testing](#14-testing)
+11. [Domain Logic — Calculation Engines](#11-domain-logic--calculation-engines)
+12. [API Contracts & Error Handling](#12-api-contracts--error-handling)
+13. [Design System](#13-design-system)
+14. [Deployment](#14-deployment)
+15. [Development Setup](#15-development-setup)
+16. [Testing](#16-testing)
 
 ---
 
@@ -452,8 +454,16 @@ project_standard_selections — per-project standard overrides
 project_standards_documents — uploaded reference PDFs
 
 electrical_load_factors — electrical load calculation parameters
+  ├── category, sub_category, description (composite key pattern)
+  ├── watt_per_sqm, mdf, edf, fdf (demand factors)
+  ├── guideline (e.g., 'MSEDCL 2016'), is_active, notes
 design_factor_substation_space — MSEDCL substation space norms
+  ├── installation_type → DTC_OUTDOOR, DTC_INDOOR, DTC_COMPACT, HT_PANEL_ROOM
+  ├── rating_kva, room_length_m, room_width_m, total_area_sqm, clearance_m
 electrical_load_calculations — saved calculation results
+electrical_load_lookup_tables — equipment power lookup
+  ├── category (lift_power, phe_pump, ff_main_pump, etc.)
+  ├── lookup_key, lookup_value → result_value
 
 calculation_standards — engineering calculation parameters
 transformer_ratings — standard transformer sizes
@@ -461,12 +471,33 @@ phe_standards — plumbing standards
 fire_standards — fire fighting standards
 population_standards — population norms
 ev_standards — EV charging standards
+mep_norms_master — master MEP norms reference table
 
 policy_versions — versioned policy system
 policy_water_rates — water consumption rates per policy
 policy_occupancy_factors — occupancy factors per policy
 policy_calculation_parameters — calculation parameters per policy
 policy_change_log — policy change history
+```
+
+### Regulatory Framework Tables
+
+```
+electrical_regulation_frameworks — master list of frameworks (MSEDCL, NBC, etc.)
+  ├── framework_code, framework_name, is_default, is_active
+project_regulation_selection — per-project framework selection
+  ├── project_id, framework_id, is_active
+
+regulation_area_types — METRO, MAJOR_CITIES, URBAN, RURAL definitions
+regulation_load_standards — minimum load per sq.m by premise type (75 W/sqm residential)
+regulation_dtc_thresholds — DTC requirement thresholds by area (Rural ≤25kVA, Urban ≤75kVA, Metro ≤250kVA)
+regulation_sanctioned_load_limits — max kW/kVA per consumer type
+regulation_power_factors — PF per load type (Sanctioned=0.8, After DF=0.9)
+regulation_substation_requirements — substation specs by load range
+regulation_land_requirements — land/space norms for DTC and substations
+regulation_lease_terms — MSEDCL lease terms (duration, rent, surrender notice)
+regulation_infrastructure_specs — individual transformer, ring main requirements
+regulation_definitions — regulatory term definitions
 ```
 
 ### External User Tables
@@ -1091,7 +1122,407 @@ Create Thread (optional: anonymous, file attachments)
 
 ---
 
-## 11. Design System
+## 11. Domain Logic — Calculation Engines
+
+### 11.1 Electrical Load Calculation Engine
+
+**File**: `server/services/electricalLoadService.js` (1,892 lines)
+
+The `ElectricalLoadCalculator` class performs building and society-level electrical load calculations. All factors are database-driven and configurable by L0 users.
+
+#### Calculation Pipeline
+
+```
+1. Load factors from `electrical_load_factors` (keyed by category/sub_category/description)
+2. Load regulatory framework from `electrical_regulation_frameworks` + related tables
+3. Per-building:
+   a. Building CA Loads (7 categories):
+      - Lighting & Small Power (GF lobby, typical floor lobby, staircases, terrace, landscape)
+      - Lifts (passenger, passenger+fire, firemen — power looked up by building height)
+      - HVAC & Ventilation (lobby AC or mechanical vent fans)
+      - Pressurization (staircase fans, fire lift lobby fans)
+      - PHE Building (booster pumps, sewage pumps)
+      - Fire Fighting Building (wet riser pump — mandatory for buildings >15m per NBC 2016)
+      - Other (security/CCTV, common area small power)
+   b. Flat Loads (per flat type × area × watt_per_sqm × count)
+   c. Apply demand factors (MDF, EDF, FDF) to each item
+   d. Apply building diversity factor (MSEDCL Circular 35530):
+      - Metro/Major Cities: DF = 0.50 (i.e., ÷2)
+      - Other areas: DF = 0.40 (i.e., ÷2.5)
+      - Fire load is EXEMPT from diversity factor
+4. Society-level loads (STP, clubhouse, EV charging, street lighting, fire pumps, transfer pumps)
+5. Aggregate: Building totals × n_buildings + Society totals = Grand totals
+6. Regulatory compliance:
+   a. MSEDCL minimum load (75 W/sq.m carpet area for residential)
+   b. Sanctioned Load (WITHOUT DF, PF=0.8) — for billing/quotation
+   c. Load After DF (WITH DF, PF=0.9) — for DTC/infrastructure sizing ONLY
+   d. Validate against limits (single consumer: max 160kW/200kVA; multiple: max 480kW/600kVA)
+   e. DTC requirements (threshold: Rural ≤25kVA, Urban ≤75kVA, Metro ≤250kVA)
+   f. Substation requirements (for loads >3 MVA)
+   g. Land and space requirements
+   h. Lease terms (MSEDCL)
+7. Transformer sizing: select next standard size from [100, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150] kVA
+```
+
+#### Demand Factor Pattern
+
+Every load item carries three demand factors:
+- **MDF** (Maximum Demand Factor): `TCL × MDF = Max Demand kW`
+- **EDF** (Essential Demand Factor): `TCL × EDF = Essential Load kW`
+- **FDF** (Fire Demand Factor): `TCL × FDF = Fire Load kW`
+
+Factors are loaded from `electrical_load_factors` table with key pattern: `{category}/{sub_category}/{description}`
+
+#### Equipment Power Lookups
+
+The `electrical_load_lookup_tables` table stores equipment power values:
+| Category | Lookup Method | Default Value |
+|----------|--------------|---------------|
+| `lift_power` | By building height | 15 kW |
+| `phe_pump` | By flow (LPM) | 2.2 kW |
+| `ff_main_pump` | By flow (LPM) | 112 kW |
+| `ff_jockey_pump` | Standard | 9.33 kW |
+| `ff_sprinkler_pump` | By flow (LPM) | 56 kW |
+| `ac_power` | By tonnage | 1.2 kW/TR |
+| `ventilation_fan` | By CFM | 1.5 kW |
+| `pressurization_fan` | By type | 5.5 kW |
+| `sewage_pump` | By capacity (LPM) | 3.0 kW |
+| `stp_power` | By capacity (KLD) | 30 kW |
+| `ev_charger` | By type (fast/slow) | 7.4 kW |
+
+#### Substation Space Requirements
+
+From `design_factor_substation_space`, installation types:
+- `DTC_OUTDOOR` — outdoor distribution transformer center
+- `DTC_INDOOR` — indoor transformer room
+- `DTC_COMPACT` — compact substation (space-efficient)
+- `HT_PANEL_ROOM` — HT panel/metering room
+- `SUBSTATION_33_11_OUTDOOR`, `SUBSTATION_33_11_INDOOR`, `SUBSTATION_GIS`
+
+Each has: `rating_kva`, `room_length_m`, `room_width_m`, `total_area_sqm`, `clearance_m`, `ventilation_notes`
+
+### 11.2 DDS Policy 130 Engine
+
+**File**: `server/lib/ddsPolicy.js` (793 lines)
+
+Auto-generates Drawing Delivery Schedule items based on Policy 130 v12 ("3 Yr 10 M Project Completion Guideline") and a 54-item, 9-phase master template.
+
+#### 9-Phase Model
+
+| Phase | Name | Items | Scope | Description |
+|-------|------|-------|-------|-------------|
+| A | Concept | 3 | Project | Design Brief, DBR, Space Planning |
+| B | Liaison | 2 | Project | Utility Approval, MoEF Package |
+| C | SLDs | 5 | Project | PHE, Electrical, ELV, Fire Fighting, FAVA Schematics |
+| D | SD | 1 | Project | SD Package (coordination closure) |
+| E | DD | 2 | Per Building | DD Package + Plinth Level |
+| F | Detailed Calcs | 7 | Per Building | PHE pumps/pipes, HVAC heat load/ventilation, Electrical voltage drop/earthing/lightning |
+| G | Builder's Work | 8 levels | Per Building | Basement→Podium→Ground→Typical→Refuge→Service→Penthouse→Terrace |
+| H | Tender | 17 | Project | Lift, Electrical, PHE, FF, HVAC, FAVA, Pumps, Security, OWC, STP, WTP, Odour, Pools, RWH, DG, PNG, Substation |
+| I | VFCs | 9 levels | Per Building | Plinth→Basement→Podium→Ground→Typical→Refuge→Service→Penthouse→Terrace |
+
+#### Height-Based Timeline Tiers (Policy 130 §2)
+
+| Max Height | Design Months | Construction Months | Total |
+|-----------|--------------|-------------------|-------|
+| ≤90m | 7 | 30 | 37 |
+| 90-120m | 10 | 36 | 46 |
+| 120-150m | 11 | 40 | 51 |
+| 150-200m | 12 | 42 | 54 |
+
+#### Timeline Modifiers
+
+- **Height modifier**: +30 days if building >120m
+- **Basement modifier**: +30 days per basement level
+- **Land modifier**: -30 days if existing land (not new)
+- **Tower stagger**: `towerIndex × towerStaggerWeeks × 7` days (default 4 weeks)
+
+#### Annexure A Milestones (16 milestones)
+
+Key milestones from MP Start Date (Day 0):
+- Consultant appointment: Day 15
+- Concept closure (Arch): Day 90 (new) / 75 (existing)
+- Detailed timeline sign-off: Day 105/90
+- Concept all packages: Day 180/150
+- DD closure + Budget: Day 290/260
+- Excavation start (Construction Day 0): Day 335/305
+- First concrete pour: Day 380/350
+- Typical floor VFC: Day 425/395
+- First habitable floor pour: Day 500/470
+
+#### Conditional Inclusion Rules
+
+Items include/exclude based on building config:
+- `has_basement` — Basement BW/VFC levels
+- `has_podium` — Podium BW/VFC levels
+- `has_penthouse` — Penthouse BW/VFC levels (auto-enabled for buildings >60m or >15 floors)
+- `has_swimming_pool` — Pools Tender
+- `has_fitout` — Fitout-related items
+- `has_parking` — Car Parking Ventilation calculation
+
+#### Drawing List Generation
+
+Two separate drawing lists are generated per building:
+
+**VFC Drawings** (9 trades × floor levels):
+Trades: Fire Fighting, PHE, HVAC, Lighting, Small Power, Lightning Protection, Containment, FA & PA, ELV
+
+**DD Drawings** (3 sections):
+- Section A: Calculations (19 templates — pump sizing, heat load, cable schedule, earthing, etc.)
+- Section B: Schematics (11 templates — water supply, drainage, electrical SLD, ELV, etc.)
+- Section C+: Layouts (11 categories × applicable floor levels)
+
+Trade-level applicability rules determine which trades apply to which floor types for VFC vs DD drawings.
+
+#### Floor Classification
+
+Floor names are classified via string matching into standardized level types:
+`BASEMENT`, `PLINTH LEVEL`, `PODIUM LEVEL`, `STILT FLOOR`, `GROUND FLOOR`, `MEZZANINE FLOOR`, `GARDEN LEVEL`, `TYPICAL FLOOR`, `REFUGE FLOOR`, `PENTHOUSE LEVEL`, `TERRACE FLOOR`, `ROOF LEVEL`, `LIFT MACHINE ROOM`, `OHT LEVEL`, `PARKING LEVEL`
+
+---
+
+## 12. API Contracts & Error Handling
+
+### 12.1 Error Response Formats
+
+All errors follow consistent JSON shapes:
+
+**Validation Error (400)**:
+```json
+{
+  "error": "Validation Error",
+  "details": [{ "field": "name", "message": "Project name is required", "value": "" }]
+}
+```
+
+**Auth Error (401/403)**:
+```json
+{ "error": "Forbidden", "message": "L2 users can only add L3 and L4 team members" }
+```
+
+**Not Found (404)**:
+```json
+{ "error": "Not Found", "message": "Cannot GET /api/foo", "path": "/api/foo" }
+```
+
+**Rate Limit (429)**:
+```json
+{ "error": "Too Many Requests", "message": "Too many requests...", "retryAfter": "timestamp" }
+```
+
+**Server Error (500)**:
+```json
+{ "error": "Internal Server Error", "message": "...", "stack": "... (dev only)" }
+```
+
+### 12.2 Validation Rules
+
+Defined in `server/middleware/validation.js`:
+- `projectName`: 3–255 chars, trimmed, not empty
+- `email`: trimmed, normalized, must be valid email
+- `fullName`: 2–255 chars
+- `materialName`: max 255 chars, not empty
+- `quantity`: float ≥ 0
+- `rfiSubject`: max 255 chars, not empty
+- `page` query: integer ≥ 1
+- `limit` query: integer 1–100
+- `date` fields: ISO8601 format
+- `userLevel`: must be one of `L1, L2, L3, L4, SUPER_ADMIN`
+
+Validation rule sets: `createProject`, `updateProject`, `createMAS`, `createRFI`, `userSync`, `pagination`
+
+### 12.3 Middleware Configuration
+
+**Rate Limiting** (`server/middleware/index.js`):
+- General: 100 req/IP per 15 min (production), 1000 (dev)
+- Auth: 5 attempts per 15 min, skips successful requests
+
+**Compression**: level 6, threshold 1024 bytes (only responses >1KB)
+
+**CSP Directives**: `defaultSrc: 'self'`, `styleSrc: 'self' + 'unsafe-inline'`, `scriptSrc: 'self' + 'unsafe-inline'`, `imgSrc: 'self' + data: + https:`
+
+**Request Logging**: Morgan → Winston stream, skips `/api/health`
+
+### 12.4 POST /api/projects — Request Body
+
+Deeply nested creation — creates project + buildings + floors + flats + twin linkages in a single transaction:
+
+```json
+{
+  "name": "string (required, 3-255 chars)",
+  "location": "string",
+  "latitude": "string|number",
+  "longitude": "string|number",
+  "assignedLeadId": "number|null",
+  "buildings": [{
+    "name": "string",
+    "applicationType": "Residential|Clubhouse|MLCP|Commercial|...",
+    "residentialType": "Luxury|Hi-end|Aspirational|Casa|null",
+    "villaType": "string|null",
+    "villaCount": "number|null",
+    "buildingType": "string|null",
+    "gfEntranceLobby": "number|null (sqm)",
+    "poolVolume": "number|null",
+    "hasLift": "boolean",
+    "liftName": "string|null",
+    "liftPassengerCapacity": "number|null",
+    "carParkingCountPerFloor": "number|null",
+    "carParkingArea": "number|null",
+    "twoWheelerParkingCount": "number|null",
+    "twoWheelerParkingArea": "number|null",
+    "evParkingPercentage": "number|null",
+    "shopCount": "number|null",
+    "shopArea": "number|null",
+    "officeCount": "number|null",
+    "officeArea": "number|null",
+    "commonArea": "number|null",
+    "twinOfBuildingName": "string|null (links to another building by name)",
+    "floors": [{
+      "floorNumber": "number",
+      "floorName": "string",
+      "floorHeight": "number|null",
+      "twinOfFloorName": "string|null",
+      "flats": [{
+        "type": "1BHK|1.5BHK|2BHK|2.5BHK|3BHK|4BHK|Studio",
+        "area": "number (sqm despite column name area_sqft)",
+        "count": "number"
+      }]
+    }]
+  }]
+}
+```
+
+**Twin Linking**: Two-pass approach — first creates all buildings/floors, then links twins by name using `buildingIdMap` and `floorIdMap`.
+
+### 12.5 POST /api/mas — Request Body
+
+```json
+{
+  "projectId": "number (required)",
+  "materialName": "string (required, max 255)",
+  "materialCategory": "string",
+  "manufacturer": "string",
+  "modelSpecification": "string",
+  "quantity": "number (float ≥ 0)",
+  "unit": "string",
+  "submittedByVendor": "string",
+  "vendorEmail": "string",
+  "attachmentUrls": "string[] (JSON stringified)"
+}
+```
+- Auto-generates `mas_ref_no` = `MAS-YYYYMMDD-NNN`
+
+### 12.6 Building Details Endpoints (Undocumented in main API Reference)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/buildings/:buildingId/staircases` | List staircases with windows and doors |
+| POST | `/api/buildings/:buildingId/staircases` | Create staircase + windows + doors |
+| PUT | `/api/staircases/:id` | Update staircase (replaces windows/doors) |
+| DELETE | `/api/staircases/:id` | Delete staircase |
+| GET | `/api/buildings/:buildingId/lifts` | List lifts with floor names |
+| POST | `/api/buildings/:buildingId/lifts` | Create lift |
+| PUT | `/api/lifts/:id` | Update lift |
+| DELETE | `/api/lifts/:id` | Delete lift |
+| POST | `/api/floors/:floorId/lobbies` | Create lobby |
+| GET | `/api/buildings/:buildingId/lobbies` | List lobbies |
+| POST | `/api/floors/:floorId/shops` | Create shop |
+| GET | `/api/floors/:floorId/shops` | List shops |
+| POST | `/api/floors/:floorId/parking` | Create parking details |
+| GET | `/api/projects/:projectId/swimming-pools` | List swimming pools |
+| POST | `/api/projects/:projectId/swimming-pools` | Create swimming pool |
+| GET | `/api/projects/:projectId/landscapes` | List landscapes |
+| POST | `/api/projects/:projectId/landscapes` | Create landscape |
+| POST | `/api/projects/:projectId/surface-parking` | Create surface parking |
+| GET | `/api/projects/:projectId/infrastructure` | List infrastructure (STP, substation) |
+| POST | `/api/projects/:projectId/infrastructure` | Create infrastructure |
+
+### 12.7 Notifications & Activity Log Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/notifications` | List notifications (optional `unread_only=true`) |
+| PATCH | `/api/notifications/:id/read` | Mark notification as read |
+| PATCH | `/api/notifications/mark-all-read` | Mark all as read |
+| GET | `/api/projects/:projectId/activity-log` | Activity log (optional `entity_type`, `limit`) |
+| POST | `/api/projects/:projectId/temporary-access` | Grant temporary access |
+| GET | `/api/projects/:projectId/temporary-access` | List active temporary access |
+| POST | `/api/projects/:projectId/cm-components` | Create CM building component |
+| GET | `/api/projects/:projectId/cm-components` | List CM components |
+| PUT | `/api/cm-components/:id` | Update CM component status |
+
+**Notifications created on**: task assignment, task completion, RFC review, MAS status change
+
+**Notification schema**: `user_id, project_id, title, message, notification_type, entity_type, entity_id, is_read`
+
+**Activity log schema**: `project_id, user_id, user_email, entity_type, entity_id, action, changes (JSONB), description`
+
+### 12.8 Pagination Pattern
+
+Only **Meeting Point threads** uses cursor/page-based pagination:
+```json
+// Response shape:
+{ "threads": [...], "pagination": { "page": 1, "limit": 20, "total": 145, "totalPages": 8 } }
+```
+All other list endpoints (projects, MAS, RFI, tasks, etc.) return **full arrays** with no pagination.
+
+### 12.9 File Upload Constraints
+
+- **Max file size**: 50MB
+- **Max files per upload**: 10
+- **Allowed types**: `.pdf`, `.dwg`, `.dxf`, `.rvt`, `.xlsx`, `.xls`, `.csv`, `.doc`, `.docx`, `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`
+- **Production**: UUID-based filenames on Google Cloud Storage
+- **Development**: Local disk storage in `uploads/` (meeting-point attachments in `uploads/meeting-point/`)
+
+### 12.10 Dashboard Content by Role
+
+| Dashboard | Key Content |
+|-----------|------------|
+| **SuperAdminDashboard** | 9-card grid linking to all dashboards (L0–L4, CM, Vendor, Consultant, Standards), each with gradient color and description |
+| **L0Dashboard** | Stats cards (total projects, pending MAS, pending RFI), RFC stats, task stats, project cards grid, AIReports widget, MyAssignments widget, MeetingPoint widget, project delete capability |
+| **L1Dashboard** | "Project Allocation" header, Create New Project button, quick-action buttons (RFC Review, Tasks, MAS Approvals, Standards), L1ProjectTable with project listing, MeetingPoint + MyAssignments widgets |
+| **L2Dashboard** | "Execution Dashboard" with board/list toggle, L2TopStats KPI bar, activity ribbon, quick filters (All/In Progress/Delayed/Completed), Kanban board (ProjectStatusBoard), MeetingPoint + MyAssignments widgets |
+| **L3Dashboard** | Read-level project view, MeetingPoint + MyAssignments widgets |
+| **L4Dashboard** | View-only project listings, MeetingPoint + MyAssignments widgets |
+| **CMDashboard** | Construction manager view, MeetingPoint widget |
+
+### 12.11 Sidebar Navigation by Role
+
+| Level | Sidebar Items |
+|-------|--------------|
+| SUPER_ADMIN | Dashboard, L0/L1/L2 Dashboards, Standards, User Management |
+| L0 | Dashboard, L0 Dashboard, Standards |
+| L1 | Dashboard, Project Management, Create Project, Standards |
+| L2/L3/L4 | Dashboard, MAS Management, Standards |
+| VENDOR | Dashboard, Material Submissions |
+| CM | Dashboard (RFI accessed via project detail) |
+
+### 12.12 Seed Data & Default Values
+
+**Electrical lookup defaults** (when DB lookup fails):
+```
+lift_power=15kW, phe_pump=2.2kW, ff_main_pump=112kW, ff_jockey_pump=9.33kW,
+ff_sprinkler_pump=56kW, ac_power=1.2kW/TR, ventilation_fan=1.5kW,
+pressurization_fan=5.5kW, sewage_pump=3.0kW, stp_power=30kW, ev_charger=7.4kW
+```
+
+**Standard transformer sizes** (IS/IEC): `[100, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150]` kVA
+
+**Default demand factors** (fallback): MDF=0.6, EDF=0.6, FDF=0
+
+**Default regulatory framework** (when DB empty): MSEDCL defaults with residential 75 W/sq.m, PF 0.8/0.9, DTC thresholds 25/75/250 kVA
+
+### 12.13 Database Migration Strategy
+
+- Migration files in `migrations/` directory (numbered `.sql` files)
+- Run via `npm run migrate` → `scripts/migrate.js`
+- Naming convention: mixed (`0001_init_schema.sql`, `2026-02-10_create_*.sql`)
+- Server also auto-creates tables with `CREATE TABLE IF NOT EXISTS` on startup (in `server/index.js` and route modules)
+- Seed scripts: `scripts/seed-electrical-lookup-tables.sql`, `scripts/seed-electrical-lookups.js`
+
+---
+
+## 13. Design System
 
 ### Brand Colors (Tailwind custom tokens)
 | Token | Hex | Usage |
@@ -1103,10 +1534,47 @@ Create Thread (optional: anonymous, file attachments)
 | `lodha-black` | #2D2926 | Headings (warm black) |
 | `lodha-steel` | #CED8DD | Borders, dividers |
 | `lodha-deep` | #7A6415 | Hover states (dark gold) |
+| `lodha-muted-gold` | #CAC6A3 | Muted accents |
+| `lodha-sage` | #E8E6D4 | Soft backgrounds |
+| `lodha-cool-grey` | #949CA1 | Neutral text |
+| `lodha-bronze` | #6D6E71 | Tertiary accents |
 
 ### Typography
-- **Headings**: Cormorant Garamond (serif)
+- **Headings**: Cormorant Garamond (serif) — loaded via Google Fonts: `@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Jost:wght@300;400;500;600;700&display=swap')`
 - **Body**: Jost (sans-serif)
+- Font import MUST be at top of `src/index.css` (not in HTML)
+
+### Shadows (Tailwind `boxShadow` tokens)
+- `card`: subtle resting shadow
+- `card-hover`: elevated with gold-tinted glow
+- `elevated`: strong elevated shadow
+
+### CSS Utility Classes (`src/index.css`)
+Custom Tailwind `@apply` classes — use these for consistency:
+
+| Class | Purpose |
+|-------|---------|
+| `.heading-primary` | Page titles (Cormorant Garamond) |
+| `.heading-secondary` | Section titles |
+| `.heading-tertiary` | Sub-section titles |
+| `.text-body` | Body text |
+| `.text-caption` | Small muted text |
+| `.btn-primary` | Gold CTA button |
+| `.btn-secondary` | Outlined button |
+| `.btn-ghost` | Transparent button |
+| `.btn-cancel` | Red cancel button |
+| `.card` | Card container with shadow |
+| `.card-hover` | Card with hover elevation |
+| `.input-field` | Text input styling |
+| `.select-field` | Select dropdown styling |
+| `.table-header` | Table header row |
+| `.table-row` | Table body row |
+| `.table-cell` | Table cell |
+| `.badge-{variant}` | Badge (primary, secondary, success, warning, danger, neutral) |
+| `.stat-card` / `.stat-value` / `.stat-label` | Statistics display cards |
+| `.section-card` / `.section-header` / `.section-body` | Content sections |
+| `.modal-overlay` / `.modal-card` | Modal dialog |
+| `.empty-state` | Empty state container |
 
 ### Component Patterns
 - Cards with `shadow-card` / `shadow-card-hover`
@@ -1118,7 +1586,7 @@ Create Thread (optional: anonymous, file attachments)
 
 ---
 
-## 12. Deployment
+## 14. Deployment
 
 ### Docker (Multi-stage Build)
 ```dockerfile
@@ -1154,7 +1622,7 @@ CMD ["node", "server/index.js"]
 
 ---
 
-## 13. Development Setup
+## 15. Development Setup
 
 ### Prerequisites
 - Node.js 20+
@@ -1205,7 +1673,7 @@ npm run dev
 
 ---
 
-## 14. Testing
+## 16. Testing
 
 ### Framework
 - **Vitest** — test runner (config in `vite.config.cjs`)
