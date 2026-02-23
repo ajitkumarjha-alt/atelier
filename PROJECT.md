@@ -33,6 +33,7 @@
 - **Drawing Delivery Schedule (DDS)** — Policy-driven generation, tracking, and analytics
 - **Multi-role access** — Hierarchical user levels from Leadership (L0) to Viewer (L4), plus Vendors, Consultants, and Construction Managers
 - **AI assistant** — Google Gemini integration for natural language queries, design sheets, and project narratives
+- **Meeting Point** — AI-augmented engineering forum with RAG-powered AtelierBot, semantic search (pgvector), anonymous posting, and knowledge base
 - **Consultant & Vendor portals** — OTP-based authentication with separate dashboards
 - **Policy management** — Versioned policy system for water rates, occupancy factors, and calculation parameters
 
@@ -68,6 +69,8 @@
 | Nodemailer | 8.0 | Email (OTP delivery) |
 | Winston | 3.19 | Structured logging |
 | ExcelJS | 4.4 | Excel export |
+| uuid | 13.0 | UUID generation (file uploads) |
+| axios | 1.13 | HTTP client |
 | Helmet | 8.1 | Security headers |
 | express-rate-limit | 8.2 | Rate limiting |
 | express-validator | 7.3 | Request validation |
@@ -76,6 +79,7 @@
 ### DevOps
 | Technology | Purpose |
 |-----------|---------|
+| pgvector | PostgreSQL vector similarity search (Meeting Point RAG) |
 | Docker | Multi-stage containerization |
 | Google Cloud Run | Production hosting |
 | Cloud Build | CI/CD (cloudbuild.yaml) |
@@ -114,9 +118,11 @@ atelier/
 │   │   ├── change-requests.js       # Change request workflow
 │   │   ├── rfc.js                   # Request for Change workflow
 │   │   ├── my-assignments.js        # Unified assignment view
+│   │   ├── meeting-point.js         # Meeting Point forum (AI-augmented)
 │   │   └── policy.js                # Policy version management
 │   ├── services/
-│   │   └── electricalLoadService.js # Electrical load calculation engine
+│   │   ├── electricalLoadService.js # Electrical load calculation engine
+│   │   └── meetingPointAI.js        # RAG pipeline, AtelierBot, embeddings
 │   ├── lib/
 │   │   └── ddsPolicy.js             # DDS Policy 130 generation engine
 │   └── utils/
@@ -159,6 +165,12 @@ atelier/
 │   │   ├── ConsultantRegistration.jsx # Consultant registration form
 │   │   ├── VendorRegistration.jsx   # Vendor registration form
 │   │   ├── StatusBadge.jsx          # Color-coded status badges
+│   │   ├── AIReports.jsx            # NL-to-SQL report generator (L0 dashboard)
+│   │   ├── CalculationComingSoon.jsx # Placeholder for unimplemented calculators
+│   │   ├── MeetingPointWidget.jsx   # Meeting Point dashboard widget
+│   │   ├── meeting-point/
+│   │   │   ├── NewThreadModal.jsx    # Thread creation with AI duplicate detection
+│   │   │   └── ThreadCard.jsx        # Thread preview card
 │   │   ├── ConfirmDialog.jsx        # Confirmation modal
 │   │   ├── PromptDialog.jsx         # Input prompt modal
 │   │   ├── SkeletonLoader.jsx       # Loading skeleton
@@ -207,6 +219,10 @@ atelier/
 │   │   ├── ChangeRequestsPage.jsx   # Change requests list
 │   │   ├── ChangeRequestDetail.jsx  # CR detail/review
 │   │   ├── RFCManagement.jsx        # RFC list & management
+│   │   ├── MeetingPoint.jsx         # Meeting Point forum (bento grid dashboard)
+│   │   ├── MeetingPointThread.jsx   # Thread detail + replies
+│   │   ├── project/
+│   │   │   └── ProjectInputEnhanced.jsx  # Enhanced tabbed project input
 │   │   └── calculations/            # 15 MEP calculation pages
 │   │       ├── index.js             # Barrel exports
 │   │       ├── ElectricalLoadCalculation.jsx
@@ -240,6 +256,7 @@ atelier/
 ├── scripts/                         # DB init, migration, seed scripts
 ├── tests/                           # Vitest test files
 ├── uploads/                         # Local file storage (dev)
+│   └── meeting-point/               # Meeting Point file attachments
 ├── public/                          # Static assets
 ├── reference/                       # Reference documents
 │
@@ -486,12 +503,68 @@ lifts, lobbies, shops, parking — floor-level details
 swimming_pools, landscapes, surface_parking, infrastructure — project-level amenities
 ```
 
+### Meeting Point Tables (pgvector extension required)
+
+```
+mp_threads — forum discussion threads
+├── id (SERIAL PK)
+├── title (VARCHAR 500)
+├── body (TEXT)
+├── service_tag (VARCHAR 50) → Electrical, HVAC, PHE, Fire, LV, General
+├── author_id → FK users(id)
+├── is_anonymous, anonymous_alias
+├── status → open, resolved
+├── is_pinned, is_trending
+├── view_count, reply_count
+├── verified_solution (TEXT)
+├── embedding vector(768) — Gemini embedding for semantic search
+├── created_at, updated_at
+
+mp_posts — thread replies
+├── id (SERIAL PK)
+├── thread_id → FK mp_threads(id) ON DELETE CASCADE
+├── author_id → FK users(id)
+├── body (TEXT)
+├── is_anonymous, anonymous_alias
+├── is_bot_reply (BOOLEAN) — AtelierBot auto-replies
+├── bot_sources (JSONB) — RAG source references
+├── helpful_count, is_verified
+├── embedding vector(768)
+├── created_at, updated_at
+
+mp_reactions — helpful/correct reactions
+├── id (SERIAL PK)
+├── post_id → FK mp_posts(id) ON DELETE CASCADE
+├── user_id → FK users(id)
+├── reaction_type (VARCHAR 20, default 'helpful')
+├── UNIQUE(post_id, user_id, reaction_type)
+
+mp_attachments — file attachments (thread or post level)
+├── id (SERIAL PK)
+├── thread_id → FK mp_threads(id) (optional)
+├── post_id → FK mp_posts(id) (optional)
+├── file_name, file_url, file_type, file_size
+├── is_indexed — whether chunked for RAG
+
+mp_knowledge_chunks — RAG document chunks with embeddings
+├── id (SERIAL PK)
+├── attachment_id → FK mp_attachments(id) ON DELETE CASCADE
+├── chunk_index (INTEGER)
+├── chunk_text (TEXT)
+├── embedding vector(768)
+├── metadata (JSONB)
+```
+
 ### Key Indexes
 - `idx_users_email`, `idx_users_organization`
 - `idx_projects_status`
 - `idx_project_team_project`, `idx_project_team_user`
 - `idx_consultants_email`, `idx_vendors_email`
 - `idx_site_areas_project_id`, `idx_site_areas_area_type`
+- `idx_mp_threads_service`, `idx_mp_threads_status`, `idx_mp_threads_author`
+- `idx_mp_posts_thread`, `idx_mp_posts_author`
+- `idx_mp_attachments_thread`, `idx_mp_knowledge_chunks_attachment`
+- `idx_mp_threads_embedding` (IVFFlat cosine similarity, lists=50)
 - All FK columns have supporting indexes
 
 ### Triggers
@@ -531,6 +604,16 @@ swimming_pools, landscapes, surface_parking, infrastructure — project-level am
   - Schedule tracking summaries
   - Project narrative generation
 - Chat history persistence in `ai_chat_history` table
+
+### Meeting Point AI Service (`server/services/meetingPointAI.js`)
+- **RAG Pipeline** for the Meeting Point forum using pgvector
+- Google Gemini `embedding-001` for 768-dimensional vector embeddings
+- **AtelierBot** — "Shadow Listener" that auto-replies with RAG-sourced answers if no human responds within 5 minutes
+- Cosine similarity search across threads and knowledge chunks
+- AI-powered anonymous content sanitization (strips names, project codes, identifiers)
+- Thread resolution summary synthesis
+- Real-time duplicate detection as user types
+- Document chunking and indexing for knowledge base
 
 ### Email Service (`server/utils/emailService.js`)
 - Nodemailer SMTP for OTP delivery and welcome emails
@@ -583,6 +666,9 @@ Request → securityHeaders (Helmet) → CORS → compression → JSON parser
 - **ErrorBoundary** — catches React render errors, shows recovery UI
 - **Breadcrumbs** — context-aware navigation trail
 - **ConfirmDialog / PromptDialog** — reusable modal dialogs via `useDialog` hook
+- **AIReports** — Natural-language-to-SQL report generator embedded in L0Dashboard; users type queries and get tabular results with CSV/JSON export
+- **CalculationComingSoon** — Reusable placeholder for unimplemented calculation pages (~10 of 15 calculators use this)
+- **MeetingPointWidget** — Dashboard card integrated into all role dashboards (L0–L4, SuperAdmin, CM)
 
 ### Route Map
 
@@ -613,6 +699,8 @@ Request → securityHeaders (Helmet) → CORS → compression → JSON parser
 | `/project/:id` | ProjectDetail | Any authenticated |
 | `/project-input` | ProjectInput | SUPER_ADMIN, L0, L1 |
 | `/project-input/:projectId` | ProjectInput | SUPER_ADMIN, L0, L1 |
+| `/project-input-enhanced` | ProjectInputEnhanced | SUPER_ADMIN, L0, L1 |
+| `/project-input-enhanced/:projectId` | ProjectInputEnhanced | SUPER_ADMIN, L0, L1 |
 
 #### Workflow Routes
 | Path | Component | Access |
@@ -629,6 +717,12 @@ Request → securityHeaders (Helmet) → CORS → compression → JSON parser
 | `/rfc-management` | RFCManagement | SUPER_ADMIN, L1, L2, L3 |
 | `/change-requests/:projectId` | ChangeRequestsPage | SUPER_ADMIN, L1, L2 |
 | `/change-request/:id` | ChangeRequestDetail | SUPER_ADMIN, L1, L2 |
+
+#### Meeting Point
+| Path | Component | Access |
+|------|-----------|--------|
+| `/meeting-point` | MeetingPoint | Any authenticated |
+| `/meeting-point/:threadId` | MeetingPointThread | Any authenticated |
 
 #### Standards & Policy
 | Path | Component | Access |
@@ -714,7 +808,7 @@ SUPER_ADMIN  →  Full system access, user management, impersonation
 
 ## 9. API Reference
 
-~155 endpoints across 18 route modules + inline routes. All prefixed with `/api`.
+~170 endpoints across 19 route modules + inline routes. All prefixed with `/api`.
 
 ### Health & System
 | Method | Path | Description |
@@ -889,6 +983,27 @@ SUPER_ADMIN  →  Full system access, user management, impersonation
 | GET | `/api/llm/project-story/:projectId` | Project narrative |
 | GET | `/api/llm/status` | LLM availability |
 
+### Meeting Point (AI-Augmented Forum)
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/meeting-point/threads` | List threads (filter by service, status, search, sort, paginate) |
+| GET | `/api/meeting-point/threads/:id` | Get thread with posts, attachments, similar threads |
+| POST | `/api/meeting-point/threads` | Create thread (supports file upload, anonymous posting) |
+| PATCH | `/api/meeting-point/threads/:id` | Edit own thread |
+| DELETE | `/api/meeting-point/threads/:id` | Delete thread (author or admin) |
+| POST | `/api/meeting-point/threads/:id/posts` | Reply to thread (with files, anonymous option) |
+| POST | `/api/meeting-point/threads/:id/view` | Increment view count |
+| PATCH | `/api/meeting-point/threads/:id/resolve` | Mark resolved + AI summary generation |
+| PATCH | `/api/meeting-point/threads/:id/pin` | Pin/unpin thread (L1+ only) |
+| POST | `/api/meeting-point/posts/:id/react` | Toggle helpful reaction |
+| PATCH | `/api/meeting-point/posts/:id/verify` | Mark as verified solution (L1+ only) |
+| PATCH | `/api/meeting-point/posts/:id` | Edit own post |
+| DELETE | `/api/meeting-point/posts/:id` | Delete post (author or admin) |
+| GET | `/api/meeting-point/stats` | Dashboard stats (total, open, resolved, by-service, trending, top contributors) |
+| GET | `/api/meeting-point/suggest` | Real-time duplicate detection as user types |
+| GET | `/api/meeting-point/search` | Semantic search (pgvector + knowledge base) |
+| GET | `/api/meeting-point/attachments/:id` | Download attachment |
+
 ---
 
 ## 10. Business Logic & Workflows
@@ -938,6 +1053,41 @@ Draft → Active (only one active at a time) → Archived
 - Stores: water consumption rates, occupancy factors, calculation parameters
 - Policy changes logged in `policy_change_log`
 - Frontend caches active policy for 5 minutes
+
+### Meeting Point Forum
+
+#### Thread Lifecycle
+```
+Create Thread (optional: anonymous, file attachments)
+  → Duplicate Detection (AI suggests similar threads in real-time)
+  → Published (open)
+  → Replies (human + AtelierBot auto-reply after 5 min if no human response)
+  → Verified Solution (L1+ marks a post as verified)
+  → Resolved (author or L1+ closes thread, AI generates resolution summary)
+```
+
+#### AtelierBot (Shadow Listener)
+- Monitors new threads; if no human replies within 5 minutes, auto-generates a RAG-sourced answer
+- Sources: indexed knowledge base documents (`mp_knowledge_chunks`) + similar resolved threads
+- Bot replies flagged with `is_bot_reply=true` and include `bot_sources` JSON
+
+#### Anonymous Posting
+- Users can post threads/replies anonymously with a generated alias (e.g., "Senior_Engineer_4721")
+- AI sanitization strips names, project codes, and identifiers from anonymous content
+
+#### Semantic Search
+- pgvector cosine similarity on thread/post embeddings (768-dim Gemini `embedding-001`)
+- Combined search across forum threads and knowledge base chunks
+- IVFFlat index for approximate nearest neighbor search
+
+#### Service Tags
+- Threads categorized by: Electrical, HVAC, PHE, Fire, LV, General
+- Dashboard stats broken down by service tag
+
+#### Moderation
+- Thread pinning (L1+ only)
+- Verified solution marking (L1+ only)
+- Author and admin can edit/delete own content
 
 ---
 
@@ -1129,8 +1279,13 @@ policy_versions ──── policy_water_rates
 electrical_load_factors (global)
 design_factor_substation_space (global)
 calculation_standards (global)
+
+users ──── mp_threads ──── mp_posts ──── mp_reactions
+                │              │
+                ├──── mp_attachments ──── mp_knowledge_chunks
+                └── (pgvector embeddings for semantic search)
 ```
 
 ---
 
-*Last updated: February 17, 2026*
+*Last updated: February 23, 2026*
